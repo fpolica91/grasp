@@ -8,10 +8,10 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { WebContents } from 'electron'
 import { diff, observe } from './engine'
+import { getKey } from './vault'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
 const MODEL = process.env.GRASP_MODEL ?? 'glm-4.6'
-const KEY = process.env.GRASP_API_KEY ?? ''
 const MAX_STEPS = 16
 const OUT_CAP = 8000
 
@@ -143,7 +143,8 @@ const TOOLS: Tool[] = [
 ]
 
 async function callModel(messages: unknown[]): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string }> {
-  if (!KEY) return { ok: false, error: 'No model key. Set GRASP_API_KEY.' }
+  const KEY = getKey()
+  if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
   try {
     const res = await fetch(`${BASE}/v1/messages`, {
       method: 'POST',

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Chat, type TranscriptItem } from './components/Chat'
 import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
+import { KeyGate } from './components/KeyGate'
 import type { AgentEvent, GraphDiffModel, GraphModel } from '../../shared/types'
 
 type Surface = { kind: 'flow'; graph: GraphModel } | { kind: 'diff'; diff: GraphDiffModel }
@@ -15,7 +16,12 @@ export function App(): React.JSX.Element {
   const [surface, setSurface] = useState<Surface | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [keyReady, setKeyReady] = useState<boolean | null>(null)
   const history = useRef<unknown[]>([])
+
+  useEffect(() => {
+    void window.grasp.keyStatus().then(setKeyReady)
+  }, [])
 
   // subscribe once to the agent event stream
   useEffect(() => {
@@ -46,6 +52,7 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="app">
+      {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       <header className="topbar">
         <span className="brand">grasp</span>
         <span className="tag">the post-editor · adjudicate behavior, not diffs</span>

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { chat } from './model'
 import { observe } from './engine'
 import { runAgent } from './agent'
+import { hasKey, setKey } from './vault'
 import type { AgentTurn, ChatMessage, ObserveParams } from '../shared/types'
 
 function createWindow(): void {
@@ -29,6 +30,8 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:chat', (_e, messages: ChatMessage[]) => chat(messages))
   ipcMain.handle('grasp:observe', (_e, params: ObserveParams) => observe(params))
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
+  ipcMain.handle('grasp:keyStatus', () => hasKey())
+  ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

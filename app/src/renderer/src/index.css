@@ -115,6 +115,17 @@ button:disabled { opacity: .5; cursor: default; }
 .delta .prov { color: var(--muted); font-size: 10.5px; }
 .node.unchanged .card { opacity: .6; }
 
+/* first-run key gate */
+.gate-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(8, 10, 14, .78); display: flex; align-items: center; justify-content: center; -webkit-app-region: no-drag; }
+.gate { width: 420px; max-width: 90vw; background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 26px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.gate .brand { font-weight: 600; font-size: 15px; }
+.gate h2 { margin: 14px 0 6px; font-size: 18px; }
+.gate p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.gate input { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.gate input:focus { outline: none; border-color: var(--observed); }
+.gate button { width: 100%; }
+.gate-error { margin-top: 10px; color: var(--question); font-family: var(--mono); font-size: 12px; }
+
 .qpanel { margin-top: 22px; background: var(--question-bg); border: 1px solid var(--question-hair); border-radius: 12px; padding: 16px 18px; }
 .qpanel h2 { margin: 5px 0 0; font-size: 15px; font-weight: 600; }
 .qlist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }

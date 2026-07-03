@@ -130,4 +130,6 @@ export interface GraspApi {
   observe(params: ObserveParams): Promise<ObserveResult>
   agent(turn: AgentTurn): Promise<{ messages: unknown[] }>
   onAgentEvent(cb: (e: AgentEvent) => void): () => void
+  keyStatus(): Promise<boolean>
+  setKey(key: string): Promise<{ ok: boolean; error?: string; warning?: string }>
 }

@@ -9,7 +9,9 @@ const api: GraspApi = {
     const listener = (_e: unknown, event: AgentEvent): void => cb(event)
     ipcRenderer.on('agent:event', listener)
     return () => ipcRenderer.removeListener('agent:event', listener)
-  }
+  },
+  keyStatus: () => ipcRenderer.invoke('grasp:keyStatus'),
+  setKey: (key: string) => ipcRenderer.invoke('grasp:setKey', key)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

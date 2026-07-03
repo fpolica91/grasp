@@ -2,10 +2,10 @@
 // at any compatible endpoint. Defaults to z.ai's GLM. The API key comes from the
 // environment — never committed.
 import type { ChatMessage, ChatResult } from '../shared/types'
+import { getKey } from './vault'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
 const MODEL = process.env.GRASP_MODEL ?? 'glm-4.6'
-const KEY = process.env.GRASP_API_KEY ?? ''
 
 const SYSTEM =
   'You are grasp, an agentic coding assistant inside the post-editor. When you change ' +
@@ -13,7 +13,8 @@ const SYSTEM =
   'the data and end in a neutral question for the human to adjudicate.'
 
 export async function chat(messages: ChatMessage[]): Promise<ChatResult> {
-  if (!KEY) return { ok: false, text: '', error: 'No model key. Set GRASP_API_KEY.' }
+  const KEY = getKey()
+  if (!KEY) return { ok: false, text: '', error: 'No model key. Add it in grasp (top-right).' }
   try {
     const res = await fetch(`${BASE}/v1/messages`, {
       method: 'POST',
