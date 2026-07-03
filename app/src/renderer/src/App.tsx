@@ -2,7 +2,7 @@
 // You ask an agent to change code; as it works, the observed dataflow updates live on
 // the right, ending in the question. Never a verdict.
 import { useEffect, useRef, useState } from 'react'
-import { Sidebar } from './components/Sidebar'
+import { Sidebar, type Theme } from './components/Sidebar'
 import { Conversation, type TranscriptItem } from './components/Conversation'
 import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
@@ -27,7 +27,14 @@ export function App(): React.JSX.Element {
   const [watchInput, setWatchInput] = useState('')
   const [varying, setVarying] = useState(false)
   const [fuzzReal, setFuzzReal] = useState(false) // false = walled (network denied)
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('grasp-theme') as Theme) || 'graphite')
   const history = useRef<unknown[]>([])
+
+  // Apply + persist the color scheme.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('grasp-theme', theme)
+  }, [theme])
 
   // Populate the workspace from the resolved default so click-to-fuzz and the agent
   // share one repo without the user typing it.
@@ -104,7 +111,14 @@ export function App(): React.JSX.Element {
     <div className="app">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
 
-      <Sidebar workspace={workspace} onWorkspace={setWorkspace} onNewSession={newSession} sessionTitle="Current session" />
+      <Sidebar
+        workspace={workspace}
+        onWorkspace={setWorkspace}
+        onNewSession={newSession}
+        sessionTitle="Current session"
+        theme={theme}
+        onTheme={setTheme}
+      />
 
       <Conversation transcript={transcript} busy={busy} error={error} model={MODEL} onSend={send} />
 

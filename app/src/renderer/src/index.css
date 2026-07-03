@@ -1,30 +1,60 @@
-/* grasp — a dark observation instrument. Single deliberate dark theme. */
-:root {
-  --ground: #0d1013;
-  --surface: #14181e;
-  --surface-2: #1a1f27;
-  --surface-3: #212832;
-  --hair: #242b35;
-  --hair-soft: #1c222a;
-  --ink: #e8ebf0;
-  --muted: #8a94a2;
-  --faint: #5b6673;
-  --accent: #4d8dff;
-  --accent-bg: #15233d;
-  --accent-hair: #2b4a7a;
-  --declared: #8792a0;
-  --declared-bg: #1b212a;
-  --question: #e6ac5a;
-  --question-bg: #241c0f;
-  --question-hair: #4a3a1e;
-  --ghost: #5b6472;
-  --mono: ui-monospace, 'JetBrains Mono', 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --r: 10px;
+/* grasp — an observation instrument. Bundled Geist type, tokenized themes. */
+@font-face {
+  font-family: 'Geist';
+  src: url('./fonts/GeistSans.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('./fonts/GeistMono.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root, :root[data-theme='graphite'] {
+  --ground: #0e1116; --surface: #151922; --surface-2: #1b2029; --surface-3: #232936; --surface-4: #2b3140;
+  --hair: #242b38; --hair-soft: #1a1f29;
+  --ink: #e9edf4; --muted: #a2adbf; --faint: #6b7688; --disabled: #48515f;
+  --accent: #5b93ff; --accent-2: #3f78e6; --accent-bg: #16223b; --accent-hair: #2c477a;
+  --declared: #8792a0; --declared-bg: #1b212b;
+  --question: #e8b160; --question-bg: #241b0e; --question-hair: #4a3820;
+  --ghost: #5b6576;
+  --on-accent: #0a0f18;
+  --sh-1: 0 1px 2px rgba(0,0,0,.35); --sh-2: 0 6px 22px rgba(0,0,0,.4); --sh-3: 0 22px 60px rgba(0,0,0,.52);
+  --r: 10px; --r-sm: 7px; --r-lg: 15px;
+  --mono: 'Geist Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  --sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root[data-theme='carbon'] {
+  --ground: #08090c; --surface: #0f1115; --surface-2: #15171d; --surface-3: #1d2027; --surface-4: #252932;
+  --hair: #1e2129; --hair-soft: #131418;
+  --ink: #eceef2; --muted: #9aa3b2; --faint: #616b7a; --disabled: #414a58;
+  --accent: #6a9cff; --accent-2: #4a80f0; --accent-bg: #111b30; --accent-hair: #274069;
+  --declared: #828c9a; --declared-bg: #14161d;
+  --question: #eab765; --question-bg: #211809; --question-hair: #453516;
+  --ghost: #525c6b; --on-accent: #05070b;
+  --sh-1: 0 1px 2px rgba(0,0,0,.5); --sh-2: 0 6px 22px rgba(0,0,0,.6); --sh-3: 0 22px 60px rgba(0,0,0,.72);
+}
+:root[data-theme='daylight'] {
+  --ground: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --surface-3: #e7eaef; --surface-4: #dde2e9;
+  --hair: #e2e6ec; --hair-soft: #eef0f3;
+  --ink: #1b2331; --muted: #5a6577; --faint: #8a93a2; --disabled: #b3bac5;
+  --accent: #2f6fe0; --accent-2: #255dc4; --accent-bg: #eaf1fe; --accent-hair: #bcd4f7;
+  --declared: #6b7686; --declared-bg: #eef1f5;
+  --question: #a9711a; --question-bg: #fbf2e1; --question-hair: #ecd7ab;
+  --ghost: #9aa3b1; --on-accent: #ffffff;
+  --sh-1: 0 1px 2px rgba(20,30,50,.06); --sh-2: 0 6px 22px rgba(20,30,50,.1); --sh-3: 0 22px 60px rgba(20,30,50,.16);
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; }
-body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
+body {
+  background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 13.5px;
+  line-height: 1.5; letter-spacing: -.006em;
+  font-feature-settings: 'cv01', 'cv03', 'ss03'; font-variant-ligatures: contextual;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -85,7 +115,7 @@ input, textarea { font-family: inherit; }
 .prose h1 { font-size: 18px; } .prose h2 { font-size: 16px; } .prose h3 { font-size: 14.5px; }
 .prose ul, .prose ol { margin: 0 0 10px; padding-left: 20px; }
 .prose li { margin: 3px 0; }
-.prose strong { color: #fff; font-weight: 600; }
+.prose strong { color: var(--ink); font-weight: 600; }
 .prose a { color: var(--accent); text-decoration: none; }
 .prose code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 5px; padding: 1px 5px; }
 .prose pre { background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r); padding: 12px 14px; overflow-x: auto; margin: 0 0 12px; }
@@ -113,8 +143,9 @@ input, textarea { font-family: inherit; }
 .composer textarea:focus { outline: none; }
 .composer textarea::placeholder { color: var(--faint); }
 .composer .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.composer .send { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); border: 0; color: #0b0f16; }
+.composer .send { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; background: var(--accent); border: 0; color: var(--on-accent); box-shadow: var(--sh-1); transition: filter .12s, transform .08s; }
 .composer .send:hover:not(:disabled) { filter: brightness(1.08); }
+.composer .send:active:not(:disabled) { transform: translateY(1px); }
 
 /* ── instrument (dataflow rail) ───────────────────────────── */
 .instrument { background: var(--surface); border-left: 1px solid var(--hair-soft); display: flex; flex-direction: column; min-width: 0; }
@@ -154,8 +185,9 @@ input, textarea { font-family: inherit; }
 .node.plumbing::before { width: 6px; height: 6px; left: -21px; top: 13px; border-color: var(--muted); background: var(--muted); }
 .node.ghosted::before, .node.removed::before { border-color: var(--ghost); border-style: dashed; }
 .node.added::before { background: var(--accent); }
-.card { background: var(--surface-2); border: 1px solid var(--hair); border-radius: 11px; padding: 12px 14px; }
+.card { background: var(--surface-2); border: 1px solid var(--hair); border-radius: 11px; padding: 12px 14px; box-shadow: var(--sh-1); transition: border-color .14s, box-shadow .14s; }
 .node.business .card { border-color: color-mix(in srgb, var(--accent) 30%, var(--hair)); }
+.node.business .card:hover { border-color: color-mix(in srgb, var(--accent) 48%, var(--hair)); box-shadow: var(--sh-2); }
 .node.ghosted .card, .node.removed .card { border-style: dashed; border-color: var(--ghost); background: transparent; }
 .node.unchanged .card { opacity: .55; }
 .chead { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
@@ -215,16 +247,38 @@ input, textarea { font-family: inherit; }
 
 /* ── key gate ─────────────────────────────────────────────── */
 .gate-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(6, 8, 11, .82); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
-.gate { width: 420px; max-width: 90vw; background: var(--surface); border: 1px solid var(--hair); border-radius: 16px; padding: 28px; box-shadow: 0 24px 70px rgba(0, 0, 0, .55); }
+.gate { width: 420px; max-width: 90vw; background: var(--surface); border: 1px solid var(--hair); border-radius: 16px; padding: 28px; box-shadow: var(--sh-3); }
 .gate .brand { padding: 0 0 4px; }
 .gate h2 { margin: 12px 0 6px; font-size: 19px; }
 .gate p { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .gate input { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px; margin-bottom: 12px; }
 .gate input:focus { outline: none; border-color: var(--accent); }
-.gate button { width: 100%; padding: 10px; border-radius: 9px; background: var(--accent); border: 0; color: #0b0f16; font-weight: 600; font-size: 13.5px; }
+.gate button { width: 100%; padding: 11px; border-radius: 9px; background: var(--accent); border: 0; color: var(--on-accent); font-weight: 600; font-size: 13.5px; box-shadow: var(--sh-1); transition: filter .12s; }
+.gate button:hover { filter: brightness(1.07); }
 .gate-error { margin-top: 10px; color: var(--question); font-family: var(--mono); font-size: 12px; }
 
+/* ── depth, indicators, theme switcher (product polish) ───── */
+.instrument { box-shadow: -1px 0 0 var(--hair-soft), var(--sh-2); }
+.qpanel { box-shadow: var(--sh-1); }
+.legend { box-shadow: var(--sh-1); }
+.chip { box-shadow: var(--sh-1); }
+.brand .dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 10px var(--accent); }
+
+/* the live indicator actually breathes — the instrument is watching */
+.inst-head .live .pulse, .chip .g, .brand .dot { position: relative; }
 @media (prefers-reduced-motion: no-preference) {
+  .inst-head .live .pulse { animation: breathe 2.2s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: .4; transform: scale(.82); } 50% { opacity: 1; transform: scale(1); } }
   .node { animation: rise .35s ease both; }
   @keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 }
+
+/* theme switcher — three schemes, in the sidebar foot */
+.theme-row { -webkit-app-region: no-drag; display: flex; align-items: center; gap: 6px; padding: 2px 2px 0; }
+.theme-row .tlabel { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-right: auto; font-weight: 600; }
+.theme-dot { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--hair); padding: 0; position: relative; transition: transform .1s, border-color .12s; }
+.theme-dot:hover { transform: scale(1.12); }
+.theme-dot.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.theme-dot.graphite { background: linear-gradient(135deg, #1b2029 50%, #5b93ff 50%); }
+.theme-dot.carbon { background: linear-gradient(135deg, #0f1115 50%, #6a9cff 50%); }
+.theme-dot.daylight { background: linear-gradient(135deg, #ffffff 50%, #2f6fe0 50%); }
