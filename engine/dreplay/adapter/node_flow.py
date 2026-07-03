@@ -123,7 +123,7 @@ def node_flow(
     (``business_meaningful=False``, ``provenance="unknown"``) records *why*.
     """
     kwargs = dict(kwargs or {})
-    entrypoint = f"{module_path}::{func}"
+    entrypoint = f"{os.path.basename(module_path)}::{func}"
 
     # Try the AST-traced path FIRST (real interior nodes for top-level sync funcs).
     # Falls back to endpoints-only on any failure (parse/rewrite/worker) — never fakes.
@@ -224,7 +224,7 @@ def _node_flow_traced(module_path: str, func: str, kwargs: dict, timeout_s: floa
     except json.JSONDecodeError:
         return None  # worker failed under rewrite → fall back to clean endpoints-only
 
-    return _flow_from_traced(f"{module_path}::{func}", kwargs, data, func)
+    return _flow_from_traced(f"{os.path.basename(module_path)}::{func}", kwargs, data, func)
 
 
 def _classify_js(name: str) -> str:
