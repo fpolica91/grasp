@@ -1,10 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { chat } from './model'
-import { observe } from './engine'
+import { observe, fuzz } from './engine'
 import { runAgent } from './agent'
 import { hasKey, setKey } from './vault'
-import type { AgentTurn, ChatMessage, ObserveParams } from '../shared/types'
+import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams } from '../shared/types'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -29,6 +29,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   ipcMain.handle('grasp:chat', (_e, messages: ChatMessage[]) => chat(messages))
   ipcMain.handle('grasp:observe', (_e, params: ObserveParams) => observe(params))
+  ipcMain.handle('grasp:fuzz', (_e, params: FuzzParams) => fuzz(params))
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
   ipcMain.handle('grasp:keyStatus', () => hasKey())
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))

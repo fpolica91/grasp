@@ -25,7 +25,33 @@ export function App(): React.JSX.Element {
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
   const [watchEp, setWatchEp] = useState('')
   const [watchInput, setWatchInput] = useState('')
+  const [varying, setVarying] = useState(false)
   const history = useRef<unknown[]>([])
+
+  // Click an input operand -> fuzz the input (schema inferred from the observed inputs)
+  // -> surface the edge cases. Fuses flow + fuzz into one interactive object.
+  async function vary(g: GraphModel): Promise<void> {
+    const inputNode = g.nodes.find((n) => n.kind === 'input')
+    if (!inputNode || varying) return
+    const jtype = (v: unknown): string =>
+      typeof v === 'boolean' ? 'boolean' : typeof v === 'number' ? (Number.isInteger(v) ? 'integer' : 'number') : 'string'
+    const properties: Record<string, { type: string }> = {}
+    const required: string[] = []
+    for (const o of inputNode.operands) {
+      properties[o.name] = { type: jtype(o.value) }
+      required.push(o.name)
+    }
+    setVarying(true)
+    const res = await window.grasp.fuzz({
+      repo: workspace,
+      entrypoint: g.entrypoint,
+      schema: JSON.stringify({ type: 'object', properties, required }),
+      variants: 24
+    })
+    setVarying(false)
+    if (res.ok && res.report) setSurface({ kind: 'fuzz', report: res.report })
+    else setError(res.error ?? 'could not fuzz')
+  }
 
   useEffect(() => {
     void window.grasp.keyStatus().then(setKeyReady)
@@ -107,7 +133,7 @@ export function App(): React.JSX.Element {
           ) : surface?.kind === 'fuzz' ? (
             <FuzzView report={surface.report} />
           ) : surface?.kind === 'flow' ? (
-            <DataflowGraph graph={surface.graph} />
+            <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
           ) : (
             <div className="inst-empty">
               Set an entrypoint to <b>watch</b>, then ask the agent to change code. After each edit grasp runs it

@@ -16,7 +16,7 @@ export function observe(params: ObserveParams): Promise<ObserveResult> {
     if (!existsSync(PY)) {
       return res({ ok: false, observed: false, error: `engine python not found at ${PY}. Run: cd engine && make venv` })
     }
-    const args = ['-m', 'dreplay.skill', 'observe', '--repo', params.repo || '.', '--entrypoint', params.entrypoint]
+    const args = ['-m', 'dreplay.skill', 'observe', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint]
     if (params.input) args.push('--input', params.input)
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''
@@ -42,7 +42,7 @@ export function diff(params: DiffParams): Promise<DiffResult> {
     if (!existsSync(PY)) {
       return res({ ok: false, error: `engine python not found at ${PY}. Run: cd engine && make venv` })
     }
-    const args = ['-m', 'dreplay.skill', 'diff', '--repo', params.repo || '.', '--entrypoint', params.entrypoint, '--old', params.oldRef || 'HEAD']
+    const args = ['-m', 'dreplay.skill', 'diff', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint, '--old', params.oldRef || 'HEAD']
     if (params.input) args.push('--input', params.input)
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''
@@ -76,7 +76,7 @@ export function fuzz(params: FuzzParams): Promise<FuzzResult> {
     } catch (e) {
       return res({ ok: false, error: `bad schema: ${e instanceof Error ? e.message : String(e)}` })
     }
-    const args = ['-m', 'dreplay.skill', 'fuzz', '--repo', params.repo || '.', '--entrypoint', params.entrypoint,
+    const args = ['-m', 'dreplay.skill', 'fuzz', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint,
       '--schema', schemaPath, '--variants', String(params.variants ?? 16)]
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''

@@ -181,6 +181,7 @@ export interface AgentTurn {
 export interface GraspApi {
   chat(messages: ChatMessage[]): Promise<ChatResult>
   observe(params: ObserveParams): Promise<ObserveResult>
+  fuzz(params: FuzzParams): Promise<FuzzResult>
   agent(turn: AgentTurn): Promise<{ messages: unknown[] }>
   onAgentEvent(cb: (e: AgentEvent) => void): () => void
   keyStatus(): Promise<boolean>
