@@ -189,6 +189,19 @@ export interface BackendInfo {
   reason?: string
 }
 
+// A persisted session: transcript for display + backend-opaque history so the
+// conversation continues across app launches.
+export interface SessionRecord {
+  id: string
+  title: string
+  updatedAt: number
+  backend: string
+  model: string
+  workspace: string
+  transcript: unknown[]
+  history: unknown[]
+}
+
 export interface GraspApi {
   chat(messages: ChatMessage[]): Promise<ChatResult>
   observe(params: ObserveParams): Promise<ObserveResult>
@@ -199,4 +212,7 @@ export interface GraspApi {
   setKey(key: string): Promise<{ ok: boolean; error?: string; warning?: string }>
   defaultWorkspace(): Promise<string>
   backends(): Promise<BackendInfo[]>
+  sessions(): Promise<SessionRecord[]>
+  saveSession(rec: SessionRecord): Promise<void>
+  deleteSession(id: string): Promise<void>
 }

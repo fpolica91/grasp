@@ -8,7 +8,7 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel } from '../../shared/types'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord } from '../../shared/types'
 
 type Surface =
   | { kind: 'flow'; graph: GraphModel }
@@ -30,7 +30,46 @@ export function App(): React.JSX.Element {
   const [backends, setBackends] = useState<BackendInfo[]>([])
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
+  const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
+  const [sessions, setSessions] = useState<SessionRecord[]>([])
   const history = useRef<unknown[]>([])
+
+  // Restore the session list on launch.
+  useEffect(() => {
+    void window.grasp.sessions().then(setSessions)
+  }, [])
+
+  // Autosave: whenever a turn settles, persist the session (transcript + opaque history).
+  useEffect(() => {
+    if (busy || transcript.length === 0) return
+    const firstUser = transcript.find((t) => t.role === 'user')
+    const rec: SessionRecord = {
+      id: sessionId,
+      title: (firstUser?.text ?? 'Session').slice(0, 44),
+      updatedAt: Date.now(),
+      backend,
+      model,
+      workspace,
+      transcript,
+      history: history.current
+    }
+    void window.grasp.saveSession(rec)
+    setSessions((ss) => [rec, ...ss.filter((s) => s.id !== rec.id)])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, transcript])
+
+  function loadSession(id: string): void {
+    const rec = sessions.find((s) => s.id === id)
+    if (!rec || busy) return
+    setSessionId(rec.id)
+    setTranscript(rec.transcript as TranscriptItem[])
+    history.current = rec.history
+    setBackend(rec.backend)
+    setModel(rec.model)
+    if (rec.workspace) setWorkspace(rec.workspace)
+    setSurface(null)
+    setError(null)
+  }
 
   // Discover the agent backends (GLM / Claude Code / …) and default the model.
   useEffect(() => {
@@ -123,6 +162,7 @@ export function App(): React.JSX.Element {
   }
 
   function newSession(): void {
+    setSessionId(crypto.randomUUID())
     history.current = []
     setTranscript([])
     setSurface(null)
@@ -137,7 +177,9 @@ export function App(): React.JSX.Element {
         workspace={workspace}
         onWorkspace={setWorkspace}
         onNewSession={newSession}
-        sessionTitle="Current session"
+        sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
+        activeSession={sessionId}
+        onSelectSession={loadSession}
         theme={theme}
         onTheme={setTheme}
       />

@@ -4,7 +4,8 @@ import { chat } from './model'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends } from './agent'
 import { hasKey, setKey } from './vault'
-import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams } from '../shared/types'
+import { listSessions, saveSession, deleteSession } from './sessions'
+import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord } from '../shared/types'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -35,6 +36,9 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
   ipcMain.handle('grasp:defaultWorkspace', () => process.env.GRASP_WORKSPACE || process.cwd())
   ipcMain.handle('grasp:backends', () => listBackends())
+  ipcMain.handle('grasp:sessions', () => listSessions())
+  ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
+  ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

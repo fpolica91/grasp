@@ -5,9 +5,10 @@
 import type { WebContents } from 'electron'
 import { glmBackend } from './backends/glm'
 import { claudeBackend } from './backends/claude'
+import { openaiBackend } from './backends/openai'
 import type { AgentBackend, Emit } from './backends/types'
 
-const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend]
+const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, openaiBackend]
 
 export function listBackends(): { id: string; label: string; models: string[]; ok: boolean; reason?: string }[] {
   return BACKENDS.map((b) => ({ id: b.id, label: b.label, models: b.models, ...b.available() }))

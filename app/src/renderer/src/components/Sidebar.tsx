@@ -26,7 +26,9 @@ export function Sidebar(props: {
   workspace: string
   onWorkspace: (w: string) => void
   onNewSession: () => void
-  sessionTitle: string
+  sessions: { id: string; title: string }[]
+  activeSession: string
+  onSelectSession: (id: string) => void
   theme: Theme
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
@@ -51,7 +53,17 @@ export function Sidebar(props: {
 
       <div className="side-sec">Sessions</div>
       <div className="side-list">
-        <div className="side-item active">{props.sessionTitle}</div>
+        {props.sessions.length === 0 && <div className="side-item active">Current session</div>}
+        {props.sessions.map((s) => (
+          <div
+            key={s.id}
+            className={`side-item${s.id === props.activeSession ? ' active' : ''}`}
+            onClick={() => props.onSelectSession(s.id)}
+            title={s.title}
+          >
+            {s.title}
+          </div>
+        ))}
       </div>
 
       <div className="side-foot">
