@@ -14,3 +14,8 @@ shell/zcode/
 
 # electron install for the desktop shell (reinstall via npm)
 shell/app/node_modules/
+
+# grasp app
+app/node_modules/
+app/out/
+app/dist/
