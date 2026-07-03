@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# The observation engine for grasp (the post-editor). Carved from dreplay's flow
+# instrument — the differential-replay half is retired. The import package is still
+# `dreplay` for now (rename is a mechanical follow-up; the worker bootstrap keys off it).
+name = "grasp-engine"
+version = "0.1.0"
+description = "Observation engine for grasp — run code for real, surface the observed dataflow, never judge."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Fabricio Policarpo" }]
+keywords = ["post-editor", "dataflow", "code-comprehension", "observed-behavior", "agentic"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = ["jsonschema>=4", "pyyaml>=6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+node-trace = ["esprima>=4"]  # JS/TS AST-rewrite for real interior nodes (optional; falls back)
+ast-grep = ["ast-grep-py>=0.44"]  # static vocab extraction — no repo-code execution (optional; falls back)
+
+[project.scripts]
+# Thin CLI over the engine (slated to become the agent-driven skill shim).
+grasp-observe = "dreplay.flow_cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dreplay*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["flow_canaries", "tests"]
+addopts = "-ra"
