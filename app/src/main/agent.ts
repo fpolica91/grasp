@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { WebContents } from 'electron'
-import { observe } from './engine'
+import { diff, observe } from './engine'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
 const MODEL = process.env.GRASP_MODEL ?? 'glm-4.6'
@@ -18,10 +18,11 @@ const OUT_CAP = 8000
 const SYSTEM = [
   'You are grasp, a coding agent inside the post-editor. You edit code with the file and',
   'shell tools. But you do NOT assert a change "works", is "fixed", or is "safe".',
-  'After you change a code path, call grasp_observe on the entrypoint you touched with a',
-  'representative input — it runs the code FOR REAL and returns the observed dataflow.',
-  'Present what it surfaces and end in the neutral question it gives you; the human',
-  'adjudicates. Never render a verdict.'
+  'After you EDIT an existing code path, call grasp_diff on the entrypoint you touched —',
+  'it observes the behavior BEFORE your edit (git HEAD) vs AFTER (your working tree) and',
+  'returns the A->B change. For brand-new code with no prior version, call grasp_observe',
+  'instead. Both run the code FOR REAL. Present what they surface and end in the neutral',
+  'question they give you; the human adjudicates. Never render a verdict.'
 ].join(' ')
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
@@ -105,6 +106,38 @@ const TOOLS: Tool[] = [
         return `observed dataflow for ${input.entrypoint}. Open question(s): ${qs}`
       }
       return `could not observe: ${res.error ?? 'unknown'}`
+    }
+  },
+  {
+    name: 'grasp_diff',
+    description:
+      'After you EDIT existing code, show what your change did to the BEHAVIOR: observes the ' +
+      'entrypoint OLD (git ref, default HEAD — before your edits) vs NEW (your edited working ' +
+      'tree) for the same input, and returns the A->B dataflow change, ending in a neutral ' +
+      'question. Use this instead of asserting your edit "works". Requires a git repo workspace.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entrypoint: { type: 'string' },
+        input: { type: 'string', description: 'JSON kwargs' },
+        old_ref: { type: 'string', description: 'git ref for the OLD side (default HEAD)' }
+      },
+      required: ['entrypoint']
+    },
+    async run(input, { workspace, emit }) {
+      const res = await diff({
+        repo: workspace,
+        entrypoint: String(input.entrypoint),
+        oldRef: (input.old_ref as string) || 'HEAD',
+        input: input.input as string
+      })
+      if (res.ok && res.graphDiff) {
+        emit({ type: 'dataflow_diff', diff: res.graphDiff })
+        if (res.graphDiff.empty) return `no behavioral change surfaced for ${input.entrypoint} on this input.`
+        const qs = res.graphDiff.questions.length ? res.graphDiff.questions.join(' | ') : '(no question)'
+        return `dataflow changed A->B for ${input.entrypoint} (${res.graphDiff.changed_count} change(s)). Question(s): ${qs}`
+      }
+      return `could not diff: ${res.error ?? 'unknown'}`
     }
   }
 ]

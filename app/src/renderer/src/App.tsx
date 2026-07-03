@@ -4,12 +4,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Chat, type TranscriptItem } from './components/Chat'
 import { DataflowGraph } from './components/DataflowGraph'
-import type { AgentEvent, GraphModel } from '../../shared/types'
+import { DataflowDiff } from './components/DataflowDiff'
+import type { AgentEvent, GraphDiffModel, GraphModel } from '../../shared/types'
+
+type Surface = { kind: 'flow'; graph: GraphModel } | { kind: 'diff'; diff: GraphDiffModel }
 
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
   const [transcript, setTranscript] = useState<TranscriptItem[]>([])
-  const [graph, setGraph] = useState<GraphModel | null>(null)
+  const [surface, setSurface] = useState<Surface | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const history = useRef<unknown[]>([])
@@ -22,7 +25,8 @@ export function App(): React.JSX.Element {
         setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running' }])
       else if (e.type === 'tool_result')
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, status: 'done' } : it)))
-      else if (e.type === 'dataflow') setGraph(e.graph)
+      else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
+      else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'done') setBusy(false)
       else if (e.type === 'error') {
         setError(e.error)
@@ -61,13 +65,15 @@ export function App(): React.JSX.Element {
 
         <section className="pane flow-pane">
           <div className="flow-body">
-            {graph ? (
-              <DataflowGraph graph={graph} />
+            {surface?.kind === 'diff' ? (
+              <DataflowDiff diff={surface.diff} />
+            ) : surface?.kind === 'flow' ? (
+              <DataflowGraph graph={surface.graph} />
             ) : (
               <div className="flow-placeholder">
                 The observed dataflow appears here. Ask the agent to change code — after it edits, it runs the
-                entrypoint for real (grasp_observe) and surfaces what the change does, ending in a question. grasp
-                never renders a verdict.
+                entrypoint for real and surfaces what the change did to the behavior (A→B), ending in a question.
+                grasp never renders a verdict.
               </div>
             )}
           </div>

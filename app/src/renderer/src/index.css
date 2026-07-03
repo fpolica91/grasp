@@ -95,6 +95,26 @@ button:disabled { opacity: .5; cursor: default; }
 .op.op-unknown .op-v { color: var(--unknown); font-style: italic; }
 .qflag { margin-top: 10px; font-size: 12.5px; color: var(--question); }
 
+/* A->B diff grammar (before/after, never good/bad) */
+.node.added::before { border-color: var(--observed); background: var(--observed); }
+.node.added .card { border-color: color-mix(in srgb, var(--observed) 45%, var(--hair)); }
+.node.removed::before { border-style: dashed; background: transparent; }
+.node.removed .card { border-style: dashed; opacity: .72; }
+.node.removed .lbl { text-decoration: line-through; text-decoration-color: var(--ghost); }
+.stag { margin-left: auto; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 8px; border-radius: 20px; flex: none; }
+.stag.added { color: var(--observed); border: 1px solid var(--observed); }
+.stag.removed { color: var(--ghost); border: 1px dashed var(--ghost); }
+.stag.changed { color: var(--question); border: 1px solid var(--question-hair); }
+.stag.unchanged { color: var(--muted); border: 1px solid var(--hair); }
+.deltas { display: flex; flex-direction: column; gap: 6px; margin-top: 11px; }
+.delta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; }
+.delta .dk { color: var(--muted); }
+.delta .old { color: var(--declared); background: var(--declared-bg); padding: 2px 7px; border-radius: 5px; text-decoration: line-through; text-decoration-color: var(--ghost); }
+.delta .arrow { color: var(--muted); }
+.delta .new { color: var(--observed); background: var(--observed-bg); padding: 2px 7px; border-radius: 5px; font-weight: 500; }
+.delta .prov { color: var(--muted); font-size: 10.5px; }
+.node.unchanged .card { opacity: .6; }
+
 .qpanel { margin-top: 22px; background: var(--question-bg); border: 1px solid var(--question-hair); border-radius: 12px; padding: 16px 18px; }
 .qpanel h2 { margin: 5px 0 0; font-size: 15px; font-weight: 600; }
 .qlist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
