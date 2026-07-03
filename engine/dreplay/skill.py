@@ -188,6 +188,10 @@ def main(argv: list[str] | None = None) -> int:
             sp.add_argument("--variants", type=int, default=8)
             sp.add_argument("--seed", type=int, default=0)
             sp.add_argument("--allow-egress", action="store_true")
+        if name in ("observe", "diff"):
+            sp.add_argument("--html", action="store_true",
+                            help="emit the rendered graph HTML instead of JSON "
+                                 "(what the desktop shell displays)")
 
     args = p.parse_args(argv)
     inp = json.loads(args.input) if getattr(args, "input", None) else None
@@ -200,6 +204,17 @@ def main(argv: list[str] | None = None) -> int:
     else:
         out = fuzz(repo=args.repo, entrypoint=args.entrypoint, schema=args.schema,
                    variants=args.variants, seed=args.seed, allow_egress=args.allow_egress)
+
+    # --html: emit the rendered graph the shell displays. Falls back to the JSON
+    # envelope on a refusal/config-error (no graph to render) — honest, not blank.
+    if getattr(args, "html", False):
+        from .flow_graph import render_graph_diff_html, render_graph_html
+        if args.cap == "observe" and out.get("graph"):
+            print(render_graph_html(out["graph"]))
+            return 0
+        if args.cap == "diff" and out.get("graph_diff"):
+            print(render_graph_diff_html(out["graph_diff"]))
+            return 0
     print(json.dumps(out, indent=2, sort_keys=True, default=repr))
     return 0
 

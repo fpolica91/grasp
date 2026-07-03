@@ -291,7 +291,13 @@ def to_graph_html(flow: Flow) -> str:
 
     Provenance is rendered in form (chip style), the coverage boundary is ghosted
     (never omitted), and the terminal state is a question. No verdict, by construction."""
-    g = graph_model(flow)
+    return render_graph_html(graph_model(flow))
+
+
+def render_graph_html(g: dict) -> str:
+    """Render the graph HTML from a :func:`graph_model` dict (the contract) — so any
+    consumer holding the JSON contract (the desktop app, a skill) can render without
+    re-running the flow."""
     t = g["transparency"]
     classifier = (
         f"vocab · {t['vocab_size']} fields" if t["classifier_mode"] == "vocab"
@@ -471,7 +477,11 @@ def to_graph_diff_html(fd: FlowDiff) -> str:
     """Self-contained render of the A→B change view — one overlaid graph, changed
     nodes showing old→new deltas, terminating in the neutral change question.
     Color is before/after (temporal), never good/bad. No verdict, by construction."""
-    g = graph_diff_model(fd)
+    return render_graph_diff_html(graph_diff_model(fd))
+
+
+def render_graph_diff_html(g: dict) -> str:
+    """Render the A→B change view from a :func:`graph_diff_model` dict (the contract)."""
     t = g["transparency"]
     classifier = (f"vocab · {t['vocab_size']} fields" if t["classifier_mode"] == "vocab"
                   else "non-vocab")

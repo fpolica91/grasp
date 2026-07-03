@@ -11,3 +11,6 @@ build/
 
 # upstream ZCode extraction — proprietary (License: unknown), local working copy only
 shell/zcode/
+
+# electron install for the desktop shell (reinstall via npm)
+shell/app/node_modules/
