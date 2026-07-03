@@ -1,40 +1,74 @@
-// The agent chat. Talks to the model (GLM by default) via the main process. This is
-// the agent half; the post-editor loop is: agent writes → grasp observes → you adjudicate.
-import { useState } from 'react'
-import type { ChatMessage } from '../../../shared/types'
+// The agent transcript + composer (presentational). Renders the streaming tool-use
+// loop: assistant text, tool calls (read/write/run/grasp_observe), and their results.
+import { useEffect, useRef, useState } from 'react'
 
-export function Chat(): React.JSX.Element {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+export interface TranscriptItem {
+  id?: string
+  role: 'user' | 'assistant' | 'tool'
+  text?: string
+  name?: string
+  input?: Record<string, unknown>
+  summary?: string
+  status?: 'running' | 'done'
+}
+
+function ToolItem({ it }: { it: TranscriptItem }): React.JSX.Element {
+  const arg =
+    it.name === 'run_bash'
+      ? String(it.input?.command ?? '')
+      : it.name === 'grasp_observe'
+        ? String(it.input?.entrypoint ?? '')
+        : String(it.input?.path ?? '')
+  return (
+    <div className={`tool ${it.status ?? ''}`}>
+      <span className="tname">{it.name}</span>
+      <span className="targ">{arg}</span>
+      {it.summary && <span className="tsum">{it.summary}</span>}
+    </div>
+  )
+}
+
+export function Chat(props: {
+  transcript: TranscriptItem[]
+  busy: boolean
+  error: string | null
+  onSend: (prompt: string) => void
+}): React.JSX.Element {
   const [input, setInput] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const logRef = useRef<HTMLDivElement>(null)
 
-  async function send(): Promise<void> {
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+  }, [props.transcript, props.busy])
+
+  function submit(): void {
     const text = input.trim()
-    if (!text || busy) return
-    const next: ChatMessage[] = [...messages, { role: 'user', content: text }]
-    setMessages(next)
+    if (!text || props.busy) return
+    props.onSend(text)
     setInput('')
-    setBusy(true)
-    setError(null)
-    const res = await window.grasp.chat(next)
-    setBusy(false)
-    if (res.ok) setMessages([...next, { role: 'assistant', content: res.text }])
-    else setError(res.error ?? 'model error')
   }
 
   return (
     <div className="chat">
-      <div className="chat-log">
-        {messages.length === 0 && <div className="chat-empty">Ask grasp anything. It writes code; grasp shows what the change does.</div>}
-        {messages.map((m, i) => (
-          <div key={i} className={`msg ${m.role}`}>
-            <div className="role">{m.role}</div>
-            <div className="content">{m.content}</div>
+      <div className="chat-log" ref={logRef}>
+        {props.transcript.length === 0 && (
+          <div className="chat-empty">
+            Ask grasp to change some code. It edits with real tools, then shows you what the change does to the data —
+            not that it &ldquo;works&rdquo;.
           </div>
-        ))}
-        {busy && <div className="msg assistant"><div className="role">grasp</div><div className="content dim">…thinking</div></div>}
-        {error && <div className="chat-error">{error}</div>}
+        )}
+        {props.transcript.map((it, i) =>
+          it.role === 'tool' ? (
+            <ToolItem key={it.id ?? i} it={it} />
+          ) : (
+            <div key={i} className={`msg ${it.role}`}>
+              <div className="role">{it.role === 'user' ? 'you' : 'grasp'}</div>
+              <div className="content">{it.text}</div>
+            </div>
+          )
+        )}
+        {props.busy && <div className="msg assistant"><div className="role">grasp</div><div className="content dim">…working</div></div>}
+        {props.error && <div className="chat-error">{props.error}</div>}
       </div>
       <div className="composer">
         <textarea
@@ -43,13 +77,14 @@ export function Chat(): React.JSX.Element {
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault()
-              void send()
+              submit()
             }
           }}
-          placeholder="Ask grasp…  (Cmd/Ctrl+Enter to send)"
+          placeholder="Ask grasp to change code…  (Cmd/Ctrl+Enter)"
           rows={3}
+          autoFocus
         />
-        <button onClick={() => void send()} disabled={busy}>
+        <button onClick={submit} disabled={props.busy}>
           Send
         </button>
       </div>

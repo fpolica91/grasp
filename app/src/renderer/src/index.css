@@ -31,6 +31,15 @@ body { background: var(--ground); color: var(--ink); font-family: var(--sans); -
 .msg.assistant .content { color: var(--ink); }
 .content.dim { color: var(--muted); }
 .chat-error { color: var(--question); font-family: var(--mono); font-size: 12.5px; }
+.i-ws { margin-left: auto; -webkit-app-region: no-drag; font-family: var(--mono); font-size: 12px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 6px; padding: 5px 9px; width: 300px; }
+.i-ws:focus { outline: none; border-color: var(--observed); }
+/* tool calls in the transcript */
+.tool { display: flex; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 12px; padding: 6px 10px; border: 1px solid var(--hair); border-left: 2px solid var(--muted); border-radius: 6px; background: var(--surface-2); }
+.tool.running { border-left-color: var(--observed); }
+.tool.done { border-left-color: var(--declared); }
+.tool .tname { color: var(--observed); font-weight: 500; flex: none; }
+.tool .targ { color: var(--ink); word-break: break-all; }
+.tool .tsum { color: var(--muted); margin-left: auto; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .composer { flex: none; border-top: 1px solid var(--hair); padding: 12px; display: flex; gap: 8px; }
 .composer textarea { flex: 1; resize: none; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 8px; padding: 10px; font-family: var(--sans); font-size: 13.5px; }
 .composer textarea:focus { outline: none; border-color: var(--observed); }

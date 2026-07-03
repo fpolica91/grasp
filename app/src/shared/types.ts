@@ -64,7 +64,24 @@ export interface ObserveResult {
   error?: string | null
 }
 
+// Streaming events from the agent loop (main -> renderer).
+export type AgentEvent =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; id: string; name: string; summary: string }
+  | { type: 'dataflow'; graph: GraphModel }
+  | { type: 'done'; note?: string }
+  | { type: 'error'; error: string }
+
+export interface AgentTurn {
+  workspace: string
+  prompt: string
+  history: unknown[]
+}
+
 export interface GraspApi {
   chat(messages: ChatMessage[]): Promise<ChatResult>
   observe(params: ObserveParams): Promise<ObserveResult>
+  agent(turn: AgentTurn): Promise<{ messages: unknown[] }>
+  onAgentEvent(cb: (e: AgentEvent) => void): () => void
 }

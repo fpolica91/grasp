@@ -1,31 +1,43 @@
-// grasp — the post-editor shell. Left: the agent (chat). Right: the observed dataflow
-// (the differentiator). This is a real, owned React app — the beginning of the product.
-import { useState } from 'react'
-import { Chat } from './components/Chat'
+// grasp — the post-editor shell. Left: the agent (a real tool-use loop on GLM). Right:
+// the observed dataflow. The agent edits code and calls grasp_observe; the dataflow it
+// surfaces lands in the right pane. You adjudicate behavior, not diffs.
+import { useEffect, useRef, useState } from 'react'
+import { Chat, type TranscriptItem } from './components/Chat'
 import { DataflowGraph } from './components/DataflowGraph'
-import type { GraphModel } from '../../shared/types'
+import type { AgentEvent, GraphModel } from '../../shared/types'
 
 export function App(): React.JSX.Element {
-  const [repo, setRepo] = useState('.')
-  const [entrypoint, setEntrypoint] = useState('')
-  const [input, setInput] = useState('')
+  const [workspace, setWorkspace] = useState('')
+  const [transcript, setTranscript] = useState<TranscriptItem[]>([])
   const [graph, setGraph] = useState<GraphModel | null>(null)
-  const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const history = useRef<unknown[]>([])
 
-  async function observe(): Promise<void> {
-    if (!entrypoint.trim() || busy) return
+  // subscribe once to the agent event stream
+  useEffect(() => {
+    return window.grasp.onAgentEvent((e: AgentEvent) => {
+      if (e.type === 'text') setTranscript((t) => [...t, { role: 'assistant', text: e.text }])
+      else if (e.type === 'tool_use')
+        setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running' }])
+      else if (e.type === 'tool_result')
+        setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, status: 'done' } : it)))
+      else if (e.type === 'dataflow') setGraph(e.graph)
+      else if (e.type === 'done') setBusy(false)
+      else if (e.type === 'error') {
+        setError(e.error)
+        setBusy(false)
+      }
+    })
+  }, [])
+
+  async function send(prompt: string): Promise<void> {
+    if (busy) return
+    setError(null)
     setBusy(true)
-    setStatus('running the entrypoint for real…')
-    const res = await window.grasp.observe({ repo, entrypoint, input })
-    setBusy(false)
-    if (res.observed && res.graph) {
-      setGraph(res.graph)
-      setStatus(null)
-    } else {
-      setGraph(null)
-      setStatus(res.error ?? 'could not observe')
-    }
+    setTranscript((t) => [...t, { role: 'user', text: prompt }])
+    const res = await window.grasp.agent({ workspace, prompt, history: history.current })
+    history.current = res.messages
   }
 
   return (
@@ -33,41 +45,29 @@ export function App(): React.JSX.Element {
       <header className="topbar">
         <span className="brand">grasp</span>
         <span className="tag">the post-editor · adjudicate behavior, not diffs</span>
+        <input
+          className="i-ws"
+          value={workspace}
+          onChange={(e) => setWorkspace(e.target.value)}
+          placeholder="workspace path"
+          title="the folder the agent works in"
+        />
       </header>
 
       <div className="split">
         <section className="pane chat-pane">
-          <Chat />
+          <Chat transcript={transcript} busy={busy} error={error} onSend={send} />
         </section>
 
         <section className="pane flow-pane">
-          <div className="flow-bar">
-            <input className="i-repo" value={repo} onChange={(e) => setRepo(e.target.value)} title="repo" />
-            <input
-              className="i-ep"
-              value={entrypoint}
-              onChange={(e) => setEntrypoint(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void observe()}
-              placeholder="module.func"
-              autoFocus
-            />
-            <input
-              className="i-in"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void observe()}
-              placeholder='{"name":"x"}'
-            />
-            <button onClick={() => void observe()} disabled={busy}>
-              Observe
-            </button>
-          </div>
           <div className="flow-body">
             {graph ? (
               <DataflowGraph graph={graph} />
             ) : (
               <div className="flow-placeholder">
-                {status ?? 'Point at an entrypoint and press Observe — grasp runs it for real and shows the observed dataflow, ending in a question. It never renders a verdict.'}
+                The observed dataflow appears here. Ask the agent to change code — after it edits, it runs the
+                entrypoint for real (grasp_observe) and surfaces what the change does, ending in a question. grasp
+                never renders a verdict.
               </div>
             )}
           </div>

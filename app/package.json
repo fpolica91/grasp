@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
-    "@lydell/node-pty": "1.2.0-beta.10"
+    "@lydell/node-pty": "1.2.0-beta.10",
+    "@openai/codex": "^0.142.5"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
