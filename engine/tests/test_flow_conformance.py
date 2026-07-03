@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 
 from dreplay.flow import observe_flow
+from dreplay.flow_graph import to_graph_html, to_graph_json
 from dreplay.flow_render import render_flow
 from dreplay.types import ImplSpec
 
@@ -34,6 +35,19 @@ def test_no_verdict_word_in_any_rendered_flow() -> None:
         text = render_flow(flow).lower()
         for bad in _VERDICT_WORDS:
             assert bad not in text, f"{func}: rendered flow leaked verdict word {bad!r}"
+
+
+def test_no_verdict_word_in_any_graph_surface() -> None:
+    # The moat must survive into the primary surface (the dataflow graph), both the
+    # JSON contract and the HTML render — a beautiful UI must not become a liar.
+    for func, kwargs in _CASES:
+        flow = observe_flow(
+            spec=ImplSpec(module="flow_canaries.scenarios", func=func),
+            kwargs=kwargs, python_path=[_REPO],
+        )
+        for text in (to_graph_json(flow).lower(), to_graph_html(flow).lower()):
+            for bad in _VERDICT_WORDS:
+                assert bad not in text, f"{func}: graph surface leaked verdict word {bad!r}"
 
 
 def test_every_operand_has_valid_provenance() -> None:

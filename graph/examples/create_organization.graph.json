@@ -1,0 +1,162 @@
+{
+  "coverage": {
+    "inputs_observed": 1,
+    "kind": "single-input",
+    "note": "observed for ONE input; paths not exercised are ghosted, not judged"
+  },
+  "default_view": [
+    "n0",
+    "n1",
+    "n2",
+    "n3"
+  ],
+  "edges": [
+    {
+      "carries": null,
+      "from": "n0",
+      "relation": "observed_order",
+      "to": "n1"
+    },
+    {
+      "carries": null,
+      "from": "n1",
+      "relation": "observed_order",
+      "to": "n2"
+    },
+    {
+      "carries": null,
+      "from": "n2",
+      "relation": "observed_order",
+      "to": "n3"
+    }
+  ],
+  "entrypoint": "flow_canaries.scenarios.create_organization",
+  "grasp_graph_version": "1",
+  "mode": "instant",
+  "nodes": [
+    {
+      "business_meaningful": true,
+      "business_objects": [],
+      "evidence": null,
+      "id": "n0",
+      "kind": "input",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        }
+      ],
+      "presence": "observed",
+      "question": null,
+      "terminal": false
+    },
+    {
+      "business_meaningful": true,
+      "business_objects": [],
+      "evidence": null,
+      "id": "n1",
+      "kind": "db_write",
+      "label": "_save",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        },
+        {
+          "derived_from": null,
+          "display": "None",
+          "name": "owner",
+          "provenance": "observed",
+          "value": null
+        },
+        {
+          "derived_from": null,
+          "display": "'active'",
+          "name": "status",
+          "provenance": "observed",
+          "value": "active"
+        }
+      ],
+      "presence": "observed",
+      "question": "write binds owner = NULL \u2014 intended?",
+      "terminal": false
+    },
+    {
+      "business_meaningful": true,
+      "business_objects": [],
+      "evidence": null,
+      "id": "n2",
+      "kind": "db_write",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "True",
+          "name": "saved",
+          "provenance": "observed",
+          "value": true
+        }
+      ],
+      "presence": "observed",
+      "question": "write binds owner = NULL \u2014 intended?",
+      "terminal": false
+    },
+    {
+      "business_meaningful": true,
+      "business_objects": [],
+      "evidence": null,
+      "id": "n3",
+      "kind": "return",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        },
+        {
+          "derived_from": null,
+          "display": "None",
+          "name": "owner",
+          "provenance": "observed",
+          "value": null
+        },
+        {
+          "derived_from": null,
+          "display": "True",
+          "name": "saved",
+          "provenance": "observed",
+          "value": true
+        },
+        {
+          "derived_from": null,
+          "display": "'active'",
+          "name": "status",
+          "provenance": "observed",
+          "value": "active"
+        }
+      ],
+      "presence": "observed",
+      "question": null,
+      "terminal": true
+    }
+  ],
+  "questions": [
+    "write binds owner = NULL \u2014 intended?"
+  ],
+  "transparency": {
+    "classifier_mode": "non_vocab",
+    "containment_level": "none",
+    "fallback_reason": "no target source files found to scan",
+    "vocab_size": 0
+  }
+}
