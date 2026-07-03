@@ -2,9 +2,10 @@
 // engine's skill and get the graph contract back. This is the one thing the agent
 // cannot fake — a real execution, observed.
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import type { DiffParams, DiffResult, ObserveParams, ObserveResult } from '../shared/types'
+import type { DiffParams, DiffResult, FuzzParams, FuzzResult, ObserveParams, ObserveResult } from '../shared/types'
 
 // Engine lives at repo-root/engine (this file bundles to app/out/main). Override with env.
 const ENGINE = process.env.GRASP_ENGINE ?? resolve(process.cwd(), '..', 'engine')
@@ -53,6 +54,40 @@ export function diff(params: DiffParams): Promise<DiffResult> {
       try {
         const r = JSON.parse(out)
         res({ ok: !!r.ok, changed: !!r.changed, graphDiff: r.graph_diff, error: r.error ?? null })
+      } catch {
+        res({ ok: false, error: err.trim() || 'engine returned no JSON' })
+      }
+    })
+  })
+}
+
+// Fuzz: vary the input across a JSON Schema (walled by default) and return which
+// operands varied, the raises, and the gaps — each with a reproducing input.
+export function fuzz(params: FuzzParams): Promise<FuzzResult> {
+  return new Promise((res) => {
+    if (!existsSync(PY)) {
+      return res({ ok: false, error: `engine python not found at ${PY}. Run: cd engine && make venv` })
+    }
+    let schemaPath: string
+    try {
+      const dir = mkdtempSync(join(tmpdir(), 'grasp-fuzz-'))
+      schemaPath = join(dir, 'schema.json')
+      writeFileSync(schemaPath, params.schema, 'utf-8')
+    } catch (e) {
+      return res({ ok: false, error: `bad schema: ${e instanceof Error ? e.message : String(e)}` })
+    }
+    const args = ['-m', 'dreplay.skill', 'fuzz', '--repo', params.repo || '.', '--entrypoint', params.entrypoint,
+      '--schema', schemaPath, '--variants', String(params.variants ?? 16)]
+    const cp = spawn(PY, args, { cwd: ENGINE })
+    let out = ''
+    let err = ''
+    cp.stdout.on('data', (d) => (out += d))
+    cp.stderr.on('data', (d) => (err += d))
+    cp.on('error', (e) => res({ ok: false, error: e.message }))
+    cp.on('close', () => {
+      try {
+        const r = JSON.parse(out)
+        res({ ok: !!r.ok, varied: !!r.varied, report: r.report, error: r.error ?? null })
       } catch {
         res({ ok: false, error: err.trim() || 'engine returned no JSON' })
       }

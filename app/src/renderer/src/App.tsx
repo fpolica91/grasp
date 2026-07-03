@@ -6,10 +6,14 @@ import { Sidebar } from './components/Sidebar'
 import { Conversation, type TranscriptItem } from './components/Conversation'
 import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
+import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
-import type { AgentEvent, GraphDiffModel, GraphModel } from '../../shared/types'
+import type { AgentEvent, FuzzReport, GraphDiffModel, GraphModel } from '../../shared/types'
 
-type Surface = { kind: 'flow'; graph: GraphModel } | { kind: 'diff'; diff: GraphDiffModel }
+type Surface =
+  | { kind: 'flow'; graph: GraphModel }
+  | { kind: 'diff'; diff: GraphDiffModel }
+  | { kind: 'fuzz'; report: FuzzReport }
 const MODEL = 'GLM-4.6'
 
 export function App(): React.JSX.Element {
@@ -36,6 +40,7 @@ export function App(): React.JSX.Element {
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, status: 'done' } : it)))
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
+      else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
       else if (e.type === 'done') setBusy(false)
       else if (e.type === 'error') {
         setError(e.error)
@@ -71,7 +76,9 @@ export function App(): React.JSX.Element {
 
       <aside className="instrument">
         <div className="inst-head">
-          <span className="lbl">{surface?.kind === 'diff' ? 'dataflow change' : 'observed dataflow'}</span>
+          <span className="lbl">
+            {surface?.kind === 'diff' ? 'dataflow change' : surface?.kind === 'fuzz' ? 'fuzzed inputs' : 'observed dataflow'}
+          </span>
           <span className="live">
             <span className="pulse" />
             live
@@ -97,6 +104,8 @@ export function App(): React.JSX.Element {
         <div className="inst-body">
           {surface?.kind === 'diff' ? (
             <DataflowDiff diff={surface.diff} />
+          ) : surface?.kind === 'fuzz' ? (
+            <FuzzView report={surface.report} />
           ) : surface?.kind === 'flow' ? (
             <DataflowGraph graph={surface.graph} />
           ) : (

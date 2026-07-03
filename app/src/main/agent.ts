@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { WebContents } from 'electron'
-import { diff, observe } from './engine'
+import { diff, fuzz, observe } from './engine'
 import { getKey } from './vault'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
@@ -138,6 +138,40 @@ const TOOLS: Tool[] = [
         return `dataflow changed A->B for ${input.entrypoint} (${res.graphDiff.changed_count} change(s)). Question(s): ${qs}`
       }
       return `could not diff: ${res.error ?? 'unknown'}`
+    }
+  },
+  {
+    name: 'grasp_fuzz',
+    description:
+      'Pressure-test an entrypoint across many inputs (the new stack trace): vary the input ' +
+      'per a JSON Schema you provide and get which operands BENT across inputs, which inputs ' +
+      'RAISED, and the gaps — each with a reproducing input. Use to expose edge cases a single ' +
+      'input misses. Python only; walled (network denied) by default. The full result is ' +
+      'RETURNED to you directly and rendered in grasp’s dataflow rail — it writes NO files; ' +
+      'do not look for output files afterward. Present the result and stop.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entrypoint: { type: 'string' },
+        schema: { type: 'string', description: 'a JSON Schema (as a string) describing the entrypoint kwargs' },
+        variants: { type: 'number', description: 'number of inputs to try (default 16)' }
+      },
+      required: ['entrypoint', 'schema']
+    },
+    async run(input, { workspace, emit }) {
+      const res = await fuzz({
+        repo: workspace,
+        entrypoint: String(input.entrypoint),
+        schema: String(input.schema),
+        variants: typeof input.variants === 'number' ? input.variants : undefined
+      })
+      if (res.ok && res.report) {
+        emit({ type: 'fuzz', report: res.report })
+        const nv = res.report.varied.length
+        const nr = res.report.raises.length
+        return `fuzzed ${input.entrypoint}: ${nv} operand(s) varied across inputs, ${nr} raise(s). Reproducing inputs attached.`
+      }
+      return `could not fuzz: ${res.error ?? 'unknown'}`
     }
   }
 ]

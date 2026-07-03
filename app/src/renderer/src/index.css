@@ -181,6 +181,13 @@ input, textarea { font-family: inherit; }
 .delta .new { color: var(--accent); background: var(--accent-bg); padding: 2px 7px; border-radius: 5px; font-weight: 500; }
 .delta .prov { color: var(--faint); font-size: 10px; }
 .qflag { margin-top: 9px; font-size: 12px; color: var(--question); }
+/* fuzz view */
+.fuzz-vals { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.fuzz-val { display: flex; align-items: baseline; gap: 8px; font-family: var(--mono); font-size: 12px; flex-wrap: wrap; }
+.fuzz-val .fv { color: var(--accent); background: var(--accent-bg); padding: 2px 8px; border-radius: 5px; font-weight: 500; }
+.fuzz-val .fr { color: var(--faint); font-size: 11.5px; }
+.fuzz-msg { margin-top: 8px; font-family: var(--mono); font-size: 12px; color: var(--question); }
+.fuzz-more { font-family: var(--mono); font-size: 11px; color: var(--faint); padding: 2px 0; }
 .qpanel { margin-top: 20px; background: var(--question-bg); border: 1px solid var(--question-hair); border-radius: 12px; padding: 15px 17px; }
 .qpanel h2 { margin: 5px 0 0; font-size: 15px; font-weight: 600; }
 .qlist { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

@@ -109,6 +109,50 @@ export interface DiffResult {
   error?: string | null
 }
 
+// Fuzzing: vary the input across a schema and surface which operands bent, the failing
+// cases, and the gaps — each with a reproducing input. The new stack trace.
+export interface FuzzVaried {
+  kind: string
+  label: string
+  operand: string
+  values: { value: unknown; reproduce_with: Record<string, unknown> }[]
+}
+export interface FuzzRaise {
+  type: string
+  message: string
+  reproduce_with: Record<string, unknown>
+}
+export interface FuzzErrorVariant {
+  input: Record<string, unknown>
+  error: string
+}
+export interface FuzzReport {
+  entrypoint: string
+  variant_count: number
+  seed: number
+  egress: string
+  containment_level: string
+  classifier_mode: string
+  vocab_size: number
+  fallback_reason: string | null
+  ran: number
+  raises: FuzzRaise[]
+  errors: FuzzErrorVariant[]
+  varied: FuzzVaried[]
+}
+export interface FuzzParams {
+  repo: string
+  entrypoint: string
+  schema: string
+  variants?: number
+}
+export interface FuzzResult {
+  ok: boolean
+  varied?: boolean
+  report?: FuzzReport
+  error?: string | null
+}
+
 // Streaming events from the agent loop (main -> renderer).
 export type AgentEvent =
   | { type: 'text'; text: string }
@@ -116,6 +160,7 @@ export type AgentEvent =
   | { type: 'tool_result'; id: string; name: string; summary: string }
   | { type: 'dataflow'; graph: GraphModel }
   | { type: 'dataflow_diff'; diff: GraphDiffModel }
+  | { type: 'fuzz'; report: FuzzReport }
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
 
