@@ -33,6 +33,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
   ipcMain.handle('grasp:keyStatus', () => hasKey())
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
+  ipcMain.handle('grasp:defaultWorkspace', () => process.env.GRASP_WORKSPACE || process.cwd())
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

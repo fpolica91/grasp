@@ -26,7 +26,14 @@ export function App(): React.JSX.Element {
   const [watchEp, setWatchEp] = useState('')
   const [watchInput, setWatchInput] = useState('')
   const [varying, setVarying] = useState(false)
+  const [fuzzReal, setFuzzReal] = useState(false) // false = walled (network denied)
   const history = useRef<unknown[]>([])
+
+  // Populate the workspace from the resolved default so click-to-fuzz and the agent
+  // share one repo without the user typing it.
+  useEffect(() => {
+    void window.grasp.defaultWorkspace().then((w) => setWorkspace((cur) => cur || w))
+  }, [])
 
   // Click an input operand -> fuzz the input (schema inferred from the observed inputs)
   // -> surface the edge cases. Fuses flow + fuzz into one interactive object.
@@ -46,7 +53,8 @@ export function App(): React.JSX.Element {
       repo: workspace,
       entrypoint: g.entrypoint,
       schema: JSON.stringify({ type: 'object', properties, required }),
-      variants: 24
+      variants: 24,
+      allowEgress: fuzzReal
     })
     setVarying(false)
     if (res.ok && res.report) setSurface({ kind: 'fuzz', report: res.report })
@@ -126,6 +134,17 @@ export function App(): React.JSX.Element {
             placeholder='{"name":"x"}'
             spellCheck={false}
           />
+          <button
+            className={`fuzz-toggle${fuzzReal ? ' real' : ''}`}
+            onClick={() => setFuzzReal((r) => !r)}
+            title={
+              fuzzReal
+                ? 'Fuzzing runs FOR REAL — network + side-effects fire on every variant. Click to wall it.'
+                : 'Fuzzing is walled: network denied so N variants can’t fire real payments/calls. Click to fuzz for real.'
+            }
+          >
+            fuzz: {fuzzReal ? 'real' : 'walled'}
+          </button>
         </div>
         <div className="inst-body">
           {surface?.kind === 'diff' ? (

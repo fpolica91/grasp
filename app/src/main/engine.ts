@@ -78,6 +78,7 @@ export function fuzz(params: FuzzParams): Promise<FuzzResult> {
     }
     const args = ['-m', 'dreplay.skill', 'fuzz', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint,
       '--schema', schemaPath, '--variants', String(params.variants ?? 16)]
+    if (params.allowEgress) args.push('--allow-egress') // fuzz for real (default is walled)
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''
     let err = ''

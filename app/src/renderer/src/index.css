@@ -127,6 +127,9 @@ input, textarea { font-family: inherit; }
 .watch-field input { background: var(--surface-2); border: 1px solid var(--hair); border-radius: 7px; padding: 5px 8px; color: var(--ink); font-family: var(--mono); font-size: 11.5px; }
 .watch-field .we { flex: 1; min-width: 0; } .watch-field .wi { width: 96px; }
 .watch-field input:focus { outline: none; border-color: var(--accent-hair); }
+.fuzz-toggle { flex: none; font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--hair); background: var(--surface-2); color: var(--muted); }
+.fuzz-toggle:hover { color: var(--ink); border-color: var(--faint); }
+.fuzz-toggle.real { color: var(--question); border-color: var(--question-hair); background: var(--question-bg); }
 .inst-body { flex: 1; overflow-y: auto; }
 .inst-empty { padding: 44px 30px; color: var(--muted); font-size: 13px; line-height: 1.65; text-align: center; }
 

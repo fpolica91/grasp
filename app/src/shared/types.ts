@@ -145,6 +145,7 @@ export interface FuzzParams {
   entrypoint: string
   schema: string
   variants?: number
+  allowEgress?: boolean // false (default) = walled (network denied); true = fuzz for real
 }
 export interface FuzzResult {
   ok: boolean
@@ -186,4 +187,5 @@ export interface GraspApi {
   onAgentEvent(cb: (e: AgentEvent) => void): () => void
   keyStatus(): Promise<boolean>
   setKey(key: string): Promise<{ ok: boolean; error?: string; warning?: string }>
+  defaultWorkspace(): Promise<string>
 }
