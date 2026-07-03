@@ -35,7 +35,11 @@ what is verified vs. what is residual.
    Everything is denied except loopback (the app's own main↔host↔renderer RPC) and the hosts
    you list in `GRASP_ALLOW_HOSTS`. Every block is logged (`[grasp-egress] BLOCKED …`).
 
-2. **Defense-in-depth**: removes `node_modules/@arms` and `node_modules/@larksuiteoapi`.
+2. **Telemetry SDKs kept, denied at the network**: `@arms` / `@larksuiteoapi` are NOT
+   deleted — the shell imports them at startup, so removing them crashes the app
+   (`ERR_MODULE_NOT_FOUND @larksuiteoapi/node-sdk`, verified booting the fork under Xvfb).
+   The guard denies their egress, which is the real protection; deleting the package
+   breaks the plumbing instead of securing it.
 3. **Auto-updater disabled**: renames `resources/app-update.yml` → `.disabled` (and its CDN
    is denied by the guard regardless).
 

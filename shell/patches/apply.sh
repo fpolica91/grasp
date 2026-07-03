@@ -34,13 +34,12 @@ echo "== injecting deny-by-default egress guard (Node + Chromium layers) =="
 inject "$APP/out/main"
 inject "$APP/out/host"
 
-echo "== defusing telemetry / lark SDKs in node_modules (defense-in-depth) =="
-for mod in @arms @larksuiteoapi; do
-  if [ -d "$APP/node_modules/$mod" ]; then
-    rm -rf "$APP/node_modules/$mod"
-    echo "  removed node_modules/$mod"
-  fi
-done
+echo "== telemetry SDKs: KEPT on disk, denied at the network =="
+# Do NOT delete @arms / @larksuiteoapi: the shell IMPORTS them at startup, so removing
+# them crashes the app (ERR_MODULE_NOT_FOUND @larksuiteoapi/node-sdk — verified booting
+# the fork under Xvfb). The egress guard already denies their network, which is the real
+# and sufficient protection. Deleting the package is breaking the plumbing, not securing it.
+echo "  (guard denies their egress; packages left intact so the shell still boots)"
 
 echo "== disabling auto-updater feed =="
 if [ -n "$RES" ] && [ -f "$RES/app-update.yml" ]; then
