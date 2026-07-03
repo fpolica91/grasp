@@ -85,31 +85,33 @@ export function DataflowDiff({ diff }: { diff: GraphDiffModel }): React.JSX.Elem
         </span>
       </div>
 
+      {/* Always show the flow — never silence. On no change, the same nodes render
+          (all unchanged) under a brief summary; on change, under the question. */}
+      <div className="spine">
+        {diff.nodes.map((n) => (
+          <Node key={n.id} node={n} />
+        ))}
+      </div>
+
       {diff.empty ? (
-        <div className="qpanel">
-          <div className="eyebrow q">you adjudicate</div>
+        <div className="qpanel nochange">
+          <div className="eyebrow">no behavioral change</div>
+          <h2>Same dataflow for this input.</h2>
           <p className="empty">{diff.honest_message}</p>
         </div>
       ) : (
-        <>
-          <div className="spine">
-            {diff.nodes.map((n) => (
-              <Node key={n.id} node={n} />
+        <div className="qpanel">
+          <div className="eyebrow q">you adjudicate</div>
+          <h2>The dataflow changed. Is this what you expected?</h2>
+          <ul className="qlist">
+            {diff.questions.map((q, i) => (
+              <li key={i}>
+                <span className="mark">?</span>
+                <span>{q}</span>
+              </li>
             ))}
-          </div>
-          <div className="qpanel">
-            <div className="eyebrow q">you adjudicate</div>
-            <h2>The dataflow changed. Is this what you expected?</h2>
-            <ul className="qlist">
-              {diff.questions.map((q, i) => (
-                <li key={i}>
-                  <span className="mark">?</span>
-                  <span>{q}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
+          </ul>
+        </div>
       )}
 
       <div className="foot">
