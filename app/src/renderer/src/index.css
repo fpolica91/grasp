@@ -273,6 +273,16 @@ input, textarea { font-family: inherit; }
   @keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 }
 
+/* provider/model picker — a chip that is a control */
+.picker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); box-shadow: var(--sh-1); }
+.picker .g { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+.picker .g.off { background: var(--ghost); }
+.picker .sep { color: var(--faint); }
+.picker select { appearance: none; -webkit-appearance: none; background: transparent; border: 0; color: var(--ink); font-family: inherit; font-size: 12px; cursor: pointer; padding: 1px 2px; }
+.picker select:hover { color: var(--accent); }
+.picker select:focus { outline: none; }
+.picker select option { background: var(--surface-2); color: var(--ink); }
+
 /* theme switcher — three schemes, in the sidebar foot */
 .theme-row { -webkit-app-region: no-drag; display: flex; align-items: center; gap: 6px; padding: 2px 2px 0; }
 .theme-row .tlabel { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-right: auto; font-weight: 600; }

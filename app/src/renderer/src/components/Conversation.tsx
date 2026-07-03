@@ -1,7 +1,9 @@
-// The conversation: markdown-rendered agent messages, tool-call chips, a real composer.
+// The conversation: markdown-rendered agent messages, tool-call chips, a real composer
+// with a working provider/model selector — grasp is agent-agnostic.
 import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import type { BackendInfo } from '../../../shared/types'
 
 export interface TranscriptItem {
   id?: string
@@ -23,11 +25,11 @@ function ToolIcon(): React.JSX.Element {
 
 function Tool({ it }: { it: TranscriptItem }): React.JSX.Element {
   const arg =
-    it.name === 'run_bash'
+    it.name === 'run_bash' || it.name === 'Bash'
       ? String(it.input?.command ?? '')
-      : it.name === 'grasp_observe' || it.name === 'grasp_diff'
+      : it.name === 'grasp_observe' || it.name === 'grasp_diff' || it.name === 'grasp_fuzz'
         ? String(it.input?.entrypoint ?? '')
-        : String(it.input?.path ?? '')
+        : String(it.input?.path ?? it.input?.file_path ?? '')
   return (
     <div className={`tool ${it.status ?? ''}`}>
       <ToolIcon />
@@ -38,11 +40,46 @@ function Tool({ it }: { it: TranscriptItem }): React.JSX.Element {
   )
 }
 
+// The provider/model selector — a chip that is actually a control.
+function ModelPicker(props: {
+  backends: BackendInfo[]
+  backend: string
+  model: string
+  onBackend: (id: string) => void
+  onModel: (m: string) => void
+}): React.JSX.Element {
+  const active = props.backends.find((b) => b.id === props.backend)
+  return (
+    <span className="picker">
+      <span className={`g${active?.ok ? '' : ' off'}`} title={active?.ok ? 'available' : (active?.reason ?? 'unavailable')} />
+      <select value={props.backend} onChange={(e) => props.onBackend(e.target.value)} title="agent backend">
+        {props.backends.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.label}
+          </option>
+        ))}
+      </select>
+      <span className="sep">/</span>
+      <select value={props.model} onChange={(e) => props.onModel(e.target.value)} title="model">
+        {(active?.models ?? []).map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </span>
+  )
+}
+
 export function Conversation(props: {
   transcript: TranscriptItem[]
   busy: boolean
   error: string | null
+  backends: BackendInfo[]
+  backend: string
   model: string
+  onBackend: (id: string) => void
+  onModel: (m: string) => void
   onSend: (prompt: string) => void
 }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -59,6 +96,8 @@ export function Conversation(props: {
     setInput('')
   }
 
+  const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
+
   return (
     <section className="conv">
       <header className="conv-head">
@@ -67,7 +106,7 @@ export function Conversation(props: {
         </span>
         <span className="chip">
           <span className="g" />
-          {props.model}
+          {activeLabel} · {props.model}
         </span>
       </header>
 
@@ -76,7 +115,7 @@ export function Conversation(props: {
           <div className="conv-empty">
             <h2>What should we change?</h2>
             <p>
-              Ask grasp to edit code in your workspace. As it works, the observed dataflow updates live on the
+              Ask an agent to edit code in your workspace. As it works, the observed dataflow updates live on the
               right — you adjudicate what the change did, never a &ldquo;does it work&rdquo;.
             </p>
           </div>
@@ -118,15 +157,18 @@ export function Conversation(props: {
                 submit()
               }
             }}
-            placeholder="Ask grasp to change code…"
+            placeholder="Ask an agent to change code…"
             rows={2}
             autoFocus
           />
           <div className="row">
-            <span className="chip">
-              <span className="g" />
-              {props.model}
-            </span>
+            <ModelPicker
+              backends={props.backends}
+              backend={props.backend}
+              model={props.model}
+              onBackend={props.onBackend}
+              onModel={props.onModel}
+            />
             <button className="send" onClick={submit} disabled={props.busy} title="Send (Cmd/Ctrl+Enter)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>

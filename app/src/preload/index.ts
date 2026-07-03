@@ -13,7 +13,8 @@ const api: GraspApi = {
   },
   keyStatus: () => ipcRenderer.invoke('grasp:keyStatus'),
   setKey: (key: string) => ipcRenderer.invoke('grasp:setKey', key),
-  defaultWorkspace: () => ipcRenderer.invoke('grasp:defaultWorkspace')
+  defaultWorkspace: () => ipcRenderer.invoke('grasp:defaultWorkspace'),
+  backends: () => ipcRenderer.invoke('grasp:backends')
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

@@ -8,13 +8,12 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
-import type { AgentEvent, FuzzReport, GraphDiffModel, GraphModel } from '../../shared/types'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel } from '../../shared/types'
 
 type Surface =
   | { kind: 'flow'; graph: GraphModel }
   | { kind: 'diff'; diff: GraphDiffModel }
   | { kind: 'fuzz'; report: FuzzReport }
-const MODEL = 'GLM-4.6'
 
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
@@ -28,7 +27,30 @@ export function App(): React.JSX.Element {
   const [varying, setVarying] = useState(false)
   const [fuzzReal, setFuzzReal] = useState(false) // false = walled (network denied)
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('grasp-theme') as Theme) || 'graphite')
+  const [backends, setBackends] = useState<BackendInfo[]>([])
+  const [backend, setBackend] = useState('glm')
+  const [model, setModel] = useState('')
   const history = useRef<unknown[]>([])
+
+  // Discover the agent backends (GLM / Claude Code / …) and default the model.
+  useEffect(() => {
+    void window.grasp.backends().then((bs) => {
+      setBackends(bs)
+      const first = bs.find((b) => b.id === 'glm') ?? bs[0]
+      if (first) {
+        setBackend(first.id)
+        setModel(first.models[0] ?? '')
+      }
+    })
+  }, [])
+
+  // Switching provider mid-session starts fresh history (formats are backend-opaque).
+  function pickBackend(id: string): void {
+    setBackend(id)
+    const b = backends.find((x) => x.id === id)
+    setModel(b?.models[0] ?? '')
+    history.current = []
+  }
 
   // Apply + persist the color scheme.
   useEffect(() => {
@@ -96,7 +118,7 @@ export function App(): React.JSX.Element {
     setBusy(true)
     setTranscript((t) => [...t, { role: 'user', text: prompt }])
     const watch = watchEp.trim() ? { entrypoint: watchEp.trim(), input: watchInput.trim() || undefined } : undefined
-    const res = await window.grasp.agent({ workspace, prompt, history: history.current, watch })
+    const res = await window.grasp.agent({ workspace, prompt, history: history.current, watch, backend, model })
     history.current = res.messages
   }
 
@@ -120,7 +142,17 @@ export function App(): React.JSX.Element {
         onTheme={setTheme}
       />
 
-      <Conversation transcript={transcript} busy={busy} error={error} model={MODEL} onSend={send} />
+      <Conversation
+        transcript={transcript}
+        busy={busy}
+        error={error}
+        backends={backends}
+        backend={backend}
+        model={model}
+        onBackend={pickBackend}
+        onModel={setModel}
+        onSend={send}
+      />
 
       <aside className="instrument">
         <div className="inst-head">

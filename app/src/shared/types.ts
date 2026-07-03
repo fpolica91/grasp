@@ -177,6 +177,16 @@ export interface AgentTurn {
   prompt: string
   history: unknown[]
   watch?: Watch
+  backend?: string // backend id ('glm' | 'claude-code' | 'openai'); default glm
+  model?: string // model id within the backend
+}
+
+export interface BackendInfo {
+  id: string
+  label: string
+  models: string[]
+  ok: boolean
+  reason?: string
 }
 
 export interface GraspApi {
@@ -188,4 +198,5 @@ export interface GraspApi {
   keyStatus(): Promise<boolean>
   setKey(key: string): Promise<{ ok: boolean; error?: string; warning?: string }>
   defaultWorkspace(): Promise<string>
+  backends(): Promise<BackendInfo[]>
 }

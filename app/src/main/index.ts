@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { chat } from './model'
 import { observe, fuzz } from './engine'
-import { runAgent } from './agent'
+import { runAgent, listBackends } from './agent'
 import { hasKey, setKey } from './vault'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams } from '../shared/types'
 
@@ -34,6 +34,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:keyStatus', () => hasKey())
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
   ipcMain.handle('grasp:defaultWorkspace', () => process.env.GRASP_WORKSPACE || process.cwd())
+  ipcMain.handle('grasp:backends', () => listBackends())
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
