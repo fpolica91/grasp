@@ -13,19 +13,30 @@ north star (paradigm, the three oracles, the moat, the keep/cut line, the graph'
 
 ```
 engine/   the ORGAN — runs, observes, types, classifies, diffs, fuzzes, makes-runnable.
-          Carved from dreplay's flow instrument. The one thing the agent CANNOT drive.
-          182 tests green (flow canaries FC1–FC8 + the no-verdict conformance moat).
-graph/    the SURFACE (net-new) — the 1000X interactive dataflow graph. The 80%.
-shell/    the CHASSIS — ZCode's Electron/React panels, stripped of telemetry, diff-pane
-          swapped for the graph.
+          Carved from dreplay's flow instrument. The one thing the agent CANNOT fake.
+          201 tests green (flow canaries FC1–FC8 + the no-verdict conformance moat).
+skills/   grasp AS A ZCODE SKILL — `observe-flow/` installs into ZCode and makes its
+          agent surface the observed dataflow after a change. This is how grasp ships.
+graph/    the SURFACE — the dataflow graph render (single + A→B diff). Used by the
+          engine's --html; destined for ZCode's Review pane.
+shell/    NOT a shell we build. ZCode IS the shell. Only the telemetry guard for
+          running ZCode cleanly lives here.
 docs/     thesis.md.
 ```
+
+## The shape (corrected)
+
+grasp is **not an app**. **ZCode is the shell** (Claude-desktop-grade agent: tasks, chat,
+terminal, browser, Review pane, `$skill` system). grasp is the **engine + a skill** you
+install into ZCode. The skill makes ZCode's agent, after it changes code, run the engine and
+present the observed dataflow ending in "intended?" — the Claude-desktop → post-editor
+transformation.
 
 ## The line
 
 **Skills orchestrate, code observes.** The agent decides *when/what* to trace; it never drives
-the observation itself. That boundary is the entire moat — if the agent generates the flow, the
-flow is a guess and the thesis is dead.
+the observation itself. If the agent generates the flow, the flow is a guess and the thesis is
+dead — so the engine (real execution) is the one thing that can't be an LLM in a trenchcoat.
 
 ## Engine gate
 
