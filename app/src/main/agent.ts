@@ -167,7 +167,7 @@ async function callModel(messages: unknown[]): Promise<{ ok: boolean; content?: 
 
 export async function runAgent(
   sender: WebContents,
-  params: { workspace: string; prompt: string; history: unknown[] }
+  params: { workspace: string; prompt: string; history: unknown[]; watch?: { entrypoint: string; input?: string } }
 ): Promise<{ messages: unknown[] }> {
   const emit: Emit = (event) => {
     if (!sender.isDestroyed()) sender.send('agent:event', event)
@@ -207,6 +207,15 @@ export async function runAgent(
       emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output.split('\n')[0].slice(0, 120) })
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
     }
+
+    // LIVE SURFACING: if the agent mutated code and there's a watched entrypoint,
+    // auto re-observe it (OLD=HEAD vs NEW=working tree) and stream the evolving
+    // dataflow — the graph moves as the agent works, without it having to ask.
+    if (params.watch?.entrypoint && toolUses.some((t) => t.name === 'write_file' || t.name === 'run_bash')) {
+      const d = await diff({ repo: workspace, entrypoint: params.watch.entrypoint, oldRef: 'HEAD', input: params.watch.input })
+      if (d.ok && d.graphDiff) emit({ type: 'dataflow_diff', diff: d.graphDiff })
+    }
+
     messages.push({ role: 'user', content: results })
   }
   emit({ type: 'done', note: 'reached step limit' })

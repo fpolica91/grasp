@@ -119,10 +119,18 @@ export type AgentEvent =
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
 
+// What grasp continuously surfaces as the agent works: after every edit, it re-observes
+// this entrypoint and streams the evolving dataflow (live compiler/debugger).
+export interface Watch {
+  entrypoint: string
+  input?: string
+}
+
 export interface AgentTurn {
   workspace: string
   prompt: string
   history: unknown[]
+  watch?: Watch
 }
 
 export interface GraspApi {
