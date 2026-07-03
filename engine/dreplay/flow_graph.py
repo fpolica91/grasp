@@ -27,8 +27,11 @@ import html
 import json
 
 from .flow import Flow, Node, Operand
+from .flow_diff import FlowDiff
 
 GRAPH_VERSION = "1"
+GRAPH_DIFF_VERSION = "1"
+_QUESTION_SUFFIX = " — intended?"
 
 # Terminal node kinds — the flow's end state (a return or an observed raise).
 _TERMINAL_KINDS = ("return", "thrown-error")
@@ -334,5 +337,181 @@ def to_graph_html(flow: Flow) -> str:
         "<div class='foot'>Every value above is measured from one real execution or "
         "labelled <i>you supply</i> — nothing is inferred. Unexercised paths are ghosted, "
         "not judged. grasp surfaces what the code did; whether it is intended is yours to say."
+        "</div></div></body></html>"
+    )
+
+
+# =========================================================================== #
+# The A→B change view — the post-editor's headline. Overlay one graph, mark what
+# changed between OLD and NEW behavior, and end in "…changed A→B — expected?".
+#
+# The honesty grammar holds under a diff too: status is a FACT (added/removed/
+# changed), never a verdict. Color is TEMPORAL (before = muted, after = signal),
+# NOT evaluative — there is no green=good / red=bad. The terminal state stays a
+# question.
+# =========================================================================== #
+def _display_raw(v) -> str:
+    try:
+        s = repr(v)
+    except Exception:
+        s = "<unreprable>"
+    return s if len(s) <= _VALUE_CAP else s[:_VALUE_CAP] + "…"
+
+
+def graph_diff_model(fd: FlowDiff) -> dict:
+    """The A→B graph-diff data contract (a plain dict). Every changed node carries
+    its old→new operand deltas; the flow terminates in neutral change questions."""
+    nodes: list[dict] = []
+    questions: list[str] = []
+    for k, nd in enumerate(fd.node_diffs):
+        node = nd.new_node or nd.old_node
+        nodes.append({
+            "id": f"d{k}",
+            "status": nd.status,  # unchanged | changed | added | removed | moved
+            "kind": node.kind if node else "?",
+            "label": node.label if node else "?",
+            "presence": "ghosted" if nd.status == "removed" else "observed",
+            "operands": [_operand_dict(o) for o in (node.operands if node else ())],
+            "deltas": [
+                {"field": d.field, "old": _display_raw(d.old_value),
+                 "new": _display_raw(d.new_value), "provenance": d.provenance}
+                for d in nd.operand_deltas
+            ],
+        })
+        if nd.status == "changed":
+            for d in nd.operand_deltas:
+                questions.append(
+                    f"{d.field}: {_display_raw(d.old_value)} → {_display_raw(d.new_value)}"
+                    f"{_QUESTION_SUFFIX}")
+        elif nd.status == "added":
+            questions.append(f"new step '{node.label}' now runs{_QUESTION_SUFFIX}")
+        elif nd.status == "removed":
+            questions.append(f"step '{nd.old_node.label}' no longer runs{_QUESTION_SUFFIX}")
+        elif nd.status == "moved":
+            questions.append(f"position of '{node.label}' changed{_QUESTION_SUFFIX}")
+        if node is not None and node.open_question and node.open_question not in questions:
+            questions.append(node.open_question)
+
+    seen: set[str] = set()
+    deduped = [q for q in questions if not (q in seen or seen.add(q))]
+    return {
+        "grasp_graph_diff_version": GRAPH_DIFF_VERSION,
+        "entrypoint": fd.entrypoint,
+        "old_ref": fd.old_ref,
+        "new_ref": fd.new_ref,
+        "transparency": {"classifier_mode": fd.classifier_mode, "vocab_size": fd.vocab_size},
+        "changed_count": sum(1 for nd in fd.node_diffs if nd.status != "unchanged"),
+        "empty": fd.is_empty(),
+        "honest_message": fd.honest_message() if fd.is_empty() else None,
+        "nodes": nodes,
+        "questions": deduped,
+    }
+
+
+def to_graph_diff_json(fd: FlowDiff) -> str:
+    """The A→B graph-diff contract, as JSON."""
+    return json.dumps(graph_diff_model(fd), indent=2, sort_keys=True)
+
+
+_DIFF_CSS = """
+.node.added::before{border-color:var(--observed);background:var(--observed)}
+.node.added .card{border-color:color-mix(in srgb,var(--observed) 45%,var(--hair))}
+.node.removed::before{border-style:dashed;background:transparent}
+.node.removed .card{border-style:dashed;opacity:.72}
+.node.removed .lbl{text-decoration:line-through;text-decoration-color:var(--ghost)}
+.stag{margin-left:auto;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:1px 8px;border-radius:20px;flex:none}
+.stag.added{color:var(--observed);border:1px solid var(--observed)}
+.stag.removed{color:var(--ghost);border:1px dashed var(--ghost)}
+.stag.changed{color:var(--question);border:1px solid var(--question-hair)}
+.stag.unchanged{color:var(--muted);border:1px solid var(--hair)}
+.deltas{display:flex;flex-direction:column;gap:6px;margin-top:11px}
+.delta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);
+  font-size:12px;font-variant-numeric:tabular-nums}
+.delta .dk{color:var(--muted);min-width:0}
+.delta .old{color:var(--declared);background:var(--declared-bg);padding:2px 7px;
+  border-radius:5px;text-decoration:line-through;text-decoration-color:var(--ghost)}
+.delta .arrow{color:var(--muted)}
+.delta .new{color:var(--observed);background:var(--observed-bg);padding:2px 7px;border-radius:5px;
+  font-weight:500}
+.delta .prov{color:var(--muted);font-size:10.5px}
+.node.unchanged .card{opacity:.6}
+"""
+
+
+def _delta_html(d: dict) -> str:
+    return (f"<div class='delta'><span class='dk'>{html.escape(str(d['field']))}</span>"
+            f"<span class='old'>{html.escape(d['old'])}</span>"
+            f"<span class='arrow'>→</span>"
+            f"<span class='new'>{html.escape(d['new'])}</span>"
+            f"<span class='prov'>[{html.escape(d['provenance'])}]</span></div>")
+
+
+def _diff_node_html(node: dict) -> str:
+    status = node["status"]
+    classes = ["node", status]
+    if node["presence"] == "ghosted":
+        classes.append("ghosted")
+    stag = f"<span class='stag {status}'>{status}</span>"
+    if node["deltas"]:
+        inner = "<div class='deltas'>" + "".join(_delta_html(d) for d in node["deltas"]) + "</div>"
+    elif node["operands"]:
+        inner = "<div class='ops'>" + "".join(_op_html(o) for o in node["operands"]) + "</div>"
+    else:
+        inner = ""
+    return (
+        f"<div class='{' '.join(classes)}'><div class='card'><div class='chead'>"
+        f"<span class='kind'>{html.escape(node['kind'])}</span>"
+        f"<span class='lbl'>{html.escape(node['label'])}</span>{stag}</div>"
+        f"{inner}</div></div>"
+    )
+
+
+def to_graph_diff_html(fd: FlowDiff) -> str:
+    """Self-contained render of the A→B change view — one overlaid graph, changed
+    nodes showing old→new deltas, terminating in the neutral change question.
+    Color is before/after (temporal), never good/bad. No verdict, by construction."""
+    g = graph_diff_model(fd)
+    t = g["transparency"]
+    classifier = (f"vocab · {t['vocab_size']} fields" if t["classifier_mode"] == "vocab"
+                  else "non-vocab")
+    legend = (
+        "<div class='legend'>"
+        "<span class='li'><span class='swatch observed'></span>after — new behavior</span>"
+        "<span class='li'><span class='swatch declared'></span>before — old behavior</span>"
+        "<span class='li'><span class='swatch ghost'></span>removed — no longer runs</span>"
+        "</div>"
+    )
+    body = "".join(_diff_node_html(n) for n in g["nodes"])
+    if g["empty"]:
+        qpanel = ("<div class='qpanel'><div class='eyebrow'>you adjudicate</div>"
+                  "<p class='empty'>" + html.escape(g["honest_message"] or "") + "</p></div>")
+    else:
+        qitems = "".join(f"<li><span class='mark'></span><span>{html.escape(q)}</span></li>"
+                         for q in g["questions"])
+        qpanel = (
+            "<div class='qpanel'><div class='eyebrow'>you adjudicate</div>"
+            "<h2>The dataflow changed. Is this what you expected?</h2>"
+            f"<ul class='qlist'>{qitems}</ul></div>"
+        )
+    return (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<title>dataflow change · {html.escape(g['entrypoint'])}</title>"
+        f"<style>{_CSS}{_DIFF_CSS}</style></head><body><div class='wrap'>"
+        "<div class='eyebrow'>dataflow change</div>"
+        f"<h1>{html.escape(g['entrypoint'])}</h1>"
+        "<div class='readout'>"
+        f"<span>old <b>{html.escape(str(g['old_ref']))}</b></span>"
+        f"<span>new <b>{html.escape(str(g['new_ref']))}</b></span>"
+        f"<span>classifier <b>{classifier}</b></span>"
+        f"<span>changes <b>{g['changed_count']}</b></span>"
+        "</div>"
+        f"{legend}"
+        f"<div class='spine'>{body}</div>"
+        f"{qpanel}"
+        "<div class='foot'>Old and new were each run for real under the same input; the "
+        "deltas above are measured, not inferred. A change surfaced here is for you to "
+        "read — grasp does not label it correct or incorrect. That is yours to say."
         "</div></div></body></html>"
     )

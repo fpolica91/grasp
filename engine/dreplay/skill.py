@@ -25,7 +25,7 @@ from .flow_cli import (
     _auto_detect_language, _repo_subpath, _resolve_head, _trace,
 )
 from .flow_diff import align_and_diff
-from .flow_graph import graph_model
+from .flow_graph import graph_diff_model, graph_model
 from .types import ImplSpec
 from . import worktree
 
@@ -119,8 +119,9 @@ def diff(*, repo: str, entrypoint: str, old_ref: str, input: dict | None = None,
         "old_ref": old_ref, "new_ref": new_ref,
         "language": lang,
         "delta": _diff_to_dict(fd),
-        # Until to_graph_diff lands, both observed graphs travel so the surface can
-        # render A→B from the pair.
+        # The A→B change view — the headline surface renders this directly.
+        "graph_diff": graph_diff_model(fd),
+        # Both observed graphs also travel (comprehension of each side on demand).
         "old_graph": graph_model(flow_old),
         "new_graph": graph_model(flow_new),
     }
