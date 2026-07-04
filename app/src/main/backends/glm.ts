@@ -10,10 +10,12 @@ import {
   SUBAGENT_TOOLS,
   SYSTEM,
   TOOLS,
-  liveSurface
+  liveSurface,
+  withProjectContext
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
+import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
@@ -27,7 +29,8 @@ async function callModel(
   messages: unknown[],
   system: string,
   tools: Tool[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onText?: (delta: string) => void
 ): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey()
   if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
@@ -41,22 +44,61 @@ async function callModel(
         max_tokens: 4096,
         system,
         tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
-        messages
+        messages,
+        stream: true
       })
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
-    const data = (await res.json()) as {
-      content?: AnyBlock[]
-      stop_reason?: string
-      usage?: { input_tokens?: number; output_tokens?: number }
-    }
-    return {
-      ok: true,
-      content: data.content ?? [],
-      stop: data.stop_reason,
-      usage: { input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0 }
-    }
+    if (!res.body) return { ok: false, error: 'model returned no stream body' }
+    // SSE reassembly: rebuild the content blocks (text + tool_use) from the streaming events
+    // so the loop's tool handling is identical to the non-streaming path. text deltas are
+    // forwarded live via onText so the UI renders the answer as it is written.
+    const blocks: AnyBlock[] = []
+    let cur: { type: string; text: string; id?: string; name?: string; json: string } | null = null
+    let stopReason: string | undefined
+    let inputTokens = 0
+    let outputTokens = 0
+    await parseSSE(res.body, (ev) => {
+      const t = ev.type as string
+      if (t === 'message_start') {
+        inputTokens = ((ev.message as { usage?: { input_tokens?: number } } | undefined)?.usage?.input_tokens) ?? 0
+      } else if (t === 'content_block_start') {
+        const cb = ev.content_block as { type: string; text?: string; id?: string; name?: string }
+        cur = { type: cb.type, text: cb.text ?? '', id: cb.id, name: cb.name, json: '' }
+      } else if (t === 'content_block_delta' && cur) {
+        const d = ev.delta as { type: string; text?: string; partial_json?: string }
+        if (d.type === 'text_delta' && typeof d.text === 'string') {
+          cur.text += d.text
+          if (onText) onText(d.text)
+        } else if (d.type === 'input_json_delta' && typeof d.partial_json === 'string') {
+          cur.json += d.partial_json
+        }
+      } else if (t === 'content_block_stop' && cur) {
+        if (cur.type === 'text') {
+          blocks.push({ type: 'text', text: cur.text })
+        } else if (cur.type === 'tool_use') {
+          let input: Record<string, unknown> = {}
+          try {
+            input = cur.json ? JSON.parse(cur.json) : {}
+          } catch {
+            /* keep {} on a malformed tool-input stream */
+          }
+          blocks.push({ type: 'tool_use', id: cur.id, name: cur.name, input })
+        }
+        cur = null
+      } else if (t === 'message_delta') {
+        const delta = ev.delta as { stop_reason?: string } | undefined
+        const usage = ev.usage as { input_tokens?: number; output_tokens?: number } | undefined
+        if (delta?.stop_reason) stopReason = delta.stop_reason
+        // GLM (unlike the Anthropic spec) sends the REAL input_tokens here in message_delta;
+        // message_start.usage is a zero placeholder. Capture both tokens from this event.
+        if (usage?.input_tokens) inputTokens = usage.input_tokens
+        if (usage?.output_tokens) outputTokens = usage.output_tokens
+      }
+    })
+    return { ok: true, content: blocks, stop: stopReason, usage: { input: inputTokens, output: outputTokens } }
   } catch (e) {
+    if (signal?.aborted) return { ok: false, error: 'aborted' }
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
@@ -74,7 +116,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     const subMessages: unknown[] = [{ role: 'user', content: prompt }]
     let finalText = ''
     for (let s = 0; s < 10; s++) {
-      const sr = await callModel(model, subMessages, SUBAGENT_SYSTEM, SUBAGENT_TOOLS)
+      const sr = await callModel(model, subMessages, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
       if (!sr.ok) return `subagent error: ${sr.error}`
       const blocks = sr.content ?? []
       subMessages.push({ role: 'assistant', content: blocks })
@@ -105,7 +147,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
-    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS, turn.signal)
+    const r = await callModel(
+      model,
+      messages,
+      withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
+      plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS,
+      turn.signal,
+      // Stream text live (non-plan only — plan mode renders the final proposal as a card, so
+      // its text is not streamed to avoid showing it twice).
+      plan ? undefined : (d) => emit({ type: 'text_delta', text: d })
+    )
     if (!r.ok) {
       if (turn.signal?.aborted) {
         emit({ type: 'done', note: 'stopped by you' })
@@ -138,7 +189,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       return { messages }
     }
 
-    for (const b of textBlocks) emit({ type: 'text', text: b.text })
+    if (plan) {
+      // plan mode doesn't stream — emit intermediate reasoning as full text bubbles.
+      for (const b of textBlocks) emit({ type: 'text', text: b.text })
+    } else {
+      emit({ type: 'text_end' }) // finalize the streaming bubble (deltas were shown live)
+    }
     if (terminal) {
       emit({ type: 'done' })
       return { messages }
@@ -169,7 +225,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     }
 
     if (turn.flowAuto !== false)
-      await liveSurface(workspace, toolUses.some((t) => t.name === 'write_file' || t.name === 'run_bash'), emit)
+      await liveSurface(workspace, toolUses.some((t) => t.name && MUTATING_TOOLS.has(t.name)), emit)
 
     messages.push({ role: 'user', content: results })
   }

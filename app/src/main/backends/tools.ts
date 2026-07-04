@@ -4,7 +4,7 @@
 // brings its own tools, so it does not use this registry (but shares liveSurface).
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
+import { resolve, dirname, join } from 'node:path'
 import { diff, fuzz, observe } from '../engine'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
@@ -36,6 +36,10 @@ export const SYSTEM = [
   '  a build. When you use it to RUN logic because you think there is no entrypoint, stop and',
   '  extract an entrypoint first.',
   '',
+  '• Prefer edit_file over write_file for changes to existing files — it rewrites only the',
+  '  snippet you specify, so it is safer; use write_file to create a file or replace it entirely.',
+  '  Use TodoWrite to plan any task with three or more steps.',
+  '',
   'Present exactly what grasp_observe/grasp_diff surface and end in the neutral question they',
   'give you; the human adjudicates against business rules only they know. Never render a verdict.'
 ].join(' ')
@@ -50,8 +54,9 @@ export const PLAN_SYSTEM =
   ' exact changes you propose (files, edits, and how the change should be observed). The human' +
   ' will approve the plan before anything is executed.'
 
-// ASK MODE: these tools change the workspace, so they pause for human approval.
-export const MUTATING_TOOLS = new Set(['write_file', 'run_bash'])
+// ASK MODE: these tools change the workspace, so they pause for human approval. They are also
+// the set that triggers liveSurface (a code change should re-run the observed dataflow).
+export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash'])
 
 // A subagent runner: run a focused sub-task and return its final text. Events it emits
 // are tagged with the parent task's id so the UI nests them.
@@ -78,6 +83,38 @@ function inside(workspace: string, p: string): string {
 }
 const cap = (s: string): string => (s.length > OUT_CAP ? s.slice(0, OUT_CAP) + `\n…(+${s.length - OUT_CAP} chars)` : s)
 
+// Per-workspace agent todos (TodoWrite/TodoRead). Agent self-organization — NOT a workspace
+// mutation, so it stays out of MUTATING_TOOLS and never triggers the dataflow rail.
+const TODO_STATUSES = ['pending', 'in_progress', 'completed'] as const
+type TodoStatus = (typeof TODO_STATUSES)[number]
+interface Todo { content: string; status: TodoStatus; activeForm?: string }
+const todos = new Map<string, Todo[]>()
+const todoMark = (s: TodoStatus): string => (s === 'completed' ? 'x' : s === 'in_progress' ? '>' : ' ')
+
+// Project context: surface CLAUDE.md / AGENTS.md at the workspace root so the agent obeys
+// project-specific instructions. Appended to the system prompt verbatim (highest-priority file
+// wins; CLAUDE.md before AGENTS.md). Kept separate from the dataflow SYSTEM so the moat prompt
+// stays authoritative and is never overridden by project text.
+const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md']
+export function projectContext(workspace: string): string {
+  for (const name of PROJECT_FILES) {
+    const p = join(workspace, name)
+    if (existsSync(p)) {
+      try {
+        const body = readFileSync(p, 'utf-8').trim()
+        if (body) return body
+      } catch {
+        /* unreadable — skip to the next candidate */
+      }
+    }
+  }
+  return ''
+}
+export function withProjectContext(workspace: string, base: string): string {
+  const ctx = projectContext(workspace)
+  return ctx ? `${base}\n\n# Project instructions (from ${PROJECT_FILES.join(' / ')} at the workspace root)\n\n${ctx}` : base
+}
+
 export const TOOLS: Tool[] = [
   {
     name: 'read_file',
@@ -98,6 +135,104 @@ export const TOOLS: Tool[] = [
       mkdirSync(dirname(p), { recursive: true }) // creating src/x.js must not fail on a fresh dir
       writeFileSync(p, String(input.content ?? ''), 'utf-8')
       return `wrote ${input.path} (${String(input.content ?? '').length} bytes)`
+    }
+  },
+  {
+    name: 'edit_file',
+    description:
+      'Make a TARGETED edit to an existing file by replacing a unique snippet of its current ' +
+      'content. Prefer this over write_file for changes to existing code — it rewrites only the ' +
+      'part you specify. The file must already exist and old_string must match the current bytes ' +
+      'EXACTLY; a mismatch means your view is stale — re-read the file first. By default ' +
+      'old_string must occur exactly once; set replace_all to replace every occurrence.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        old_string: { type: 'string' },
+        new_string: { type: 'string' },
+        replace_all: { type: 'boolean', description: 'replace every occurrence (default false)' }
+      },
+      required: ['path', 'old_string', 'new_string']
+    },
+    async run(input, { workspace }) {
+      const p = inside(workspace, input.path as string)
+      if (!existsSync(p)) return `no such file: ${input.path} (edit_file cannot create files — use write_file)`
+      const oldString = String(input.old_string ?? '')
+      const newString = String(input.new_string ?? '')
+      if (oldString === newString) return 'no change: old_string and new_string are identical.'
+      const original = readFileSync(p, 'utf-8')
+      const occurrences = original.split(oldString).length - 1
+      if (occurrences === 0) {
+        return `could not edit ${input.path}: old_string not found. Your view of the file is stale — re-read it with read_file, then retry with the exact current text and indentation.`
+      }
+      if (occurrences > 1 && !input.replace_all) {
+        return `could not edit ${input.path}: old_string appears ${occurrences} times. Include more surrounding context so it is unique, or pass replace_all: true.`
+      }
+      const updated = input.replace_all
+        ? original.split(oldString).join(newString)
+        : original.replace(oldString, newString)
+      writeFileSync(p, updated, 'utf-8')
+      return `edited ${input.path} (${input.replace_all ? occurrences + ' replacements' : '1 replacement'})`
+    }
+  },
+  {
+    name: 'notebook_edit',
+    description:
+      'Edit a single source cell in a Jupyter notebook (.ipynb). Replaces, inserts, or deletes a ' +
+      'cell identified by cell_id (preferred) or cell_number (0-based index). new_source is the ' +
+      'full new source for the cell (not a diff).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string' },
+        cell_id: { type: 'string', description: 'the id of the cell to edit (preferred over cell_number)' },
+        cell_number: { type: 'number', description: '0-based index of the cell when cell_id is omitted' },
+        new_source: { type: 'string', description: 'the full new source for the cell' },
+        cell_type: { type: 'string', description: 'required for insert: code | markdown | raw' },
+        edit_mode: { type: 'string', description: 'replace (default) | insert | delete' }
+      },
+      required: ['path', 'new_source']
+    },
+    async run(input, { workspace }) {
+      const p = inside(workspace, input.path as string)
+      if (!existsSync(p)) return `no such notebook: ${input.path}`
+      let nb: { cells?: Array<Record<string, unknown>> }
+      try {
+        nb = JSON.parse(readFileSync(p, 'utf-8'))
+      } catch {
+        return `${input.path} is not valid JSON`
+      }
+      if (!Array.isArray(nb.cells)) return `${input.path} has no cells array — not a valid .ipynb`
+      const mode = (input.edit_mode as string) || 'replace'
+      const idx = input.cell_id
+        ? nb.cells.findIndex((c) => c.id === input.cell_id)
+        : typeof input.cell_number === 'number'
+          ? input.cell_number
+          : -1
+      // ipynb cell source is an array of lines, each except the last ending with \n
+      const toSource = (s: string): string[] => {
+        const lines = s.replace(/\r\n/g, '\n').split('\n')
+        return lines.map((l, i) => (i < lines.length - 1 ? l + '\n' : l))
+      }
+      if (mode === 'insert') {
+        if (!input.cell_type) return 'insert requires cell_type (code | markdown | raw)'
+        const at = idx < 0 ? nb.cells.length - 1 : idx // insert after the located (or last) cell
+        nb.cells.splice(at + 1, 0, { cell_type: input.cell_type, source: toSource(String(input.new_source ?? '')), metadata: {} })
+        writeFileSync(p, JSON.stringify(nb, null, 1) + '\n', 'utf-8')
+        return `inserted a ${input.cell_type} cell after cell ${at} of ${input.path}`
+      }
+      if (idx < 0 || idx >= nb.cells.length) {
+        return `cell not found in ${input.path} (have ${nb.cells.length} cells). Check cell_id/cell_number.`
+      }
+      if (mode === 'delete') {
+        nb.cells.splice(idx, 1)
+        writeFileSync(p, JSON.stringify(nb, null, 1) + '\n', 'utf-8')
+        return `deleted cell ${idx} of ${input.path}`
+      }
+      nb.cells[idx] = { ...nb.cells[idx], source: toSource(String(input.new_source ?? '')) }
+      writeFileSync(p, JSON.stringify(nb, null, 1) + '\n', 'utf-8')
+      return `replaced source of cell ${idx} of ${input.path}`
     }
   },
   {
@@ -254,6 +389,55 @@ export const TOOLS: Tool[] = [
       }
       const s = readSkill(workspace, name)
       return s ? `Skill "${s.name}" — follow these instructions:\n\n${s.body}` : `No skill named "${name}". Call use_skill with no name to list available skills.`
+    }
+  },
+  {
+    name: 'TodoWrite',
+    description:
+      'Track your plan as a short ordered todo list. Use for any multi-step task (3+ steps): ' +
+      'write the list up front, keep exactly one item in_progress, and mark items completed as ' +
+      'you finish them. Each call REPLACES the whole list. This is agent self-organization — it ' +
+      'does not touch the workspace.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        todos: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              content: { type: 'string' },
+              status: { type: 'string', description: 'pending | in_progress | completed' },
+              activeForm: { type: 'string', description: 'present-continuous label, e.g. "Editing file.ts"' }
+            },
+            required: ['content', 'status']
+          }
+        }
+      },
+      required: ['todos']
+    },
+    async run(input, { workspace, emit }) {
+      const raw = Array.isArray(input.todos) ? (input.todos as Array<{ content?: unknown; status?: unknown; activeForm?: unknown }>) : []
+      const list: Todo[] = raw
+        .filter((t) => t && typeof t.content === 'string' && t.content)
+        .map((t) => ({
+          content: String(t.content),
+          status: (TODO_STATUSES as readonly string[]).includes(t.status as string) ? (t.status as TodoStatus) : 'pending',
+          activeForm: typeof t.activeForm === 'string' ? t.activeForm : undefined
+        }))
+      todos.set(workspace, list)
+      emit({ type: 'todos', workspace, items: list })
+      return `todos updated (${list.length}):\n` + list.map((t, i) => `${todoMark(t.status)} ${i + 1}. ${t.content}`).join('\n')
+    }
+  },
+  {
+    name: 'TodoRead',
+    description: 'Read the current todo list for this workspace.',
+    input_schema: { type: 'object', properties: {} },
+    async run(_input, { workspace }) {
+      const list = todos.get(workspace) ?? []
+      if (!list.length) return 'No todos yet. Use TodoWrite to plan a multi-step task.'
+      return list.map((t, i) => `${todoMark(t.status)} ${i + 1}. ${t.content}`).join('\n')
     }
   },
   {

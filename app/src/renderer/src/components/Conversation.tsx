@@ -19,6 +19,7 @@ export interface TranscriptItem {
   output?: string
   status?: 'running' | 'done'
   parent?: string
+  streaming?: boolean // true while text deltas are appending to this assistant bubble
 }
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -370,7 +371,9 @@ export function Conversation(props: {
           </div>
         )}
         {top.map((it, i) => renderItem(it, i, i === top.length - 1))}
-        {props.busy && (
+        {/* The working dots show while the agent runs tools or waits — but not while text is
+            streaming into a bubble (the growing text is itself the activity signal). */}
+        {props.busy && !props.transcript.some((it) => it.streaming) && (
           <div className="msg assistant">
             <div className="working">
               <span className="dot" />

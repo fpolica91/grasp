@@ -11,10 +11,12 @@ import {
   SUBAGENT_TOOLS,
   SYSTEM,
   TOOLS,
-  liveSurface
+  liveSurface,
+  withProjectContext
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
+import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
@@ -29,7 +31,8 @@ async function callModel(
   messages: Msg[],
   system: string,
   tools: Tool[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onText?: (delta: string) => void
 ): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
@@ -42,23 +45,60 @@ async function callModel(
         model,
         max_tokens: 4096,
         messages: [{ role: 'system', content: system }, ...messages],
-        tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
+        tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })),
+        stream: true,
+        stream_options: { include_usage: true }
       })
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
-    const data = (await res.json()) as {
-      choices?: { message?: Msg; finish_reason?: string }[]
-      usage?: { prompt_tokens?: number; completion_tokens?: number }
-    }
-    const choice = data.choices?.[0]
-    if (!choice?.message) return { ok: false, error: 'model returned no choices' }
-    return {
-      ok: true,
-      msg: choice.message,
-      finish: choice.finish_reason,
-      usage: { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0 }
-    }
+    if (!res.body) return { ok: false, error: 'model returned no stream body' }
+    // Reassemble the OpenAI delta stream into one assistant Msg (content + tool_calls) so the
+    // loop is identical to the non-streaming path. text deltas are forwarded live via onText.
+    let content = ''
+    const tcAcc: Record<number, { id: string; name: string; arguments: string }> = {}
+    let finishReason: string | undefined
+    let promptTokens = 0
+    let completionTokens = 0
+    await parseSSE(res.body, (ev) => {
+      const usage = ev.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined
+      if (usage) {
+        promptTokens = usage.prompt_tokens ?? promptTokens
+        completionTokens = usage.completion_tokens ?? completionTokens
+      }
+      const choice = (
+        ev.choices as
+          | {
+              delta?: { content?: string; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[] }
+              finish_reason?: string
+            }[]
+          | undefined
+      )?.[0]
+      if (!choice) return
+      const d = choice.delta
+      if (d?.content) {
+        content += d.content
+        if (onText) onText(d.content)
+      }
+      if (Array.isArray(d?.tool_calls)) {
+        for (const tc of d.tool_calls) {
+          const idx = tc.index ?? 0
+          if (!tcAcc[idx]) tcAcc[idx] = { id: tc.id ?? '', name: tc.function?.name ?? '', arguments: '' }
+          if (tc.id) tcAcc[idx].id = tc.id
+          if (tc.function?.name) tcAcc[idx].name = tc.function.name
+          if (tc.function?.arguments) tcAcc[idx].arguments += tc.function.arguments
+        }
+      }
+      if (choice.finish_reason) finishReason = choice.finish_reason
+    })
+    const tool_calls: ToolCall[] = Object.keys(tcAcc)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b)
+      .map((idx) => ({ id: tcAcc[idx].id, function: { name: tcAcc[idx].name, arguments: tcAcc[idx].arguments } }))
+      .filter((tc) => tc.function.name)
+    const msg: Msg = { role: 'assistant', content: content || null, ...(tool_calls.length ? { tool_calls } : {}) }
+    return { ok: true, msg, finish: finishReason, usage: { input: promptTokens, output: completionTokens } }
   } catch (e) {
+    if (signal?.aborted) return { ok: false, error: 'aborted' }
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
@@ -74,7 +114,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     const sub: Msg[] = [{ role: 'user', content: prompt }]
     let finalText = ''
     for (let s = 0; s < 10; s++) {
-      const sr = await callModel(model, sub, SUBAGENT_SYSTEM, SUBAGENT_TOOLS)
+      const sr = await callModel(model, sub, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
       if (!sr.ok || !sr.msg) return `subagent error: ${sr.error}`
       sub.push(sr.msg)
       if (sr.msg.content) { finalText = sr.msg.content; subEmit({ type: 'text', text: sr.msg.content }) }
@@ -108,7 +148,14 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
-    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS, turn.signal)
+    const r = await callModel(
+      model,
+      messages,
+      withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
+      plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS,
+      turn.signal,
+      plan ? undefined : (d) => emit({ type: 'text_delta', text: d })
+    )
     if (!r.ok || !r.msg) {
       if (turn.signal?.aborted) {
         emit({ type: 'done', note: 'stopped by you' })
@@ -135,7 +182,11 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done' })
       return { messages }
     }
-    if (r.msg.content) emit({ type: 'text', text: r.msg.content })
+    if (plan) {
+      if (r.msg.content) emit({ type: 'text', text: r.msg.content })
+    } else {
+      emit({ type: 'text_end' })
+    }
     if (terminal) {
       emit({ type: 'done' })
       return { messages }
@@ -170,7 +221,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       }
       emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
-      if ((name === 'write_file' || name === 'run_bash') && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
+      if (MUTATING_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
     }
 
     if (turn.flowAuto !== false) await liveSurface(workspace, mutated, emit)

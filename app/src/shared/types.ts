@@ -159,6 +159,8 @@ export interface FuzzResult {
 // Streaming events from the agent loop (main -> renderer).
 export type AgentEvent =
   | { type: 'text'; text: string; parent?: string }
+  | { type: 'text_delta'; text: string; parent?: string }
+  | { type: 'text_end' }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; parent?: string }
   | { type: 'tool_result'; id: string; name: string; summary: string; output?: string; parent?: string }
   | { type: 'dataflow'; graph: GraphModel }

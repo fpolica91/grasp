@@ -301,6 +301,19 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     return window.grasp.onAgentEvent((e: AgentEvent) => {
       if (e.type === 'text') setTranscript((t) => [...t, { role: 'assistant', text: e.text, parent: e.parent }])
+      else if (e.type === 'text_delta')
+        // Append to the active streaming bubble, or start one. One bubble per model response.
+        setTranscript((t) => {
+          const last = t[t.length - 1]
+          if (last && last.role === 'assistant' && last.streaming) {
+            const copy = t.slice()
+            copy[copy.length - 1] = { ...last, text: (last.text ?? '') + e.text }
+            return copy
+          }
+          return [...t, { role: 'assistant', text: e.text, streaming: true, parent: e.parent }]
+        })
+      else if (e.type === 'text_end')
+        setTranscript((t) => (t.some((it) => it.streaming) ? t.map((it) => (it.streaming ? { ...it, streaming: false } : it)) : t))
       else if (e.type === 'tool_use')
         setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running', parent: e.parent }])
       else if (e.type === 'tool_result')
@@ -314,11 +327,13 @@ export function App(): React.JSX.Element {
       else if (e.type === 'usage') setTokens((n) => n + e.input + e.output)
       else if (e.type === 'done') {
         setBusy(false)
+        setTranscript((t) => t.map((it) => (it.streaming ? { ...it, streaming: false } : it)))
         if (e.note) setTranscript((t) => [...t, { role: 'assistant', text: `_${e.note}_` }])
       }
       else if (e.type === 'error') {
         setError(e.error)
         setBusy(false)
+        setTranscript((t) => t.map((it) => (it.streaming ? { ...it, streaming: false } : it)))
       }
     })
   }, [])
