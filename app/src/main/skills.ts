@@ -57,6 +57,28 @@ export function readSkill(workspace: string, name: string): Skill | null {
 
 // Seed a couple of thesis-aligned example skills the first time (never overwrite).
 const EXAMPLES: Record<string, string> = {
+  'trace-flow.md': `---
+name: trace-flow
+description: Show the real dataflow of code — the live call tree with actual values — instead of asserting it works.
+---
+grasp's Flow shows what code ACTUALLY does when it runs: the call tree, the real values that
+flow through it, ending in a neutral question. Use it to SHOW behavior, never to claim correctness.
+
+WHEN YOU WRITE OR CHANGE CODE:
+1. Pick a real, exercisable entrypoint — a function that can run for real with a concrete input.
+   - Python: module.func (e.g. app.orders.checkout)
+   - JS/TS: path/to/file.ts:func (e.g. src/utils/colorUtils.ts:getFontColor)
+   Prefer a pure function (logic, no DOM/network). If the target needs deps, they must be installed.
+2. Call grasp_trace with that entrypoint and a representative input. The Flow renders the real
+   call tree — args → interior calls → return — with observed values and source lines.
+3. AFTER an edit, call grasp_trace_diff (same entrypoint + input) to show the A→B behavioral
+   change: which frames and values differ, ending in "… — intended?".
+
+RULES:
+- Present exactly what the Flow returns. Do NOT say the code "works", is "fixed", or is "correct".
+- If grasp reports it could not observe the run (unobservable), say so plainly and why — never
+  invent a flow. A tooling gap is not the code's behavior.
+- The human adjudicates against business rules only they know. You surface; they judge.`,
   'observe-change.md': `---
 name: observe-change
 description: After editing a function, observe its real behavior and surface the A→B change.
