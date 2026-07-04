@@ -366,6 +366,19 @@ input, textarea { font-family: inherit; }
 .gate > button { width: 100%; padding: 11px; border-radius: 9px; background: var(--accent); border: 0; color: var(--on-accent); font-weight: 600; font-size: 13.5px; box-shadow: var(--sh-1); transition: filter .12s; }
 .gate > button:hover { filter: brightness(1.07); }
 .gate-error { margin-top: 10px; color: var(--question); font-family: var(--mono); font-size: 12px; }
+/* onboarding */
+.gate.onboarding { width: 460px; padding: 30px 30px 24px; }
+.ob-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.ob-title { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.ob-sub { font-size: 12.5px; color: var(--faint); letter-spacing: .04em; }
+.ob-lede { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.ob-lede b { color: var(--ink); }
+.ob-features { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.ob-features li { display: flex; gap: 9px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.ob-features .ob-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; margin-top: 6px; }
+.ob-field-label { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin-bottom: 8px; }
+.ob-foot { margin: 14px 0 0; font-size: 11px; color: var(--faint); line-height: 1.55; }
+.ob-foot code { font-family: var(--mono); background: color-mix(in srgb, var(--muted) 13%, transparent); border-radius: 4px; padding: 1px 5px; }
 
 /* ── depth, indicators, theme switcher (product polish) ───── */
 .instrument { box-shadow: -1px 0 0 var(--hair-soft), var(--sh-2); }
