@@ -33,11 +33,22 @@ export const PLAN_SYSTEM =
 // ASK MODE: these tools change the workspace, so they pause for human approval.
 export const MUTATING_TOOLS = new Set(['write_file', 'run_bash'])
 
+// A subagent runner: run a focused sub-task and return its final text. Events it emits
+// are tagged with the parent task's id so the UI nests them.
+export type SubagentRunner = (prompt: string, parentId: string) => Promise<string>
+
+export interface ToolCtx {
+  workspace: string
+  emit: Emit
+  toolId?: string // the current tool_use id (parent for a task's subagent)
+  subagent?: SubagentRunner // present when the backend supports delegation
+}
+
 export interface Tool {
   name: string
   description: string
   input_schema: object
-  run(input: Record<string, unknown>, ctx: { workspace: string; emit: Emit }): Promise<string>
+  run(input: Record<string, unknown>, ctx: ToolCtx): Promise<string>
 }
 
 function inside(workspace: string, p: string): string {
@@ -178,8 +189,36 @@ export const TOOLS: Tool[] = [
       }
       return `could not fuzz: ${res.error ?? 'unknown'}`
     }
+  },
+  {
+    name: 'task',
+    description:
+      'Delegate a focused, self-contained sub-task to a subagent (e.g. "investigate how X ' +
+      'is validated", "make the edit to file Y and observe it"). The subagent works on its ' +
+      'own with the file/observe tools and returns a concise result. Use for parallelizable ' +
+      'or well-scoped work so your main thread stays focused. Give it one clear objective.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: 'a short label for the sub-task' },
+        prompt: { type: 'string', description: 'the full objective + context the subagent needs' }
+      },
+      required: ['prompt']
+    },
+    async run(input, ctx) {
+      if (!ctx.subagent) return 'subagents are not available on this backend.'
+      return ctx.subagent(String(input.prompt), ctx.toolId ?? 'task')
+    }
   }
 ]
+
+// The subagent toolset: everything EXCEPT task itself (delegation is depth-1, no recursion).
+export const SUBAGENT_TOOLS = TOOLS.filter((t) => t.name !== 'task')
+export const SUBAGENT_SYSTEM =
+  SYSTEM +
+  ' You are a SUBAGENT handling one focused sub-task. Do the work with your tools, then end' +
+  ' with a concise result for the main agent — what you found or did, and any observed' +
+  ' dataflow question. Do not delegate further.'
 
 // LIVE SURFACING — shared by ALL backends: when an agent (ours or an external CLI)
 // mutated code and there's a watched entrypoint, auto re-observe it (OLD=HEAD vs

@@ -98,12 +98,15 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         return
       }
       if (typeof ev.session_id === 'string') sessionId = ev.session_id
+      // Claude Code tags subagent (Task) activity with parent_tool_use_id — carry it so
+      // the UI nests it, exactly like our own subagents.
+      const parent = typeof ev.parent_tool_use_id === 'string' ? ev.parent_tool_use_id : undefined
       if (ev.type === 'assistant') {
         const msg = ev.message as { content?: Block[] } | undefined
         for (const b of msg?.content ?? []) {
-          if (b.type === 'text' && b.text) emit({ type: 'text', text: b.text })
+          if (b.type === 'text' && b.text) emit({ type: 'text', text: b.text, parent })
           else if (b.type === 'tool_use') {
-            emit({ type: 'tool_use', id: b.id, name: b.name, input: b.input })
+            emit({ type: 'tool_use', id: b.id, name: b.name, input: b.input, parent })
             if (b.name && MUTATING.has(b.name) && b.id) mutatingIds.add(b.id)
           }
         }
@@ -112,7 +115,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         const content = Array.isArray(msg?.content) ? msg.content : []
         for (const b of content) {
           if (b.type === 'tool_result' && b.tool_use_id) {
-            emit({ type: 'tool_result', id: b.tool_use_id, summary: summarize(b.content) })
+            emit({ type: 'tool_result', id: b.tool_use_id, summary: summarize(b.content), parent })
             if (mutatingIds.has(b.tool_use_id)) {
               mutatedSinceSurface = true
               void maybeSurface()

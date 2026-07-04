@@ -142,9 +142,9 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     return window.grasp.onAgentEvent((e: AgentEvent) => {
-      if (e.type === 'text') setTranscript((t) => [...t, { role: 'assistant', text: e.text }])
+      if (e.type === 'text') setTranscript((t) => [...t, { role: 'assistant', text: e.text, parent: e.parent }])
       else if (e.type === 'tool_use')
-        setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running' }])
+        setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running', parent: e.parent }])
       else if (e.type === 'tool_result')
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, status: 'done' } : it)))
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })

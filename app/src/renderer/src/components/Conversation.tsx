@@ -13,6 +13,7 @@ export interface TranscriptItem {
   input?: Record<string, unknown>
   summary?: string
   status?: 'running' | 'done'
+  parent?: string // set on subagent activity: the id of the parent `task` tool call
 }
 
 function ToolIcon(): React.JSX.Element {
@@ -29,7 +30,9 @@ function Tool({ it }: { it: TranscriptItem }): React.JSX.Element {
       ? String(it.input?.command ?? '')
       : it.name === 'grasp_observe' || it.name === 'grasp_diff' || it.name === 'grasp_fuzz'
         ? String(it.input?.entrypoint ?? '')
-        : String(it.input?.path ?? it.input?.file_path ?? '')
+        : it.name === 'task' || it.name === 'Task'
+          ? String(it.input?.description ?? it.input?.prompt ?? '')
+          : String(it.input?.path ?? it.input?.file_path ?? '')
   return (
     <div className={`tool ${it.status ?? ''}`}>
       <ToolIcon />
@@ -155,6 +158,43 @@ export function Conversation(props: {
 
   const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
 
+  const top = props.transcript.filter((it) => !it.parent)
+
+  // Render one transcript item by role. Subagent children reuse the same renderer.
+  const renderItem = (it: TranscriptItem, i: number, isLast = false): React.JSX.Element => {
+    if (it.role === 'plan')
+      return (
+        <PlanCard key={i} text={it.text ?? ''} latest={isLast} busy={props.busy} onApprove={props.onApprovePlan} />
+      )
+    if (it.role === 'approval') return <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
+    if (it.role === 'tool') {
+      const kids = it.id ? props.transcript.filter((k) => k.parent === it.id) : []
+      const chip = <Tool key={it.id ?? i} it={it} />
+      if (it.name === 'task' && kids.length > 0)
+        return (
+          <div key={it.id ?? i} className="subagent">
+            {chip}
+            <div className="subagent-body">{kids.map((k, ki) => renderItem(k, ki))}</div>
+          </div>
+        )
+      return chip
+    }
+    if (it.role === 'user')
+      return (
+        <div key={i} className="msg user">
+          <div className="who">you</div>
+          <div className="bubble">{it.text}</div>
+        </div>
+      )
+    return (
+      <div key={i} className="msg assistant">
+        <div className="prose">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{it.text ?? ''}</ReactMarkdown>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <section className="conv">
       <header className="conv-head">
@@ -177,32 +217,8 @@ export function Conversation(props: {
             </p>
           </div>
         )}
-        {props.transcript.map((it, i) =>
-          it.role === 'plan' ? (
-            <PlanCard
-              key={i}
-              text={it.text ?? ''}
-              latest={i === props.transcript.length - 1}
-              busy={props.busy}
-              onApprove={props.onApprovePlan}
-            />
-          ) : it.role === 'approval' ? (
-            <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
-          ) : it.role === 'tool' ? (
-            <Tool key={it.id ?? i} it={it} />
-          ) : it.role === 'user' ? (
-            <div key={i} className="msg user">
-              <div className="who">you</div>
-              <div className="bubble">{it.text}</div>
-            </div>
-          ) : (
-            <div key={i} className="msg assistant">
-              <div className="prose">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{it.text ?? ''}</ReactMarkdown>
-              </div>
-            </div>
-          )
-        )}
+        {/* top-level items only; subagent children render nested under their task */}
+        {top.map((it, i) => renderItem(it, i, i === top.length - 1))}
         {props.busy && (
           <div className="msg assistant">
             <div className="prose" style={{ color: 'var(--muted)' }}>

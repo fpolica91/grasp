@@ -301,6 +301,13 @@ input, textarea { font-family: inherit; }
 .approval-detail { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .approval-actions { display: flex; gap: 9px; margin-top: 13px; }
 
+/* subagents — a task's work nests beneath it */
+.subagent { align-self: stretch; }
+.subagent > .tool { border-color: var(--accent-hair); }
+.subagent > .tool .tn { color: var(--accent); }
+.subagent-body { margin: 6px 0 0 14px; padding-left: 14px; border-left: 2px solid var(--accent-hair); display: flex; flex-direction: column; gap: 10px; }
+.subagent-body .msg, .subagent-body .tool { max-width: 100%; }
+
 /* provider/model picker — a chip that is a control */
 .picker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); box-shadow: var(--sh-1); }
 .picker .g { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }

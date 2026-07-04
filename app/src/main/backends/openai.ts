@@ -3,7 +3,17 @@
 // GLM's /api/coding/paas/v4 speaks this wire, which is how the seam is provable
 // without an OpenAI key. Same tools, same events, same live surfacing as GLM.
 import { getKey } from '../vault'
-import { MUTATING_TOOLS, PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
+import {
+  MUTATING_TOOLS,
+  PLAN_SYSTEM,
+  PLAN_TOOL_NAMES,
+  SUBAGENT_SYSTEM,
+  SUBAGENT_TOOLS,
+  SYSTEM,
+  TOOLS,
+  liveSurface
+} from './tools'
+import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
@@ -17,11 +27,11 @@ type Msg = { role: string; content: string | null; tool_calls?: ToolCall[]; tool
 async function callModel(
   model: string,
   messages: Msg[],
-  plan: boolean
+  system: string,
+  tools: Tool[]
 ): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string }> {
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
-  const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS
   try {
     const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
@@ -29,7 +39,7 @@ async function callModel(
       body: JSON.stringify({
         model,
         max_tokens: 4096,
-        messages: [{ role: 'system', content: plan ? PLAN_SYSTEM : SYSTEM }, ...messages],
+        messages: [{ role: 'system', content: system }, ...messages],
         tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
       })
     })
@@ -49,8 +59,41 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   const plan = turn.mode === 'plan'
   const messages: Msg[] = [...(turn.history as Msg[]), { role: 'user', content: turn.prompt }]
 
+  const subagent: SubagentRunner = async (prompt, parentId) => {
+    const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
+    const sub: Msg[] = [{ role: 'user', content: prompt }]
+    let finalText = ''
+    for (let s = 0; s < 10; s++) {
+      const sr = await callModel(model, sub, SUBAGENT_SYSTEM, SUBAGENT_TOOLS)
+      if (!sr.ok || !sr.msg) return `subagent error: ${sr.error}`
+      sub.push(sr.msg)
+      if (sr.msg.content) { finalText = sr.msg.content; subEmit({ type: 'text', text: sr.msg.content }) }
+      const calls = sr.msg.tool_calls ?? []
+      if (sr.finish !== 'tool_calls' || calls.length === 0) return finalText || '(subagent done)'
+      for (const tc of calls) {
+        let inp: Record<string, unknown> = {}
+        try {
+          inp = JSON.parse(tc.function.arguments || '{}')
+        } catch {
+          /* ignore */
+        }
+        const tool = SUBAGENT_TOOLS.find((t) => t.name === tc.function.name)
+        subEmit({ type: 'tool_use', id: tc.id, name: tc.function.name, input: inp })
+        let out = ''
+        try {
+          out = tool ? await tool.run(inp, { workspace, emit: subEmit, toolId: tc.id }) : `unknown tool: ${tc.function.name}`
+        } catch (e) {
+          out = `tool error: ${e instanceof Error ? e.message : String(e)}`
+        }
+        subEmit({ type: 'tool_result', id: tc.id, name: tc.function.name, summary: out.split('\n')[0].slice(0, 120) })
+        sub.push({ role: 'tool', tool_call_id: tc.id, content: out })
+      }
+    }
+    return finalText || '(subagent reached step limit)'
+  }
+
   for (let step = 0; step < MAX_STEPS; step++) {
-    const r = await callModel(model, messages, plan)
+    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS)
     if (!r.ok || !r.msg) {
       emit({ type: 'error', error: r.error })
       return { messages }
@@ -93,7 +136,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       }
       if (!output) {
         try {
-          output = tool ? await tool.run(input, { workspace, emit }) : `unknown tool: ${name}`
+          output = tool ? await tool.run(input, { workspace, emit, toolId: tc.id, subagent }) : `unknown tool: ${name}`
         } catch (e) {
           output = `tool error: ${e instanceof Error ? e.message : String(e)}`
         }
