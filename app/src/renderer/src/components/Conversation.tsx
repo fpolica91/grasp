@@ -1,8 +1,12 @@
-// The conversation: markdown-rendered agent messages, tool-call chips, a real composer
-// with a working provider/model selector — grasp is agent-agnostic.
-import { useEffect, useRef, useState } from 'react'
+// The conversation: product-grade message rendering. Markdown with real syntax-highlighted
+// code blocks (copy + collapse), subtle inline code, and TOOL CALLS as clean collapsible
+// blocks (one-line summary -> expand to the command + its captured output) — never a raw
+// truncated command wall. Plus plan cards, approval cards, nested subagents, a working
+// provider/model picker, and a token meter.
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import hljs from 'highlight.js/lib/common'
 import type { BackendInfo } from '../../../shared/types'
 
 export interface TranscriptItem {
@@ -12,38 +16,135 @@ export interface TranscriptItem {
   name?: string
   input?: Record<string, unknown>
   summary?: string
+  output?: string
   status?: 'running' | 'done'
-  parent?: string // set on subagent activity: the id of the parent `task` tool call
+  parent?: string
 }
 
-function ToolIcon(): React.JSX.Element {
-  return (
-    <svg className="ic" viewBox="0 0 24 24" fill="none">
-      <path d="M8 6l-4 6 4 6M16 6l4 6-4 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
+const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
 
-function Tool({ it }: { it: TranscriptItem }): React.JSX.Element {
-  const arg =
-    it.name === 'run_bash' || it.name === 'Bash'
-      ? String(it.input?.command ?? '')
-      : it.name === 'grasp_observe' || it.name === 'grasp_diff' || it.name === 'grasp_fuzz'
-        ? String(it.input?.entrypoint ?? '')
-        : it.name === 'task' || it.name === 'Task'
-          ? String(it.input?.description ?? it.input?.prompt ?? '')
-          : String(it.input?.path ?? it.input?.file_path ?? '')
+// ── code blocks ─────────────────────────────────────────────
+function CodeBlock({ lang, code }: { lang: string; code: string }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+  const lineCount = code.split('\n').length
+  const [collapsed, setCollapsed] = useState(lineCount > 24)
+  const html = useMemo(() => {
+    try {
+      return lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value
+    } catch {
+      return code.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] as string)
+    }
+  }, [code, lang])
+  const copy = (): void => {
+    void navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1200)
+  }
   return (
-    <div className={`tool ${it.status ?? ''}`}>
-      <ToolIcon />
-      <span className="tn">{it.name}</span>
-      <span className="ta">{arg}</span>
-      {it.summary && <span className="ts">{it.summary}</span>}
+    <div className="codeblock">
+      <div className="cb-head">
+        <span className="cb-lang">{lang || 'text'}</span>
+        <button className="cb-copy" onClick={copy}>
+          {copied ? '✓ copied' : 'copy'}
+        </button>
+      </div>
+      <pre className={`cb-pre${collapsed ? ' collapsed' : ''}`}>
+        <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
+      </pre>
+      {lineCount > 24 && (
+        <button className="cb-more" onClick={() => setCollapsed((c) => !c)}>
+          {collapsed ? `▸ show all ${lineCount} lines` : '▾ collapse'}
+        </button>
+      )}
     </div>
   )
 }
 
-// The provider/model selector — a chip that is actually a control.
+const markdownComponents = {
+  code({ className, children }: { className?: string; children?: React.ReactNode }): React.JSX.Element {
+    const text = String(children ?? '').replace(/\n$/, '')
+    const m = /language-(\w+)/.exec(className || '')
+    if (m || text.includes('\n')) return <CodeBlock lang={m ? m[1] : ''} code={text} />
+    return <code className="inline-code">{children}</code>
+  },
+  pre({ children }: { children?: React.ReactNode }): React.JSX.Element {
+    return <>{children}</>
+  },
+  a({ href, children }: { href?: string; children?: React.ReactNode }): React.JSX.Element {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault()
+          if (href) window.open(href, '_blank')
+        }}
+      >
+        {children}
+      </a>
+    )
+  }
+}
+
+// ── tool calls ──────────────────────────────────────────────
+function describe(it: TranscriptItem): { verb: string; arg: string } {
+  const path = String(it.input?.path ?? it.input?.file_path ?? '')
+  const cmd = String(it.input?.command ?? '').replace(/\s+/g, ' ').trim()
+  const ep = String(it.input?.entrypoint ?? '')
+  switch (it.name) {
+    case 'write_file':
+    case 'Write':
+      return { verb: 'Wrote', arg: base(path) }
+    case 'Edit':
+    case 'MultiEdit':
+      return { verb: 'Edited', arg: base(path) }
+    case 'read_file':
+    case 'Read':
+      return { verb: 'Read', arg: base(path) }
+    case 'list_dir':
+    case 'LS':
+      return { verb: 'Listed', arg: base(path) || '.' }
+    case 'run_bash':
+    case 'Bash':
+      return { verb: 'Ran', arg: cmd.slice(0, 60) || 'command' }
+    case 'grasp_observe':
+      return { verb: 'Observed', arg: ep }
+    case 'grasp_diff':
+      return { verb: 'Diffed', arg: ep }
+    case 'grasp_fuzz':
+      return { verb: 'Fuzzed', arg: ep }
+    case 'task':
+    case 'Task':
+      return { verb: 'Delegated', arg: String(it.input?.description ?? it.input?.prompt ?? '').slice(0, 60) }
+    default:
+      return { verb: it.name ?? 'Tool', arg: path || cmd.slice(0, 60) }
+  }
+}
+
+function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const { verb, arg } = describe(it)
+  const cmd = it.name === 'run_bash' || it.name === 'Bash' ? String(it.input?.command ?? '') : ''
+  const hasDetail = !!(it.output || cmd)
+  const running = it.status !== 'done'
+  return (
+    <div className={`toolblock${running ? ' running' : ''}${open ? ' open' : ''}`}>
+      <div className={`tb-head${hasDetail ? ' clickable' : ''}`} onClick={() => hasDetail && setOpen((o) => !o)}>
+        {hasDetail ? <span className={`tb-chev${open ? ' open' : ''}`}>▸</span> : <span className="tb-lead" />}
+        <span className="tb-verb">{verb}</span>
+        <span className="tb-arg">{arg}</span>
+        {running && <span className="tb-spin" />}
+      </div>
+      {open && hasDetail && (
+        <div className="tb-body">
+          {cmd && <CodeBlock lang="bash" code={cmd} />}
+          {it.output && <pre className="tb-out">{it.output}</pre>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── provider/model picker ───────────────────────────────────
 function ModelPicker(props: {
   backends: BackendInfo[]
   backend: string
@@ -74,7 +175,6 @@ function ModelPicker(props: {
   )
 }
 
-// A proposed plan awaiting the human: approve executes it, revise focuses the composer.
 function PlanCard(props: { text: string; latest: boolean; busy: boolean; onApprove: (text: string) => void }): React.JSX.Element {
   return (
     <div className="plan-card">
@@ -83,7 +183,9 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
         <span className="plan-badge">awaiting your approval</span>
       </div>
       <div className="prose">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{props.text}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {props.text}
+        </ReactMarkdown>
       </div>
       {props.latest && (
         <div className="plan-actions">
@@ -97,11 +199,9 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
   )
 }
 
-// An Ask-mode approval: a mutating tool is paused until you allow or deny it.
 function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: boolean) => void }): React.JSX.Element {
   const { it } = props
-  const detail =
-    it.name === 'run_bash' ? String(it.input?.command ?? '') : String(it.input?.path ?? '')
+  const detail = it.name === 'run_bash' ? String(it.input?.command ?? '') : String(it.input?.path ?? '')
   const decided = it.status === 'done'
   return (
     <div className={`approval-card${decided ? ' decided' : ''}`}>
@@ -146,9 +246,9 @@ export function Conversation(props: {
   onSend: (prompt: string) => void
   banner?: React.ReactNode
 }): React.JSX.Element {
-  const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
   const [input, setInput] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
+  const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
@@ -162,20 +262,16 @@ export function Conversation(props: {
   }
 
   const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
-
   const top = props.transcript.filter((it) => !it.parent)
 
-  // Render one transcript item by role. Subagent children reuse the same renderer.
   const renderItem = (it: TranscriptItem, i: number, isLast = false): React.JSX.Element => {
     if (it.role === 'plan')
-      return (
-        <PlanCard key={i} text={it.text ?? ''} latest={isLast} busy={props.busy} onApprove={props.onApprovePlan} />
-      )
+      return <PlanCard key={i} text={it.text ?? ''} latest={isLast} busy={props.busy} onApprove={props.onApprovePlan} />
     if (it.role === 'approval') return <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
     if (it.role === 'tool') {
       const kids = it.id ? props.transcript.filter((k) => k.parent === it.id) : []
-      const chip = <Tool key={it.id ?? i} it={it} />
-      if (it.name === 'task' && kids.length > 0)
+      const chip = <ToolBlock key={it.id ?? i} it={it} />
+      if ((it.name === 'task' || it.name === 'Task') && kids.length > 0)
         return (
           <div key={it.id ?? i} className="subagent">
             {chip}
@@ -187,14 +283,15 @@ export function Conversation(props: {
     if (it.role === 'user')
       return (
         <div key={i} className="msg user">
-          <div className="who">you</div>
           <div className="bubble">{it.text}</div>
         </div>
       )
     return (
       <div key={i} className="msg assistant">
         <div className="prose">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{it.text ?? ''}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {it.text ?? ''}
+          </ReactMarkdown>
         </div>
       </div>
     )
@@ -234,17 +331,18 @@ export function Conversation(props: {
           <div className="conv-empty">
             <h2>What should we change?</h2>
             <p>
-              Ask an agent to edit code in your workspace. As it works, the observed dataflow updates live on the
-              right — you adjudicate what the change did, never a &ldquo;does it work&rdquo;.
+              Ask an agent to edit code in your project. As it works, the file, the diff, and the observed dataflow
+              show on the right — you adjudicate what the change did, never a &ldquo;does it work&rdquo;.
             </p>
           </div>
         )}
-        {/* top-level items only; subagent children render nested under their task */}
         {top.map((it, i) => renderItem(it, i, i === top.length - 1))}
         {props.busy && (
           <div className="msg assistant">
-            <div className="prose" style={{ color: 'var(--muted)' }}>
-              working…
+            <div className="working">
+              <span className="dot" />
+              <span className="dot" />
+              <span className="dot" />
             </div>
           </div>
         )}
@@ -257,7 +355,6 @@ export function Conversation(props: {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              // Enter sends; Shift+Enter (or Cmd/Ctrl+Enter) inserts a newline.
               if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault()
                 submit()

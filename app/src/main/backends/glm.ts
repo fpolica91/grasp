@@ -154,7 +154,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       } catch (e) {
         output = `tool error: ${e instanceof Error ? e.message : String(e)}`
       }
-      emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output.split('\n')[0].slice(0, 120) })
+      emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
     }
 

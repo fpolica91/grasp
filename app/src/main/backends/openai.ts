@@ -158,7 +158,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
           output = `tool error: ${e instanceof Error ? e.message : String(e)}`
         }
       }
-      emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120) })
+      emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
       if ((name === 'write_file' || name === 'run_bash') && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
     }

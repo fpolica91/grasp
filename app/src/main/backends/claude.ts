@@ -32,14 +32,15 @@ function configDir(): string | undefined {
 type Block = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }
 type ResultBlock = { type: string; tool_use_id?: string; content?: unknown }
 
+function fullText(content: unknown): string {
+  return typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content.map((c) => (c && typeof c === 'object' && 'text' in c ? String((c as { text: unknown }).text) : '')).join('\n')
+      : ''
+}
 function summarize(content: unknown): string {
-  const s =
-    typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-        ? content.map((c) => (c && typeof c === 'object' && 'text' in c ? String((c as { text: unknown }).text) : '')).join(' ')
-        : ''
-  return s.split('\n')[0].slice(0, 120)
+  return fullText(content).split('\n')[0].slice(0, 120)
 }
 
 async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[] }> {
@@ -115,7 +116,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         const content = Array.isArray(msg?.content) ? msg.content : []
         for (const b of content) {
           if (b.type === 'tool_result' && b.tool_use_id) {
-            emit({ type: 'tool_result', id: b.tool_use_id, summary: summarize(b.content), parent })
+            emit({ type: 'tool_result', id: b.tool_use_id, summary: summarize(b.content), output: fullText(b.content).slice(0, 6000), parent })
             if (mutatingIds.has(b.tool_use_id)) {
               mutatedSinceSurface = true
               void maybeSurface()

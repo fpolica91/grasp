@@ -158,7 +158,7 @@ export interface FuzzResult {
 export type AgentEvent =
   | { type: 'text'; text: string; parent?: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; parent?: string }
-  | { type: 'tool_result'; id: string; name: string; summary: string; parent?: string }
+  | { type: 'tool_result'; id: string; name: string; summary: string; output?: string; parent?: string }
   | { type: 'dataflow'; graph: GraphModel }
   | { type: 'dataflow_diff'; diff: GraphDiffModel }
   | { type: 'fuzz'; report: FuzzReport }
