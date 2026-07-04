@@ -66,7 +66,39 @@ export function tracePython(workspace: string, entry: string, input: Record<stri
   })
 }
 
-// Language dispatch. JS/TS land in step 4 (V8 inspector); until then, honest unobservable.
+
+const NODE = process.env.GRASP_NODE ?? 'node'
+
+// Trace a JS/TS entrypoint by running the Babel-instrumenting harness against the repo's
+// real Node runtime. entry form: "src/file.ts:func". No transpile-to-temp; real module graph.
+export function traceJs(workspace: string, entry: string, input: Record<string, unknown>, language: string): Promise<TraceDoc> {
+  return new Promise((res) => {
+    const dir = join(tracerDir(), 'js_trace')
+    const harness = join(dir, 'trace.mjs')
+    const register = join(dir, 'register.mjs')
+    if (!existsSync(harness)) return res(unobservable(entry, language, `js tracer not found at ${harness}`))
+    const cp = spawn(NODE, ['--import', register, harness, '--repo', workspace || '.', '--entry', entry, '--input', JSON.stringify(input ?? {})], {
+      cwd: dir,
+      env: { ...process.env, GRASP_REPO: workspace || process.cwd() }
+    })
+    let out = ''
+    let err = ''
+    cp.stdout.on('data', (d) => (out += d))
+    cp.stderr.on('data', (d) => (err += d))
+    cp.on('error', (e) => res(unobservable(entry, language, `could not start node tracer: ${e.message}`)))
+    cp.on('close', () => {
+      try {
+        const doc = JSON.parse(out.trim().split('\n').pop() || '{}') as TraceDoc
+        doc.createdAt = Date.now()
+        res(doc)
+      } catch {
+        res(unobservable(entry, language, err.trim().split('\n').slice(-3).join(' ') || 'js tracer produced no trace JSON'))
+      }
+    })
+  })
+}
+
+// Language dispatch: python via settrace, js/ts via the Babel-instrumenting Node harness.
 export function runTrace(
   workspace: string,
   entry: string,
@@ -74,8 +106,9 @@ export function runTrace(
   language: string
 ): Promise<TraceDoc> {
   if (language === 'py' || language === 'python') return tracePython(workspace, entry, input)
+  if (language === 'js' || language === 'ts' || language === 'jsx' || language === 'tsx') return traceJs(workspace, entry, input, language)
   return Promise.resolve(
-    unobservable(entry, language, `no native tracer wired for ${language} yet`, 'Python is traced now; JS/TS via the V8 inspector is next.')
+    unobservable(entry, language, `no native tracer wired for ${language} yet`, 'Python, JS and TS are traced; other languages are next.')
   )
 }
 
