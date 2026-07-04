@@ -10,6 +10,7 @@ import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { TerminalPane } from './components/Terminal'
+import { FilesPane } from './components/Files'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
 
 type Surface =
@@ -33,7 +34,7 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [pane, setPane] = useState<'chat' | 'terminal'>('chat')
+  const [pane, setPane] = useState<'chat' | 'files' | 'terminal'>('chat')
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -293,6 +294,9 @@ export function App(): React.JSX.Element {
           <button className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>
             Chat
           </button>
+          <button className={pane === 'files' ? 'on' : ''} onClick={() => setPane('files')}>
+            Files
+          </button>
           <button className={pane === 'terminal' ? 'on' : ''} onClick={() => setPane('terminal')}>
             Terminal
           </button>
@@ -322,6 +326,9 @@ export function App(): React.JSX.Element {
                 ) : null
               }
             />
+          </div>
+          <div className={`pane${pane === 'files' ? ' on' : ''}`}>
+            <FilesPane workspace={workspace} active={pane === 'files'} />
           </div>
           <div className={`pane${pane === 'terminal' ? ' on' : ''}`}>
             <TerminalPane workspace={workspace} active={pane === 'terminal'} />

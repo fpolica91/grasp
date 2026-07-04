@@ -250,4 +250,15 @@ export interface GraspApi {
   termKill(id: string): void
   onTermData(cb: (id: string, data: string) => void): () => void
   onTermExit(cb: (id: string, exitCode: number) => void): () => void
+  listTree(workspace: string): Promise<TreeNode[]>
+  readFile(workspace: string, rel: string): Promise<{ ok: boolean; content?: string; error?: string }>
+  writeFile(workspace: string, rel: string, content: string): Promise<{ ok: boolean; error?: string }>
+  fileDiff(workspace: string, rel: string): Promise<{ ok: boolean; old: string; new: string; error?: string }>
+}
+
+export interface TreeNode {
+  name: string
+  path: string
+  dir: boolean
+  children?: TreeNode[]
 }

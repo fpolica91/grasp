@@ -8,6 +8,7 @@ import { listSessions, saveSession, deleteSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
+import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
 
 function createWindow(): void {
@@ -50,6 +51,10 @@ app.whenReady().then(() => {
   ipcMain.on('terminal:write', (_e, { id, data }) => writeTerminal(id, data))
   ipcMain.on('terminal:resize', (_e, { id, cols, rows }) => resizeTerminal(id, cols, rows))
   ipcMain.on('terminal:kill', (_e, { id }) => killTerminal(id))
+  ipcMain.handle('grasp:listTree', (_e, workspace: string) => listTree(workspace))
+  ipcMain.handle('grasp:readFile', (_e, workspace: string, rel: string) => readWorkspaceFile(workspace, rel))
+  ipcMain.handle('grasp:writeFile', (_e, workspace: string, rel: string, content: string) => writeWorkspaceFile(workspace, rel, content))
+  ipcMain.handle('grasp:fileDiff', (_e, workspace: string, rel: string) => fileDiff(workspace, rel))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

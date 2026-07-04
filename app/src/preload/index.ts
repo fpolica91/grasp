@@ -36,7 +36,11 @@ const api: GraspApi = {
     const l = (_e: unknown, m: { id: string; exitCode: number }): void => cb(m.id, m.exitCode)
     ipcRenderer.on('terminal:exit', l)
     return () => ipcRenderer.removeListener('terminal:exit', l)
-  }
+  },
+  listTree: (workspace: string) => ipcRenderer.invoke('grasp:listTree', workspace),
+  readFile: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:readFile', workspace, rel),
+  writeFile: (workspace: string, rel: string, content: string) => ipcRenderer.invoke('grasp:writeFile', workspace, rel, content),
+  fileDiff: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileDiff', workspace, rel)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)
