@@ -78,6 +78,86 @@ export interface TraceDiff {
   questions: string[] // neutral "…— intended?" prompts; never a verdict
 }
 
+// Align two traces of the SAME entry+input (old code state vs new) and report which
+// frames appeared/vanished and which values changed. Frames match by call-path identity
+// (the chain of function names from the root, disambiguated by sibling order) so an
+// inserted call doesn't cascade into "everything changed". Pure — computed in the app.
+function pathKey(f: TraceFrame, byId: Map<string, TraceFrame>, order: Map<string, number>): string {
+  const parts: string[] = []
+  let cur: TraceFrame | undefined = f
+  while (cur) {
+    parts.unshift(`${cur.fn}#${order.get(cur.id) ?? 0}`)
+    cur = cur.parent ? byId.get(cur.parent) : undefined
+  }
+  return parts.join('/')
+}
+
+function keyed(t: TraceDoc): Map<string, TraceFrame> {
+  const byId = new Map(t.frames.map((f) => [f.id, f]))
+  // sibling order: index among frames sharing the same (parent, fn)
+  const seen = new Map<string, number>()
+  const order = new Map<string, number>()
+  for (const f of [...t.frames].sort((a, b) => a.seq - b.seq)) {
+    const sib = `${f.parent}:${f.fn}`
+    const n = seen.get(sib) ?? 0
+    order.set(f.id, n)
+    seen.set(sib, n + 1)
+  }
+  const out = new Map<string, TraceFrame>()
+  for (const f of t.frames) out.set(pathKey(f, byId, order), f)
+  return out
+}
+
+export function diffTraces(oldT: TraceDoc, newT: TraceDoc): TraceDiff {
+  const o = keyed(oldT)
+  const n = keyed(newT)
+  const frames: FrameDelta[] = []
+  const questions: string[] = []
+  const reprOf = (f: TraceFrame): Map<string, string> => {
+    const m = new Map<string, string>()
+    for (const a of f.args) m.set(`arg:${a.name}`, a.repr)
+    m.set('→return', f.threw ? `threw ${f.threw.type}: ${f.threw.message}` : (f.ret?.repr ?? '(void)'))
+    return m
+  }
+  // keep NEW order; classify each new frame, then append removed ones
+  for (const [k, nf] of n) {
+    const of = o.get(k)
+    if (!of) {
+      frames.push({ status: 'added', frame: nf, changes: [] })
+      continue
+    }
+    const om = reprOf(of)
+    const nm = reprOf(nf)
+    const changes: { name: string; old: string; new: string }[] = []
+    for (const [field, nv] of nm) {
+      const ov = om.get(field)
+      if (ov !== undefined && ov !== nv) changes.push({ name: field.replace('arg:', ''), old: ov, new: nv })
+    }
+    frames.push({ status: changes.length ? 'changed' : 'unchanged', frame: nf, changes })
+    for (const c of changes) {
+      if (c.name === '→return') questions.push(`${nf.fn} now ${c.new} (was ${c.old}) — intended?`)
+      else questions.push(`${nf.fn}(${c.name}) is now ${c.new} (was ${c.old}) — intended?`)
+    }
+  }
+  for (const [k, of] of o) {
+    if (!n.has(k)) {
+      frames.push({ status: 'removed', frame: of, changes: [] })
+      questions.push(`${of.fn} no longer runs — intended?`)
+    }
+  }
+  frames.sort((a, b) => (a.frame.seq ?? 0) - (b.frame.seq ?? 0))
+  const changedCount = frames.filter((f) => f.status !== 'unchanged').length
+  return {
+    entry: newT.entry,
+    oldRef: oldT.gitRef,
+    newRef: newT.gitRef,
+    changedCount,
+    empty: changedCount === 0,
+    frames,
+    questions: [...new Set(questions)]
+  }
+}
+
 // Validate an incoming trace: agent-produced JSON must conform or grasp rejects it
 // (honest error, not a mangled render). Returns null if valid, else the reason.
 export function validateTrace(t: unknown): string | null {

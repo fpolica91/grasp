@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { diff, fuzz, observe } from '../engine'
-import { runTrace } from '../tracer'
+import { runTrace, traceDiff } from '../tracer'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
 
@@ -271,6 +271,36 @@ export const TOOLS: Tool[] = [
         cp.on('error', (e) => res(`error: ${e.message}`))
         cp.on('close', (code) => res(cap(out) + `\n[exit ${code}]`))
       })
+    }
+  },
+  {
+    name: 'grasp_trace_diff',
+    description:
+      'After you EDIT code, SHOW the behavioral consequence: traces the same entrypoint+input ' +
+      'at the OLD code (a git ref, default HEAD) vs your NEW working tree, and renders the A->B ' +
+      'flow — which frames changed, which values differ, which calls appeared or vanished — ending ' +
+      'in neutral questions. Use this instead of claiming your edit "works". Requires a git repo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entrypoint: { type: 'string', description: 'module.func to run on both sides' },
+        input: { type: 'string', description: 'JSON kwargs (same input drives both sides)' },
+        old_ref: { type: 'string', description: 'git ref for the OLD side (default HEAD)' },
+        language: { type: 'string', description: 'py/js/ts — omit to auto-detect' }
+      },
+      required: ['entrypoint']
+    },
+    async run(input, { workspace, emit }) {
+      let kwargs: Record<string, unknown> = {}
+      try { kwargs = input.input ? JSON.parse(String(input.input)) : {} } catch { /* empty */ }
+      const lang = input.language ? String(input.language) : detectLang(workspace)
+      const ref = input.old_ref ? String(input.old_ref) : 'HEAD'
+      const { diff, error } = await traceDiff(workspace, String(input.entrypoint), kwargs, ref, lang)
+      if (!diff) return `could not diff: ${error ?? 'unknown'}`
+      emit({ type: 'trace_diff', diff })
+      if (diff.empty) return `no behavioral change for ${input.entrypoint} on this input (same flow ${ref} -> working tree).`
+      const qs = diff.questions.slice(0, 4).join(' | ')
+      return `A->B flow for ${input.entrypoint}: ${diff.changedCount} change(s). Questions: ${qs}`
     }
   },
   {

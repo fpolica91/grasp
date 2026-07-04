@@ -3,11 +3,13 @@
 // common stacks so the agent doesn't reinvent tracing), NOT a grasp engine: they use
 // the target's own runtime. Honesty: any failure to run the tracer becomes an
 // `unobservable` trace, never a fabricated frame.
-import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import type { TraceDoc } from '../shared/trace'
+import type { TraceDoc, TraceDiff } from '../shared/trace'
+import { diffTraces } from '../shared/trace'
 
 // dev: app/resources/tracers ; packaged: resources/tracers next to the asar (extraResources)
 function tracerDir(): string {
@@ -76,3 +78,32 @@ export function runTrace(
     unobservable(entry, language, `no native tracer wired for ${language} yet`, 'Python is traced now; JS/TS via the V8 inspector is next.')
   )
 }
+
+
+// Trace the same entry+input at a git ref (old) vs the working tree (new), and diff.
+async function traceAtRef(workspace: string, ref: string, entry: string, input: Record<string, unknown>, lang: string): Promise<TraceDoc> {
+  const wt = mkdtempSync(join(tmpdir(), 'grasp-wt-'))
+  const add = spawnSync('git', ['-C', workspace, 'worktree', 'add', '--detach', wt, ref], { encoding: 'utf-8' })
+  if (add.status !== 0) {
+    try { rmSync(wt, { recursive: true, force: true }) } catch { /* ignore */ }
+    return unobservable(entry, lang, `could not check out ${ref}: ${(add.stderr || '').trim()}`)
+  }
+  try {
+    const t = await runTrace(wt, entry, input, lang)
+    t.gitRef = ref
+    return t
+  } finally {
+    spawnSync('git', ['-C', workspace, 'worktree', 'remove', '--force', wt])
+    try { rmSync(wt, { recursive: true, force: true }) } catch { /* ignore */ }
+  }
+}
+
+export async function traceDiff(workspace: string, entry: string, input: Record<string, unknown>, oldRef: string, lang: string): Promise<{ diff: TraceDiff | null; error?: string }> {
+  const oldT = await traceAtRef(workspace, oldRef, entry, input, lang)
+  const newT = await runTrace(workspace, entry, input, lang)
+  newT.gitRef = 'working tree'
+  if (oldT.status === 'unobservable') return { diff: null, error: `old side (${oldRef}) unobservable: ${oldT.unobservable?.reason}` }
+  if (newT.status === 'unobservable') return { diff: null, error: `new side unobservable: ${newT.unobservable?.reason}` }
+  return { diff: diffTraces(oldT, newT) }
+}
+

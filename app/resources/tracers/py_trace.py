@@ -46,8 +46,10 @@ def main():
     }
 
     sys.path.insert(0, repo)
+    sys.dont_write_bytecode = True  # never leave .pyc; avoid stale-cache reads on rapid edits
+    import importlib
+    importlib.invalidate_caches()
     try:
-        import importlib
         mod = importlib.import_module(mod_name)
         fn = getattr(mod, func_name)
     except Exception as e:  # import/resolution = config fact, NOT behavior
