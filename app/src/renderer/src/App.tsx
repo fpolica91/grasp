@@ -347,7 +347,8 @@ export function App(): React.JSX.Element {
         />
       )}
 
-      <PanelGroup direction="vertical" className="workarea" autoSaveId="grasp-vert">
+      <div className="workarea">
+      <PanelGroup direction="vertical" className="panels" autoSaveId="grasp-vert">
         <Panel defaultSize={72} minSize={30}>
           <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
             {/* chat */}
@@ -451,6 +452,20 @@ export function App(): React.JSX.Element {
           <TerminalDock workspace={workspace} active={!bottomCollapsed} onCloseDock={toggleBottom} />
         </Panel>
       </PanelGroup>
+
+      {/* status bar — persistent call-to-action for the terminal + project */}
+      <div className="statusbar">
+        <span className="sb-project" title={workspace}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
+          {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
+        </span>
+        <button className={`sb-btn${bottomCollapsed ? '' : ' on'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Terminal
+          <span className="sb-key">⌃`</span>
+        </button>
+      </div>
+      </div>
 
       {/* activity rail — VSCode-style; reopens the side pane on click */}
       <div className="activity-rail">
