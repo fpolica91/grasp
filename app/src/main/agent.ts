@@ -6,6 +6,7 @@ import type { WebContents } from 'electron'
 import { glmBackend } from './backends/glm'
 import { claudeBackend } from './backends/claude'
 import { openaiBackend } from './backends/openai'
+import { checkpointWorkspace } from './checkpoint'
 import type { AgentBackend, Emit } from './backends/types'
 
 const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, openaiBackend]
@@ -25,6 +26,7 @@ export async function runAgent(
     model?: string
     mode?: 'auto' | 'ask' | 'plan'
     budget?: number
+    flowAuto?: boolean
   }
 ): Promise<{ messages: unknown[] }> {
   const emit: Emit = (event) => {
@@ -37,7 +39,14 @@ export async function runAgent(
     return { messages: params.history }
   }
   const workspace = params.workspace || process.env.GRASP_WORKSPACE || process.cwd()
-  return backend.run(
+
+  // TURN CHECKPOINTS — keep git HEAD equal to "the state before this turn", so the
+  // Flow's A→B diff always has a baseline. Pre-turn: sweep any manual edits into a
+  // checkpoint. Post-turn: checkpoint what the agent changed (skipped in plan mode —
+  // read-only). No-ops on a clean tree.
+  if (params.mode !== 'plan') checkpointWorkspace(workspace, `baseline before "${params.prompt.slice(0, 48)}"`)
+
+  const result = await backend.run(
     {
       workspace,
       prompt: params.prompt,
@@ -45,8 +54,12 @@ export async function runAgent(
       watch: params.watch,
       model: params.model,
       mode: params.mode,
-      budget: params.budget
+      budget: params.budget,
+      flowAuto: params.flowAuto
     },
     emit
   )
+
+  if (params.mode !== 'plan') checkpointWorkspace(workspace, params.prompt.slice(0, 60))
+  return result
 }

@@ -82,7 +82,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     // Re-observe the watched entrypoint as the agent mutates code. Serialized: one
     // observation at a time; a trailing run catches anything that changed meanwhile.
     const maybeSurface = async (): Promise<void> => {
-      if (surfacing) return
+      if (surfacing || turn.flowAuto === false) return
       surfacing = true
       while (mutatedSinceSurface) {
         mutatedSinceSurface = false

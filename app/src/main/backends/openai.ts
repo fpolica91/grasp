@@ -163,7 +163,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       if ((name === 'write_file' || name === 'run_bash') && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
     }
 
-    await liveSurface(workspace, mutated, emit)
+    if (turn.flowAuto !== false) await liveSurface(workspace, mutated, emit)
   }
   emit({ type: 'done', note: 'reached step limit' })
   return { messages }

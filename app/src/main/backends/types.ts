@@ -12,6 +12,7 @@ export interface BackendTurn {
   model?: string // model id within the backend; backend default when absent
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each mutating tool; plan: read-only + propose
   budget?: number // per-turn token ceiling; loop stops when the turn's usage exceeds it
+  flowAuto?: boolean // false = don't auto re-observe after edits (Flow runs on demand)
 }
 
 export interface AgentBackend {

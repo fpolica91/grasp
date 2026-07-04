@@ -30,6 +30,26 @@ export function App(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
   const [varying, setVarying] = useState(false)
+  // Flow auto-refresh: on = re-observe after every agent edit; off = run on demand via the CTA.
+  const [flowAuto, setFlowAuto] = useState<boolean>(() => localStorage.getItem('grasp-flow-auto') !== 'off')
+  const [flowNote, setFlowNote] = useState<string | null>(null)
+  const [flowRunning, setFlowRunning] = useState(false)
+
+  function toggleFlowAuto(): void {
+    setFlowAuto((a) => {
+      localStorage.setItem('grasp-flow-auto', a ? 'off' : 'on')
+      return !a
+    })
+  }
+
+  async function runFlowNow(): Promise<void> {
+    if (flowRunning) return
+    setFlowNote(null)
+    setFlowRunning(true)
+    const r = await window.grasp.flowNow(workspace)
+    setFlowRunning(false)
+    if (!r.ok) setFlowNote(r.error ?? 'could not run the flow')
+  }
   const [fuzzReal] = useState(false) // false = walled (network denied); toggled in the fuzz view
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('grasp-theme') as Theme) || 'graphite')
   const [backends, setBackends] = useState<BackendInfo[]>([])
@@ -141,7 +161,8 @@ export function App(): React.JSX.Element {
         prompt: w.steps[i].prompt,
         history: w.history,
         backend: w.backend,
-        model: w.model
+        model: w.model,
+        flowAuto
       })
       setBusy(false)
       w.history = res.messages
@@ -314,7 +335,8 @@ export function App(): React.JSX.Element {
       backend,
       model,
       mode: modeOverride ?? agentMode,
-      budget: Number.isFinite(b) && b > 0 ? b : undefined
+      budget: Number.isFinite(b) && b > 0 ? b : undefined,
+      flowAuto
     })
     history.current = res.messages
   }
@@ -468,6 +490,24 @@ export function App(): React.JSX.Element {
                   <BrowserPane active={rightTab === 'browser'} />
                 </div>
                 <div className={`pane flow-pane${rightTab === 'flow' ? ' on' : ''}`}>
+                  <div className="flow-controls">
+                    <button
+                      className={`flow-auto${flowAuto ? ' on' : ''}`}
+                      onClick={toggleFlowAuto}
+                      title={
+                        flowAuto
+                          ? 'Auto: the Flow re-observes after every agent edit. Click to switch to on-demand.'
+                          : 'On demand: the Flow only runs when you click Run flow. Click to switch to auto.'
+                      }
+                    >
+                      <span className="fa-dot" />
+                      auto
+                    </button>
+                    <button className="btn sm flow-run" disabled={flowRunning} onClick={() => void runFlowNow()}>
+                      {flowRunning ? 'observing…' : '▶ Run flow'}
+                    </button>
+                  </div>
+                  {flowNote && <div className="flow-note">{flowNote}</div>}
                   {surface?.kind === 'diff' ? (
                     <DataflowDiff diff={surface.diff} />
                   ) : surface?.kind === 'fuzz' ? (
@@ -477,10 +517,10 @@ export function App(): React.JSX.Element {
                   ) : (
                     <div className="inst-empty">
                       This is where grasp shows the <b>observed dataflow</b> — the real values a function binds and
-                      the paths it takes, re-observed after every edit. It fills in as soon as the agent runs a
-                      function through grasp (any language). Code with no callable entrypoint yet — a pure UI handler,
-                      a not-yet-wired module — stays blank here until there's something to run. It ends in a question,
-                      never a verdict.
+                      the paths it takes{flowAuto ? ', re-observed after every edit' : ''}. It fills in as soon as
+                      the agent runs a function through grasp (any language){flowAuto ? '' : ' — or when you click Run flow'}.
+                      Code with no callable entrypoint yet — a pure UI handler, a not-yet-wired module — stays blank
+                      here until there&rsquo;s something to run. It ends in a question, never a verdict.
                     </div>
                   )}
                 </div>

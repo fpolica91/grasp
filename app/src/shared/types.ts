@@ -186,6 +186,7 @@ export interface AgentTurn {
   model?: string // model id within the backend
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each edit; plan: read-only, propose first
   budget?: number // optional per-turn token ceiling; the loop stops honestly when reached
+  flowAuto?: boolean // false = Flow doesn't auto re-observe after edits; use flowNow() on demand
 }
 
 export interface BackendInfo {
@@ -243,6 +244,7 @@ export interface GraspApi {
   saveSession(rec: SessionRecord): Promise<void>
   deleteSession(id: string): Promise<void>
   approve(id: string, ok: boolean): Promise<void>
+  flowNow(workspace: string): Promise<{ ok: boolean; error?: string }>
   workflows(): Promise<WorkflowRecord[]>
   saveWorkflow(rec: WorkflowRecord): Promise<void>
   deleteWorkflow(id: string): Promise<void>

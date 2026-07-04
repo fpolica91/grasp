@@ -292,6 +292,20 @@ export function rememberWatch(workspace: string, entrypoint: string, input?: str
   if (entrypoint) lastWatch.set(workspace, { entrypoint, input, language })
 }
 
+// On-demand Flow (the call-to-action when auto is off, or a manual refresh any time):
+// re-observe the remembered entrypoint right now. Honest when there's nothing to run.
+export async function flowNow(workspace: string, emit: Emit): Promise<{ ok: boolean; error?: string }> {
+  const w = lastWatch.get(workspace)
+  if (!w?.entrypoint) {
+    return {
+      ok: false,
+      error: 'Nothing observed yet in this project — ask the agent to run or observe a function first.'
+    }
+  }
+  await liveSurface(workspace, true, emit)
+  return { ok: true }
+}
+
 export async function liveSurface(workspace: string, mutated: boolean, emit: Emit): Promise<void> {
   const w = lastWatch.get(workspace)
   if (!mutated || !w?.entrypoint) return

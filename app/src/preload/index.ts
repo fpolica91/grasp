@@ -19,6 +19,7 @@ const api: GraspApi = {
   saveSession: (rec: SessionRecord) => ipcRenderer.invoke('grasp:saveSession', rec),
   deleteSession: (id: string) => ipcRenderer.invoke('grasp:deleteSession', id),
   approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok),
+  flowNow: (workspace: string) => ipcRenderer.invoke('grasp:flowNow', workspace),
   workflows: () => ipcRenderer.invoke('grasp:workflows'),
   saveWorkflow: (rec: WorkflowRecord) => ipcRenderer.invoke('grasp:saveWorkflow', rec),
   deleteWorkflow: (id: string) => ipcRenderer.invoke('grasp:deleteWorkflow', id),
