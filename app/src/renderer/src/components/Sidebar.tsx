@@ -33,6 +33,7 @@ export function Sidebar(props: {
   onSelectSession: (id: string) => void
   onDeleteSession: (id: string) => void
   onNewWorkflow: () => void
+  onSettings: () => void
   theme: Theme
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
@@ -86,7 +87,9 @@ export function Sidebar(props: {
 
       <div className="side-foot">
         <div className="theme-row">
-          <span className="tlabel">Theme</span>
+          <button className="side-gear" onClick={props.onSettings} title="Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
           {THEMES.map((t) => (
             <button
               key={t.id}

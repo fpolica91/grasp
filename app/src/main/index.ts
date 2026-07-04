@@ -53,8 +53,8 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:observe', (_e, params: ObserveParams) => observe(params))
   ipcMain.handle('grasp:fuzz', (_e, params: FuzzParams) => fuzz(params))
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
-  ipcMain.handle('grasp:keyStatus', () => hasKey())
-  ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
+  ipcMain.handle('grasp:keyStatus', (_e, provider?: string) => hasKey(provider))
+  ipcMain.handle('grasp:setKey', (_e, key: string, provider?: string) => setKey(key, provider))
   ipcMain.handle('grasp:defaultWorkspace', () => {
     const w = defaultWorkspace()
     rememberProject(w)

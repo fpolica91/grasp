@@ -10,6 +10,7 @@ import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
+import { Settings } from './components/Settings'
 import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
@@ -99,7 +100,11 @@ export function App(): React.JSX.Element {
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([])
   const [activeWf, setActiveWf] = useState<WorkflowRecord | null>(null)
   const [showWfModal, setShowWfModal] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const history = useRef<unknown[]>([])
+  const refreshBackends = (): void => {
+    void window.grasp.backends().then(setBackends)
+  }
 
   // Load persisted workflows; surface the most recent unfinished one so it can resume.
   useEffect(() => {
@@ -337,6 +342,9 @@ export function App(): React.JSX.Element {
     <div className="app">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
+      {showSettings && (
+        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} onClose={() => setShowSettings(false)} />
+      )}
 
       {sidebarOpen && (
         <Sidebar
@@ -348,6 +356,7 @@ export function App(): React.JSX.Element {
           onSelectSession={loadSession}
           onDeleteSession={deleteSessionById}
           onNewWorkflow={() => setShowWfModal(true)}
+          onSettings={() => setShowSettings(true)}
           theme={theme}
           onTheme={setTheme}
         />

@@ -233,8 +233,8 @@ export interface GraspApi {
   fuzz(params: FuzzParams): Promise<FuzzResult>
   agent(turn: AgentTurn): Promise<{ messages: unknown[] }>
   onAgentEvent(cb: (e: AgentEvent) => void): () => void
-  keyStatus(): Promise<boolean>
-  setKey(key: string): Promise<{ ok: boolean; error?: string; warning?: string }>
+  keyStatus(provider?: string): Promise<boolean>
+  setKey(key: string, provider?: string): Promise<{ ok: boolean; error?: string; warning?: string }>
   defaultWorkspace(): Promise<string>
   backends(): Promise<BackendInfo[]>
   sessions(): Promise<SessionRecord[]>

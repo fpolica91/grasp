@@ -359,10 +359,12 @@ input, textarea { font-family: inherit; }
 .gate .brand { padding: 0 0 4px; }
 .gate h2 { margin: 12px 0 6px; font-size: 19px; }
 .gate p { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
-.gate input { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px; margin-bottom: 12px; }
-.gate input:focus { outline: none; border-color: var(--accent); }
-.gate button { width: 100%; padding: 11px; border-radius: 9px; background: var(--accent); border: 0; color: var(--on-accent); font-weight: 600; font-size: 13.5px; box-shadow: var(--sh-1); transition: filter .12s; }
-.gate button:hover { filter: brightness(1.07); }
+/* KeyGate's own field + button — DIRECT children only, so modals reusing .gate
+   (Settings, Workflow) don't inherit the full-width blue button/input. */
+.gate > input { width: 100%; font-family: var(--mono); font-size: 13px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px; margin-bottom: 12px; }
+.gate > input:focus { outline: none; border-color: var(--accent); }
+.gate > button { width: 100%; padding: 11px; border-radius: 9px; background: var(--accent); border: 0; color: var(--on-accent); font-weight: 600; font-size: 13.5px; box-shadow: var(--sh-1); transition: filter .12s; }
+.gate > button:hover { filter: brightness(1.07); }
 .gate-error { margin-top: 10px; color: var(--question); font-family: var(--mono); font-size: 12px; }
 
 /* ── depth, indicators, theme switcher (product polish) ───── */
@@ -522,6 +524,30 @@ input, textarea { font-family: inherit; }
 
 /* theme switcher — three schemes, in the sidebar foot */
 .theme-row { -webkit-app-region: no-drag; display: flex; align-items: center; gap: 6px; padding: 2px 2px 0; }
+.side-gear { margin-right: auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 7px; background: transparent; border: 0; color: var(--muted); }
+.side-gear:hover { color: var(--ink); background: var(--surface-2); }
+/* settings modal */
+.settings { width: 480px; }
+.set-head { display: flex; align-items: center; margin-bottom: 6px; }
+.set-head h2 { margin: 0; font-size: 18px; }
+.set-head .head-icon { margin-left: auto; }
+.set-section { margin-top: 20px; }
+.set-note { margin: 6px 0 12px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.set-key { margin-bottom: 14px; }
+.set-key-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.set-key-label { font-size: 13px; font-weight: 550; }
+.set-key-dot { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 20px; padding: 1px 8px; }
+.set-key-dot.on { color: var(--accent); border-color: var(--accent-hair); }
+.set-key-row { display: flex; gap: 8px; }
+.set-key-row input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 8px; padding: 8px 11px; }
+.set-key-row input:focus { outline: none; border-color: var(--accent-hair); }
+.set-key-hint { margin-top: 5px; font-size: 11.5px; color: var(--faint); }
+.set-key-msg { color: var(--accent); }
+.set-themes { display: flex; gap: 8px; margin-top: 8px; }
+.set-theme { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 9px; border: 1px solid var(--hair); background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
+.set-theme:hover { color: var(--ink); }
+.set-theme.on { border-color: var(--accent); color: var(--ink); }
+.set-theme .theme-dot { width: 14px; height: 14px; }
 .theme-row .tlabel { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-right: auto; font-weight: 600; }
 .theme-dot { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--hair); padding: 0; position: relative; transition: transform .1s, border-color .12s; }
 .theme-dot:hover { transform: scale(1.12); }

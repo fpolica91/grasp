@@ -11,8 +11,8 @@ const api: GraspApi = {
     ipcRenderer.on('agent:event', listener)
     return () => ipcRenderer.removeListener('agent:event', listener)
   },
-  keyStatus: () => ipcRenderer.invoke('grasp:keyStatus'),
-  setKey: (key: string) => ipcRenderer.invoke('grasp:setKey', key),
+  keyStatus: (provider?: string) => ipcRenderer.invoke('grasp:keyStatus', provider),
+  setKey: (key: string, provider?: string) => ipcRenderer.invoke('grasp:setKey', key, provider),
   defaultWorkspace: () => ipcRenderer.invoke('grasp:defaultWorkspace'),
   backends: () => ipcRenderer.invoke('grasp:backends'),
   sessions: () => ipcRenderer.invoke('grasp:sessions'),
