@@ -2,16 +2,86 @@
 // tests, dev servers, or `claude` here and read errors without leaving grasp. Mounted
 // once and kept alive (shown/hidden by the pane switch), so long-running processes
 // survive tab changes.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 
-export function TerminalPane({ workspace, active }: { workspace: string; active: boolean }): React.JSX.Element {
+// A dock of one or more terminals, split side-by-side (VSCode: "split terminal" adds one
+// to the right). "+" adds a split; each split closes independently; last one stays.
+export function TerminalDock({
+  workspace,
+  active,
+  onCloseDock
+}: {
+  workspace: string
+  active: boolean
+  onCloseDock: () => void
+}): React.JSX.Element {
+  const nextId = useRef(1)
+  const [terms, setTerms] = useState<string[]>(['term-0'])
+  const split = (): void => setTerms((t) => [...t, `term-${nextId.current++}`])
+  const closeTerm = (id: string): void => setTerms((t) => (t.length > 1 ? t.filter((x) => x !== id) : t))
+  return (
+    <div className="term-dock">
+      <div className="panebar">
+        <button className="on">Terminal</button>
+        <button className="term-split" onClick={split} title="Split terminal">
+          ＋
+        </button>
+        <button className="dock-toggle" onClick={onCloseDock} title="Hide terminal (⌃`)">
+          ✕
+        </button>
+      </div>
+      <div className="term-splits">
+        <PanelGroup direction="horizontal" autoSaveId="grasp-terms">
+          {terms.map((id, i) => (
+            <PanelFragment key={id} id={id} first={i === 0} multi={terms.length > 1}>
+              <TerminalPane id={id} workspace={workspace} active={active} onClose={() => closeTerm(id)} />
+            </PanelFragment>
+          ))}
+        </PanelGroup>
+      </div>
+    </div>
+  )
+}
+
+function PanelFragment({
+  id,
+  first,
+  multi,
+  children
+}: {
+  id: string
+  first: boolean
+  multi: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <>
+      {!first && <PanelResizeHandle className="rh rh-v" />}
+      <Panel minSize={15} className={`term-split-panel${multi ? ' multi' : ''}`} id={id} order={first ? 0 : 1}>
+        {children}
+      </Panel>
+    </>
+  )
+}
+
+export function TerminalPane({
+  id,
+  workspace,
+  active,
+  onClose
+}: {
+  id: string
+  workspace: string
+  active: boolean
+  onClose?: () => void
+}): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
-  const id = useRef<string>('main-' + Math.floor(performance.now())).current
 
   useEffect(() => {
     const host = hostRef.current
@@ -85,5 +155,14 @@ export function TerminalPane({ workspace, active }: { workspace: string; active:
     return () => clearTimeout(t)
   }, [active, id])
 
-  return <div className="term-host" ref={hostRef} />
+  return (
+    <div className="term-wrap">
+      {onClose && (
+        <button className="term-close" onClick={onClose} title="Close this terminal">
+          ✕
+        </button>
+      )}
+      <div className="term-host" ref={hostRef} />
+    </div>
+  )
 }

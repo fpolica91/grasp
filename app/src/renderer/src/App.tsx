@@ -10,7 +10,7 @@ import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
-import { TerminalPane } from './components/Terminal'
+import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
@@ -36,9 +36,20 @@ export function App(): React.JSX.Element {
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'browser'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
+  // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
+  const pickRight = (tab: 'editor' | 'flow' | 'browser'): void => {
+    const p = rightRef.current
+    if (!p) return
+    if (!p.isCollapsed() && rightTab === tab) p.collapse()
+    else {
+      p.expand()
+      setRightTab(tab)
+    }
+  }
   const toggleBottom = (): void => {
     const p = bottomRef.current
     if (!p) return
@@ -54,18 +65,25 @@ export function App(): React.JSX.Element {
     if (surface) setRightTab('flow')
   }, [surface])
 
-  // Keyboard shortcuts (Cmd/Ctrl): N new session · J toggle terminal · B sidebar · \ right pane.
+  // Keyboard shortcuts (Cmd/Ctrl): N new session · ` or ~ toggle terminal · B sidebar
+  // (left) · L side pane (right). Registered in the CAPTURE phase so they win even when
+  // xterm (which swallows keys) has focus.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (!(e.metaKey || e.ctrlKey)) return
       const k = e.key.toLowerCase()
-      if (k === 'n') { e.preventDefault(); newSession() }
-      else if (k === 'j') { e.preventDefault(); toggleBottom() }
-      else if (k === 'b') { e.preventDefault(); setSidebarOpen((s) => !s) }
-      else if (k === '\\') { e.preventDefault(); toggleRight() }
+      const fire = (fn: () => void): void => {
+        e.preventDefault()
+        e.stopPropagation()
+        fn()
+      }
+      if (k === 'n') fire(newSession)
+      else if (e.key === '`' || e.key === '~' || k === 'j') fire(toggleBottom)
+      else if (k === 'b') fire(() => setSidebarOpen((s) => !s))
+      else if (k === 'l') fire(toggleRight)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [tokens, setTokens] = useState(0)
@@ -362,7 +380,16 @@ export function App(): React.JSX.Element {
             </Panel>
             <PanelResizeHandle className="rh rh-v" />
             {/* editor / flow / browser — the tall side pane */}
-            <Panel ref={rightRef} defaultSize={46} minSize={22} collapsible collapsedSize={0} className="col right-col">
+            <Panel
+              ref={rightRef}
+              defaultSize={46}
+              minSize={22}
+              collapsible
+              collapsedSize={0}
+              onCollapse={() => setRightCollapsed(true)}
+              onExpand={() => setRightCollapsed(false)}
+              className="col right-col"
+            >
               <div className="panebar">
                 <button className={rightTab === 'editor' ? 'on' : ''} onClick={() => setRightTab('editor')}>
                   Editor
@@ -421,19 +448,29 @@ export function App(): React.JSX.Element {
           onExpand={() => setBottomCollapsed(false)}
           className="bottom-dock"
         >
-          <div className="panebar">
-            <button className="on">Terminal</button>
-            <button className="dock-toggle" onClick={toggleBottom} title="Hide terminal (⌘J)">
-              ✕
-            </button>
-          </div>
-          <div className="pane-body">
-            <div className="pane on">
-              <TerminalPane workspace={workspace} active={!bottomCollapsed} />
-            </div>
-          </div>
+          <TerminalDock workspace={workspace} active={!bottomCollapsed} onCloseDock={toggleBottom} />
         </Panel>
       </PanelGroup>
+
+      {/* activity rail — VSCode-style; reopens the side pane on click */}
+      <div className="activity-rail">
+        {(['editor', 'flow', 'browser'] as const).map((t) => (
+          <button
+            key={t}
+            className={`act-btn${!rightCollapsed && rightTab === t ? ' on' : ''}`}
+            onClick={() => pickRight(t)}
+            title={t[0].toUpperCase() + t.slice(1)}
+          >
+            {t === 'editor' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 3v18M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
+            ) : t === 'flow' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" strokeWidth="1.5" /></svg>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

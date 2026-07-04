@@ -421,8 +421,25 @@ input, textarea { font-family: inherit; }
 .cm-host .cm-mergeView, .cm-host .cm-merge-a, .cm-host .cm-merge-b { height: 100%; }
 .files-empty { position: absolute; inset: auto; padding: 40px; color: var(--faint); font-size: 13px; }
 
+/* activity rail — far-right, always visible; reopens the side pane */
+.activity-rail { flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--surface); border-left: 1px solid var(--hair-soft); }
+.act-btn { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: transparent; border: 0; color: var(--faint); }
+.act-btn:hover { color: var(--muted); background: var(--surface-2); }
+.act-btn.on { color: var(--accent); background: var(--accent-bg); }
+
 /* integrated terminal */
-.term-host { flex: 1; min-height: 0; width: 100%; padding: 8px 6px 8px 12px; background: var(--ground); overflow: hidden; }
+.term-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.term-dock .panebar { -webkit-app-region: no-drag; }
+.term-split { color: var(--faint); font-size: 14px; padding: 2px 8px; background: transparent; border: 0; border-radius: 5px; }
+.term-split:hover { color: var(--ink); background: var(--surface-3); }
+.term-splits { flex: 1; min-height: 0; }
+.term-split-panel { min-width: 0; }
+.term-split-panel.multi { border-right: 1px solid var(--hair-soft); }
+.term-wrap { position: relative; height: 100%; min-height: 0; }
+.term-close { position: absolute; top: 4px; right: 8px; z-index: 2; background: var(--surface-2); border: 1px solid var(--hair); color: var(--faint); font-size: 10px; padding: 1px 6px; border-radius: 5px; opacity: 0; transition: opacity .12s; }
+.term-wrap:hover .term-close { opacity: 1; }
+.term-close:hover { color: var(--ink); }
+.term-host { flex: 1; min-height: 0; height: 100%; width: 100%; padding: 8px 6px 8px 12px; background: var(--ground); overflow: hidden; }
 .term-host .xterm { height: 100%; }
 .term-host .xterm-viewport { background: transparent !important; }
 
