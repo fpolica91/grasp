@@ -7,6 +7,7 @@ import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
+import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
 
 function createWindow(): void {
@@ -45,6 +46,10 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:workflows', () => listWorkflows())
   ipcMain.handle('grasp:saveWorkflow', (_e, rec: WorkflowRecord) => saveWorkflow(rec))
   ipcMain.handle('grasp:deleteWorkflow', (_e, id: string) => deleteWorkflow(id))
+  ipcMain.on('terminal:create', (e, { id, cwd, cols, rows }) => createTerminal(e.sender, id, cwd, cols, rows))
+  ipcMain.on('terminal:write', (_e, { id, data }) => writeTerminal(id, data))
+  ipcMain.on('terminal:resize', (_e, { id, cols, rows }) => resizeTerminal(id, cols, rows))
+  ipcMain.on('terminal:kill', (_e, { id }) => killTerminal(id))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -257,7 +257,8 @@ export function Conversation(props: {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              // Enter sends; Shift+Enter (or Cmd/Ctrl+Enter) inserts a newline.
+              if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault()
                 submit()
               }
@@ -288,7 +289,7 @@ export function Conversation(props: {
                 Plan
               </button>
             </span>
-            <button className="send" onClick={submit} disabled={props.busy} title="Send (Cmd/Ctrl+Enter)">
+            <button className="send" onClick={submit} disabled={props.busy} title="Send (Enter · Shift+Enter for newline)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           </div>

@@ -21,7 +21,22 @@ const api: GraspApi = {
   approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok),
   workflows: () => ipcRenderer.invoke('grasp:workflows'),
   saveWorkflow: (rec: WorkflowRecord) => ipcRenderer.invoke('grasp:saveWorkflow', rec),
-  deleteWorkflow: (id: string) => ipcRenderer.invoke('grasp:deleteWorkflow', id)
+  deleteWorkflow: (id: string) => ipcRenderer.invoke('grasp:deleteWorkflow', id),
+  termCreate: (id: string, cwd: string, cols: number, rows: number) =>
+    ipcRenderer.send('terminal:create', { id, cwd, cols, rows }),
+  termWrite: (id: string, data: string) => ipcRenderer.send('terminal:write', { id, data }),
+  termResize: (id: string, cols: number, rows: number) => ipcRenderer.send('terminal:resize', { id, cols, rows }),
+  termKill: (id: string) => ipcRenderer.send('terminal:kill', { id }),
+  onTermData: (cb: (id: string, data: string) => void) => {
+    const l = (_e: unknown, m: { id: string; data: string }): void => cb(m.id, m.data)
+    ipcRenderer.on('terminal:data', l)
+    return () => ipcRenderer.removeListener('terminal:data', l)
+  },
+  onTermExit: (cb: (id: string, exitCode: number) => void) => {
+    const l = (_e: unknown, m: { id: string; exitCode: number }): void => cb(m.id, m.exitCode)
+    ipcRenderer.on('terminal:exit', l)
+    return () => ipcRenderer.removeListener('terminal:exit', l)
+  }
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

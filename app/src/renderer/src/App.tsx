@@ -9,6 +9,7 @@ import { DataflowDiff } from './components/DataflowDiff'
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
+import { TerminalPane } from './components/Terminal'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
 
 type Surface =
@@ -32,6 +33,7 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
+  const [pane, setPane] = useState<'chat' | 'terminal'>('chat')
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -286,29 +288,46 @@ export function App(): React.JSX.Element {
         onTheme={setTheme}
       />
 
-      <Conversation
-        transcript={transcript}
-        busy={busy}
-        error={error}
-        backends={backends}
-        backend={backend}
-        model={model}
-        mode={agentMode}
-        tokens={tokens}
-        budget={budget}
-        onBudget={setBudget}
-        onBackend={pickBackend}
-        onModel={setModel}
-        onMode={setAgentMode}
-        onApprovePlan={approvePlan}
-        onDecideApproval={decideApproval}
-        onSend={send}
-        banner={
-          activeWf ? (
-            <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
-          ) : null
-        }
-      />
+      <div className="center">
+        <div className="panebar">
+          <button className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>
+            Chat
+          </button>
+          <button className={pane === 'terminal' ? 'on' : ''} onClick={() => setPane('terminal')}>
+            Terminal
+          </button>
+        </div>
+        <div className="pane-stack">
+          <div className={`pane${pane === 'chat' ? ' on' : ''}`}>
+            <Conversation
+              transcript={transcript}
+              busy={busy}
+              error={error}
+              backends={backends}
+              backend={backend}
+              model={model}
+              mode={agentMode}
+              tokens={tokens}
+              budget={budget}
+              onBudget={setBudget}
+              onBackend={pickBackend}
+              onModel={setModel}
+              onMode={setAgentMode}
+              onApprovePlan={approvePlan}
+              onDecideApproval={decideApproval}
+              onSend={send}
+              banner={
+                activeWf ? (
+                  <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
+                ) : null
+              }
+            />
+          </div>
+          <div className={`pane${pane === 'terminal' ? ' on' : ''}`}>
+            <TerminalPane workspace={workspace} active={pane === 'terminal'} />
+          </div>
+        </div>
+      </div>
 
       <aside className="instrument">
         <div className="inst-head">

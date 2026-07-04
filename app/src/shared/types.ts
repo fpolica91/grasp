@@ -244,4 +244,10 @@ export interface GraspApi {
   workflows(): Promise<WorkflowRecord[]>
   saveWorkflow(rec: WorkflowRecord): Promise<void>
   deleteWorkflow(id: string): Promise<void>
+  termCreate(id: string, cwd: string, cols: number, rows: number): void
+  termWrite(id: string, data: string): void
+  termResize(id: string, cols: number, rows: number): void
+  termKill(id: string): void
+  onTermData(cb: (id: string, data: string) => void): () => void
+  onTermExit(cb: (id: string, exitCode: number) => void): () => void
 }
