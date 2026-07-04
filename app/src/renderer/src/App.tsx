@@ -11,6 +11,7 @@ import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { Settings } from './components/Settings'
+import { CommandPalette, type Command } from './components/CommandPalette'
 import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
@@ -79,6 +80,7 @@ export function App(): React.JSX.Element {
         fn()
       }
       if (k === 'n') fire(newSession)
+      else if (k === 'k') fire(() => setShowPalette((p) => !p))
       else if (e.key === '`' || e.key === '~' || k === 'j') fire(toggleBottom)
       else if (k === 'b') fire(() => setSidebarOpen((s) => !s))
       else if (k === 'l') fire(toggleRight)
@@ -101,6 +103,7 @@ export function App(): React.JSX.Element {
   const [activeWf, setActiveWf] = useState<WorkflowRecord | null>(null)
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showPalette, setShowPalette] = useState(false)
   const history = useRef<unknown[]>([])
   const refreshBackends = (): void => {
     void window.grasp.backends().then(setBackends)
@@ -345,6 +348,23 @@ export function App(): React.JSX.Element {
       {showSettings && (
         <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} onClose={() => setShowSettings(false)} />
       )}
+      {showPalette && (
+        <CommandPalette
+          onClose={() => setShowPalette(false)}
+          items={[
+            { id: 'new-session', group: 'Command', label: 'New session', hint: '⌘N', run: newSession },
+            { id: 'new-workflow', group: 'Command', label: 'New workflow', run: () => setShowWfModal(true) },
+            { id: 'open-folder', group: 'Command', label: 'Open folder…', run: () => void window.grasp.openFolder().then((p) => p && switchProject(p)) },
+            { id: 'settings', group: 'Command', label: 'Settings', run: () => setShowSettings(true) },
+            { id: 'view-terminal', group: 'View', label: 'Toggle terminal', hint: '⌃`', run: toggleBottom },
+            { id: 'view-sidebar', group: 'View', label: 'Toggle sidebar', hint: '⌘B', run: () => setSidebarOpen((s) => !s) },
+            { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
+            ...sessions.map(
+              (s): Command => ({ id: 'sess-' + s.id, group: 'Session', label: s.title, run: () => loadSession(s.id) })
+            )
+          ]}
+        />
+      )}
 
       {sidebarOpen && (
         <Sidebar
@@ -355,6 +375,7 @@ export function App(): React.JSX.Element {
           activeSession={sessionId}
           onSelectSession={loadSession}
           onDeleteSession={deleteSessionById}
+          onSearch={() => setShowPalette(true)}
           onNewWorkflow={() => setShowWfModal(true)}
           onSettings={() => setShowSettings(true)}
           theme={theme}

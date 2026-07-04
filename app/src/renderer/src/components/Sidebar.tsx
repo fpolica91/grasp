@@ -32,6 +32,7 @@ export function Sidebar(props: {
   activeSession: string
   onSelectSession: (id: string) => void
   onDeleteSession: (id: string) => void
+  onSearch: () => void
   onNewWorkflow: () => void
   onSettings: () => void
   theme: Theme
@@ -50,7 +51,7 @@ export function Sidebar(props: {
         New session
         <span className="k">⌘N</span>
       </button>
-      <button className="side-btn">
+      <button className="side-btn" onClick={props.onSearch}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         Search
         <span className="k">⌘K</span>
