@@ -30,6 +30,7 @@ export function App(): React.JSX.Element {
   const [backends, setBackends] = useState<BackendInfo[]>([])
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
+  const [agentMode, setAgentMode] = useState<'auto' | 'plan'>('auto')
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const history = useRef<unknown[]>([])
@@ -143,6 +144,7 @@ export function App(): React.JSX.Element {
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
+      else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'done') setBusy(false)
       else if (e.type === 'error') {
         setError(e.error)
@@ -151,14 +153,28 @@ export function App(): React.JSX.Element {
     })
   }, [])
 
-  async function send(prompt: string): Promise<void> {
+  async function send(prompt: string, modeOverride?: 'auto' | 'plan'): Promise<void> {
     if (busy) return
     setError(null)
     setBusy(true)
     setTranscript((t) => [...t, { role: 'user', text: prompt }])
     const watch = watchEp.trim() ? { entrypoint: watchEp.trim(), input: watchInput.trim() || undefined } : undefined
-    const res = await window.grasp.agent({ workspace, prompt, history: history.current, watch, backend, model })
+    const res = await window.grasp.agent({
+      workspace,
+      prompt,
+      history: history.current,
+      watch,
+      backend,
+      model,
+      mode: modeOverride ?? agentMode
+    })
     history.current = res.messages
+  }
+
+  // Approving a plan executes it as a normal (build) turn — the plan text becomes the brief.
+  function approvePlan(text: string): void {
+    setAgentMode('auto')
+    void send(`Execute this approved plan exactly as written. Do not re-plan.\n\n${text}`, 'auto')
   }
 
   function newSession(): void {
@@ -191,8 +207,11 @@ export function App(): React.JSX.Element {
         backends={backends}
         backend={backend}
         model={model}
+        mode={agentMode}
         onBackend={pickBackend}
         onModel={setModel}
+        onMode={setAgentMode}
+        onApprovePlan={approvePlan}
         onSend={send}
       />
 

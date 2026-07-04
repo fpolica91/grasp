@@ -162,6 +162,7 @@ export type AgentEvent =
   | { type: 'dataflow'; graph: GraphModel }
   | { type: 'dataflow_diff'; diff: GraphDiffModel }
   | { type: 'fuzz'; report: FuzzReport }
+  | { type: 'plan'; text: string }
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
 
@@ -179,6 +180,7 @@ export interface AgentTurn {
   watch?: Watch
   backend?: string // backend id ('glm' | 'claude-code' | 'openai'); default glm
   model?: string // model id within the backend
+  mode?: 'auto' | 'plan' // plan: read-only, propose a plan for approval before any edit
 }
 
 export interface BackendInfo {

@@ -273,6 +273,22 @@ input, textarea { font-family: inherit; }
   @keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 }
 
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 15px; border-radius: 9px; font-size: 13px; font-weight: 550; border: 1px solid var(--hair); background: var(--surface-2); color: var(--ink); box-shadow: var(--sh-1); transition: filter .12s, transform .08s; }
+.btn:hover:not(:disabled) { filter: brightness(1.07); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--on-accent); }
+
+/* plan mode — propose, approve, execute */
+.mode-toggle { display: inline-flex; border: 1px solid var(--hair); border-radius: 20px; overflow: hidden; background: var(--surface-2); box-shadow: var(--sh-1); }
+.mode-toggle button { border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 4px 12px; }
+.mode-toggle button.on { background: var(--accent-bg); color: var(--accent); font-weight: 550; }
+.plan-card { align-self: stretch; background: var(--surface); border: 1px solid var(--accent-hair); border-left: 3px solid var(--accent); border-radius: 12px; padding: 15px 17px; box-shadow: var(--sh-1); }
+.plan-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.plan-badge { margin-left: auto; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-hair); border-radius: 20px; padding: 2px 9px; }
+.plan-actions { display: flex; align-items: center; gap: 12px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--hair-soft); }
+.plan-hint { font-size: 12px; color: var(--faint); }
+
 /* provider/model picker — a chip that is a control */
 .picker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); box-shadow: var(--sh-1); }
 .picker .g { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }

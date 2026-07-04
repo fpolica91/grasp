@@ -3,7 +3,7 @@
 // GLM's /api/coding/paas/v4 speaks this wire, which is how the seam is provable
 // without an OpenAI key. Same tools, same events, same live surfacing as GLM.
 import { getKey } from '../vault'
-import { SYSTEM, TOOLS, liveSurface } from './tools'
+import { PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
@@ -13,9 +13,14 @@ const MAX_STEPS = 16
 type ToolCall = { id: string; function: { name: string; arguments: string } }
 type Msg = { role: string; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
 
-async function callModel(model: string, messages: Msg[]): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string }> {
+async function callModel(
+  model: string,
+  messages: Msg[],
+  plan: boolean
+): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string }> {
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
+  const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS
   try {
     const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
@@ -23,8 +28,8 @@ async function callModel(model: string, messages: Msg[]): Promise<{ ok: boolean;
       body: JSON.stringify({
         model,
         max_tokens: 4096,
-        messages: [{ role: 'system', content: SYSTEM }, ...messages],
-        tools: TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
+        messages: [{ role: 'system', content: plan ? PLAN_SYSTEM : SYSTEM }, ...messages],
+        tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
       })
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
@@ -40,19 +45,27 @@ async function callModel(model: string, messages: Msg[]): Promise<{ ok: boolean;
 async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[] }> {
   const workspace = turn.workspace
   const model = turn.model || MODELS[0]
+  const plan = turn.mode === 'plan'
   const messages: Msg[] = [...(turn.history as Msg[]), { role: 'user', content: turn.prompt }]
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const r = await callModel(model, messages)
+    const r = await callModel(model, messages, plan)
     if (!r.ok || !r.msg) {
       emit({ type: 'error', error: r.error })
       return { messages }
     }
     messages.push(r.msg)
-    if (r.msg.content) emit({ type: 'text', text: r.msg.content })
-
     const calls = r.msg.tool_calls ?? []
-    if (r.finish !== 'tool_calls' || calls.length === 0) {
+    const terminal = r.finish !== 'tool_calls' || calls.length === 0
+
+    // In plan mode the final message is the proposal — a plan card, not a bubble.
+    if (plan && terminal) {
+      if (r.msg.content) emit({ type: 'plan', text: r.msg.content })
+      emit({ type: 'done' })
+      return { messages }
+    }
+    if (r.msg.content) emit({ type: 'text', text: r.msg.content })
+    if (terminal) {
       emit({ type: 'done' })
       return { messages }
     }

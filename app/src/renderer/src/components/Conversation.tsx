@@ -7,7 +7,7 @@ import type { BackendInfo } from '../../../shared/types'
 
 export interface TranscriptItem {
   id?: string
-  role: 'user' | 'assistant' | 'tool'
+  role: 'user' | 'assistant' | 'tool' | 'plan'
   text?: string
   name?: string
   input?: Record<string, unknown>
@@ -71,6 +71,29 @@ function ModelPicker(props: {
   )
 }
 
+// A proposed plan awaiting the human: approve executes it, revise focuses the composer.
+function PlanCard(props: { text: string; latest: boolean; busy: boolean; onApprove: (text: string) => void }): React.JSX.Element {
+  return (
+    <div className="plan-card">
+      <div className="plan-head">
+        <span className="eyebrow">proposed plan</span>
+        <span className="plan-badge">awaiting your approval</span>
+      </div>
+      <div className="prose">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{props.text}</ReactMarkdown>
+      </div>
+      {props.latest && (
+        <div className="plan-actions">
+          <button className="btn primary" disabled={props.busy} onClick={() => props.onApprove(props.text)}>
+            Approve &amp; execute
+          </button>
+          <span className="plan-hint">or reply below to revise the plan</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Conversation(props: {
   transcript: TranscriptItem[]
   busy: boolean
@@ -78,8 +101,11 @@ export function Conversation(props: {
   backends: BackendInfo[]
   backend: string
   model: string
+  mode: 'auto' | 'plan'
   onBackend: (id: string) => void
   onModel: (m: string) => void
+  onMode: (m: 'auto' | 'plan') => void
+  onApprovePlan: (text: string) => void
   onSend: (prompt: string) => void
 }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -121,7 +147,15 @@ export function Conversation(props: {
           </div>
         )}
         {props.transcript.map((it, i) =>
-          it.role === 'tool' ? (
+          it.role === 'plan' ? (
+            <PlanCard
+              key={i}
+              text={it.text ?? ''}
+              latest={i === props.transcript.length - 1}
+              busy={props.busy}
+              onApprove={props.onApprovePlan}
+            />
+          ) : it.role === 'tool' ? (
             <Tool key={it.id ?? i} it={it} />
           ) : it.role === 'user' ? (
             <div key={i} className="msg user">
@@ -169,6 +203,14 @@ export function Conversation(props: {
               onBackend={props.onBackend}
               onModel={props.onModel}
             />
+            <span className="mode-toggle" title="Build edits directly. Plan proposes first — nothing changes until you approve.">
+              <button className={props.mode === 'auto' ? 'on' : ''} onClick={() => props.onMode('auto')}>
+                Build
+              </button>
+              <button className={props.mode === 'plan' ? 'on' : ''} onClick={() => props.onMode('plan')}>
+                Plan
+              </button>
+            </span>
             <button className="send" onClick={submit} disabled={props.busy} title="Send (Cmd/Ctrl+Enter)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>

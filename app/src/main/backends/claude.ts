@@ -48,8 +48,13 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     (h): h is { __claude_session: string } =>
       !!h && typeof h === 'object' && '__claude_session' in (h as Record<string, unknown>)
   )
-  const args = ['-p', turn.prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions',
+  const plan = turn.mode === 'plan'
+  const args = ['-p', turn.prompt, '--output-format', 'stream-json', '--verbose',
     '--append-system-prompt', APPEND_SYSTEM]
+  // Plan mode uses Claude Code's own read-only planning permission mode; otherwise
+  // headless tool-use requires skipping the interactive permission prompts.
+  if (plan) args.push('--permission-mode', 'plan')
+  else args.push('--dangerously-skip-permissions')
   if (turn.model && turn.model !== 'default') args.push('--model', turn.model)
   if (prev) args.push('--resume', prev.__claude_session)
 
@@ -111,6 +116,8 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       } else if (ev.type === 'result') {
         sawResult = true
         if (ev.is_error) emit({ type: 'error', error: String(ev.result ?? 'claude exited with an error') })
+        // In plan mode Claude Code's result is the proposal — hand it to the human.
+        else if (plan && typeof ev.result === 'string' && ev.result) emit({ type: 'plan', text: ev.result })
       }
     }
 

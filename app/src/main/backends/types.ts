@@ -10,6 +10,7 @@ export interface BackendTurn {
   history: unknown[]
   watch?: { entrypoint: string; input?: string }
   model?: string // model id within the backend; backend default when absent
+  mode?: 'auto' | 'plan' // plan: read-only tools + propose a plan; no edits
 }
 
 export interface AgentBackend {

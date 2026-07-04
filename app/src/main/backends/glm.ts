@@ -2,7 +2,7 @@
 // (GLM natively speaks Anthropic Messages + tool_use — verified). Owned code,
 // no external agent binary.
 import { getKey } from '../vault'
-import { SYSTEM, TOOLS, liveSurface } from './tools'
+import { PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
@@ -13,10 +13,12 @@ type AnyBlock = { type: string; text?: string; id?: string; name?: string; input
 
 async function callModel(
   model: string,
-  messages: unknown[]
+  messages: unknown[],
+  plan: boolean
 ): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string }> {
   const KEY = getKey()
   if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
+  const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS
   try {
     const res = await fetch(`${BASE}/v1/messages`, {
       method: 'POST',
@@ -24,8 +26,8 @@ async function callModel(
       body: JSON.stringify({
         model,
         max_tokens: 4096,
-        system: SYSTEM,
-        tools: TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
+        system: plan ? PLAN_SYSTEM : SYSTEM,
+        tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
         messages
       })
     })
@@ -40,10 +42,11 @@ async function callModel(
 async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[] }> {
   const workspace = turn.workspace
   const model = turn.model || DEFAULT_MODEL
+  const plan = turn.mode === 'plan'
   const messages: unknown[] = [...turn.history, { role: 'user', content: turn.prompt }]
 
   for (let step = 0; step < MAX_STEPS; step++) {
-    const r = await callModel(model, messages)
+    const r = await callModel(model, messages, plan)
     if (!r.ok) {
       emit({ type: 'error', error: r.error })
       return { messages }
@@ -51,12 +54,21 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     const blocks = r.content ?? []
     messages.push({ role: 'assistant', content: blocks })
 
-    for (const b of blocks) {
-      if (b.type === 'text' && b.text) emit({ type: 'text', text: b.text })
+    const toolUses = blocks.filter((b) => b.type === 'tool_use')
+    const terminal = r.stop !== 'tool_use' || toolUses.length === 0
+    const textBlocks = blocks.filter((b) => b.type === 'text' && b.text)
+
+    // In plan mode the FINAL message is the proposal — render it as a plan card, not a
+    // duplicate chat bubble. Intermediate reasoning (accompanying tool calls) still shows.
+    if (plan && terminal) {
+      const planText = textBlocks.map((b) => b.text).join('\n\n')
+      emit(planText ? { type: 'plan', text: planText } : { type: 'text', text: '(no plan produced)' })
+      emit({ type: 'done' })
+      return { messages }
     }
 
-    const toolUses = blocks.filter((b) => b.type === 'tool_use')
-    if (r.stop !== 'tool_use' || toolUses.length === 0) {
+    for (const b of textBlocks) emit({ type: 'text', text: b.text })
+    if (terminal) {
       emit({ type: 'done' })
       return { messages }
     }

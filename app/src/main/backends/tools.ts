@@ -20,6 +20,16 @@ export const SYSTEM = [
   'question they give you; the human adjudicates. Never render a verdict.'
 ].join(' ')
 
+// PLAN MODE: inspect-only. The agent may read and observe, never mutate; its final
+// message is the proposed plan, which grasp holds for human approval before execution.
+export const PLAN_TOOL_NAMES = new Set(['read_file', 'list_dir', 'grasp_observe'])
+export const PLAN_SYSTEM =
+  SYSTEM +
+  ' PLAN MODE IS ACTIVE: you may only inspect (read_file, list_dir, grasp_observe). You cannot' +
+  ' edit files or run commands. Investigate, then end with a concrete step-by-step plan of the' +
+  ' exact changes you propose (files, edits, and how the change should be observed). The human' +
+  ' will approve the plan before anything is executed.'
+
 export interface Tool {
   name: string
   description: string
