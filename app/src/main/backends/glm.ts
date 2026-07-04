@@ -17,7 +17,7 @@ import { requestApproval } from '../approvals'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
-const DEFAULT_MODEL = process.env.GRASP_MODEL ?? 'glm-4.6'
+const DEFAULT_MODEL = process.env.GRASP_MODEL ?? 'glm-5.2'
 const MAX_STEPS = 16
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
@@ -176,7 +176,7 @@ export const glmBackend: AgentBackend = {
   label: 'GLM',
   // glm-5.2 / glm-5.1 are the premium (opus-tier) models; glm-4.6 stays the fast default.
   // Override the whole list with GRASP_GLM_MODELS if needed.
-  models: (process.env.GRASP_GLM_MODELS ?? 'glm-4.6,glm-5.2,glm-5.1,glm-4.5-air').split(',').map((s) => s.trim()).filter(Boolean),
+  models: (process.env.GRASP_GLM_MODELS ?? 'glm-5.2,glm-5.1,glm-4.6,glm-4.5-air').split(',').map((s) => s.trim()).filter(Boolean),
   available: () => (getKey() ? { ok: true } : { ok: false, reason: 'no GLM key in the vault' }),
   run
 }
