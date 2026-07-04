@@ -11,6 +11,7 @@ import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { TerminalPane } from './components/Terminal'
 import { FilesPane } from './components/Files'
+import { BrowserPane } from './components/Browser'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
 
 type Surface =
@@ -34,7 +35,7 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [pane, setPane] = useState<'chat' | 'files' | 'terminal'>('chat')
+  const [pane, setPane] = useState<'chat' | 'files' | 'terminal' | 'browser'>('chat')
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -300,6 +301,9 @@ export function App(): React.JSX.Element {
           <button className={pane === 'terminal' ? 'on' : ''} onClick={() => setPane('terminal')}>
             Terminal
           </button>
+          <button className={pane === 'browser' ? 'on' : ''} onClick={() => setPane('browser')}>
+            Browser
+          </button>
         </div>
         <div className="pane-stack">
           <div className={`pane${pane === 'chat' ? ' on' : ''}`}>
@@ -332,6 +336,9 @@ export function App(): React.JSX.Element {
           </div>
           <div className={`pane${pane === 'terminal' ? ' on' : ''}`}>
             <TerminalPane workspace={workspace} active={pane === 'terminal'} />
+          </div>
+          <div className={`pane${pane === 'browser' ? ' on' : ''}`}>
+            <BrowserPane active={pane === 'browser'} />
           </div>
         </div>
       </div>

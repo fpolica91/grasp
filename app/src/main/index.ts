@@ -21,7 +21,8 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webviewTag: true // the in-app browser pane (S4c)
     }
   })
 

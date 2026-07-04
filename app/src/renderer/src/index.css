@@ -319,6 +319,18 @@ input, textarea { font-family: inherit; }
 .approval-detail { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .approval-actions { display: flex; gap: 9px; margin-top: 13px; }
 
+/* in-app browser */
+.browser { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.browser-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--hair-soft); }
+.browser-bar .nav { width: 26px; height: 26px; flex: none; border-radius: 7px; border: 1px solid var(--hair); background: var(--surface-2); color: var(--muted); font-size: 15px; line-height: 1; }
+.browser-bar .nav:hover:not(:disabled) { color: var(--ink); border-color: var(--faint); }
+.browser-bar .nav:disabled { opacity: .4; }
+.browser-bar .url { flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 8px; padding: 6px 12px; color: var(--ink); font-family: var(--mono); font-size: 12px; }
+.browser-bar .url:focus { outline: none; border-color: var(--accent-hair); }
+.browser-status { flex: none; font-size: 11px; color: var(--faint); min-width: 52px; }
+.browser .wv { flex: 1; min-height: 0; border: 0; background: #fff; }
+.browser-empty { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--faint); font-size: 13px; text-align: center; max-width: 360px; }
+
 /* editor pane: file tree + CodeMirror */
 .files { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); }
 .files-tree { border-right: 1px solid var(--hair-soft); overflow-y: auto; padding: 10px 6px; min-height: 0; }
