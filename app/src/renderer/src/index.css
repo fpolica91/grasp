@@ -171,6 +171,10 @@ input, textarea { font-family: inherit; }
 .conv-head .chip { margin-left: 0; }
 
 .conv-log { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; }
+/* chat items must NEVER flex-shrink: children with overflow:hidden (tool blocks, cards)
+   have an automatic minimum size of 0, so an overfilled column CRUSHES them to their
+   borders (the "2px hairline blocks" bug). */
+.conv-log > * { flex-shrink: 0; }
 .conv-empty { margin: auto; max-width: 420px; text-align: center; }
 .conv-empty h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 10px; }
 .conv-empty p { color: var(--muted); font-size: 13.5px; line-height: 1.65; margin: 0; }
@@ -231,6 +235,7 @@ input, textarea { font-family: inherit; }
 .tb-body { padding: 0 10px 10px; }
 .tb-body .codeblock { margin: 4px 0 8px; }
 .tb-out { margin: 0; padding: 10px 12px; background: var(--ground); border: 1px solid var(--hair-soft); border-radius: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--muted); white-space: pre-wrap; word-break: break-word; max-height: 22em; overflow: auto; overscroll-behavior: contain; }
+.tb-noout { padding: 6px 2px 2px; color: var(--faint); font-size: 12px; font-style: italic; }
 /* visible scrollbars inside blocks (thin, unobtrusive) */
 .tb-out::-webkit-scrollbar, .cb-pre::-webkit-scrollbar { width: 8px; height: 8px; }
 .tb-out::-webkit-scrollbar-thumb, .cb-pre::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 6px; }

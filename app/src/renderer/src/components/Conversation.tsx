@@ -124,20 +124,34 @@ function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const { verb, arg } = describe(it)
   const cmd = it.name === 'run_bash' || it.name === 'Bash' ? String(it.input?.command ?? '') : ''
-  const hasDetail = !!(it.output || cmd)
   const running = it.status !== 'done'
+  // The full invocation, always inspectable: the command for shell tools, otherwise the
+  // tool's input (content bodies elided — the Editor shows files; this shows the call).
+  const inputDetail = useMemo(() => {
+    if (cmd) return null
+    const inp = { ...(it.input ?? {}) }
+    if (typeof inp.content === 'string') inp.content = `(${(inp.content as string).length} chars — see Editor)`
+    const keys = Object.keys(inp)
+    if (keys.length === 0) return null
+    return JSON.stringify(inp, null, 2)
+  }, [cmd, it.input])
   return (
     <div className={`toolblock${running ? ' running' : ''}${open ? ' open' : ''}`}>
-      <div className={`tb-head${hasDetail ? ' clickable' : ''}`} onClick={() => hasDetail && setOpen((o) => !o)}>
-        {hasDetail ? <span className={`tb-chev${open ? ' open' : ''}`}>▸</span> : <span className="tb-lead" />}
+      <div className="tb-head clickable" onClick={() => setOpen((o) => !o)}>
+        <span className={`tb-chev${open ? ' open' : ''}`}>▸</span>
         <span className="tb-verb">{verb}</span>
         <span className="tb-arg">{arg}</span>
         {running && <span className="tb-spin" />}
       </div>
-      {open && hasDetail && (
+      {open && (
         <div className="tb-body">
           {cmd && <CodeBlock lang="bash" code={cmd} />}
-          {it.output && <pre className="tb-out">{it.output}</pre>}
+          {inputDetail && <CodeBlock lang="json" code={inputDetail} />}
+          {it.output ? (
+            <pre className="tb-out">{it.output}</pre>
+          ) : (
+            <div className="tb-noout">{running ? 'running…' : 'no captured output for this call'}</div>
+          )}
         </div>
       )}
     </div>
