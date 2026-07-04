@@ -8,7 +8,8 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord } from '../../shared/types'
+import { WorkflowModal, WorkflowPanel } from './components/Workflow'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
 
 type Surface =
   | { kind: 'flow'; graph: GraphModel }
@@ -41,7 +42,74 @@ export function App(): React.JSX.Element {
   }
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const [sessions, setSessions] = useState<SessionRecord[]>([])
+  const [workflows, setWorkflows] = useState<WorkflowRecord[]>([])
+  const [activeWf, setActiveWf] = useState<WorkflowRecord | null>(null)
+  const [showWfModal, setShowWfModal] = useState(false)
   const history = useRef<unknown[]>([])
+
+  // Load persisted workflows; surface the most recent unfinished one so it can resume.
+  useEffect(() => {
+    void window.grasp.workflows().then((ws) => {
+      setWorkflows(ws)
+      const interrupted = ws.find((w) => w.status === 'running' || w.status === 'paused')
+      if (interrupted) setActiveWf(interrupted)
+    })
+  }, [])
+
+  // The durable runner: run each pending step as an agent turn against the carried
+  // history, persisting after every state change so a restart resumes from here.
+  async function runWorkflow(base: WorkflowRecord): Promise<void> {
+    if (busy) return
+    const w: WorkflowRecord = { ...base, status: 'running' }
+    for (let i = w.currentStep; i < w.steps.length; i++) {
+      w.currentStep = i
+      w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'running' } : s))
+      w.updatedAt = Date.now()
+      await window.grasp.saveWorkflow(w)
+      setActiveWf({ ...w })
+      setTranscript((t) => [...t, { role: 'assistant', text: `**Step ${i + 1}/${w.steps.length}** · ${w.steps[i].prompt}` }])
+      setBusy(true)
+      setError(null)
+      const res = await window.grasp.agent({
+        workspace: w.workspace,
+        prompt: w.steps[i].prompt,
+        history: w.history,
+        backend: w.backend,
+        model: w.model
+      })
+      setBusy(false)
+      w.history = res.messages
+      w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'done' } : s))
+      w.currentStep = i + 1
+      w.updatedAt = Date.now()
+      await window.grasp.saveWorkflow(w)
+      setActiveWf({ ...w })
+    }
+    w.status = 'done'
+    w.updatedAt = Date.now()
+    await window.grasp.saveWorkflow(w)
+    setActiveWf({ ...w })
+    void window.grasp.workflows().then(setWorkflows)
+  }
+
+  function createWorkflow(title: string, steps: string[]): void {
+    setShowWfModal(false)
+    const wf: WorkflowRecord = {
+      id: crypto.randomUUID(),
+      title,
+      workspace,
+      backend,
+      model,
+      steps: steps.map((prompt) => ({ prompt, status: 'pending' })),
+      currentStep: 0,
+      status: 'idle',
+      history: [],
+      updatedAt: Date.now()
+    }
+    setTranscript([])
+    setSurface(null)
+    void runWorkflow(wf)
+  }
 
   // Restore the session list on launch.
   useEffect(() => {
@@ -204,6 +272,7 @@ export function App(): React.JSX.Element {
   return (
     <div className="app">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
+      {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
 
       <Sidebar
         workspace={workspace}
@@ -212,6 +281,7 @@ export function App(): React.JSX.Element {
         sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
         activeSession={sessionId}
         onSelectSession={loadSession}
+        onNewWorkflow={() => setShowWfModal(true)}
         theme={theme}
         onTheme={setTheme}
       />
@@ -233,6 +303,11 @@ export function App(): React.JSX.Element {
         onApprovePlan={approvePlan}
         onDecideApproval={decideApproval}
         onSend={send}
+        banner={
+          activeWf ? (
+            <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
+          ) : null
+        }
       />
 
       <aside className="instrument">

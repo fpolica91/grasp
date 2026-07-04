@@ -144,6 +144,7 @@ export function Conversation(props: {
   onApprovePlan: (text: string) => void
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
+  banner?: React.ReactNode
 }): React.JSX.Element {
   const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
   const [input, setInput] = useState('')
@@ -225,6 +226,8 @@ export function Conversation(props: {
           {activeLabel} · {props.model}
         </span>
       </header>
+
+      {props.banner}
 
       <div className="conv-log" ref={logRef}>
         {props.transcript.length === 0 && (

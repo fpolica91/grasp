@@ -307,6 +307,30 @@ input, textarea { font-family: inherit; }
 .approval-detail { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .approval-actions { display: flex; gap: 9px; margin-top: 13px; }
 
+/* durable workflows */
+.wf-modal { width: 520px; }
+.wf-modal .wf-steps { width: 100%; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; background: var(--surface-2); color: var(--ink); border: 1px solid var(--hair); border-radius: 9px; padding: 11px 13px; resize: vertical; margin-bottom: 4px; }
+.wf-modal .wf-steps:focus { outline: none; border-color: var(--accent); }
+.wf-modal-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.wf-modal-foot .plan-hint { margin-right: auto; }
+.wf-panel { flex: none; margin: 14px 20px 0; background: var(--surface-2); border: 1px solid var(--hair); border-left: 3px solid var(--accent); border-radius: 12px; padding: 12px 15px; box-shadow: var(--sh-1); }
+.wf-panel-head { display: flex; align-items: center; gap: 10px; }
+.wf-panel-head .wf-title { font-weight: 550; font-size: 13px; }
+.wf-panel-head .wf-progress { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.wf-badge.done { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-hair); border-radius: 20px; padding: 1px 8px; }
+.wf-resume { margin-left: auto; padding: 5px 13px; font-size: 12px; }
+.wf-x { margin-left: auto; background: transparent; border: 0; color: var(--faint); font-size: 12px; padding: 2px 5px; }
+.wf-panel-head .wf-resume + .wf-x { margin-left: 6px; }
+.wf-x:hover { color: var(--ink); }
+.wf-steps-list { list-style: none; margin: 11px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; counter-reset: wf; }
+.wf-step { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.wf-step .wf-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1.5px solid var(--faint); background: transparent; transform: translateY(1px); }
+.wf-step.running .wf-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.wf-step.done .wf-dot { border-color: var(--accent); background: var(--accent); }
+.wf-step.done .wf-step-text { color: var(--ink); }
+.wf-step.running .wf-step-text { color: var(--ink); }
+.wf-step.error .wf-dot { border-color: var(--question); background: var(--question); }
+
 /* subagents — a task's work nests beneath it */
 .subagent { align-self: stretch; }
 .subagent > .tool { border-color: var(--accent-hair); }

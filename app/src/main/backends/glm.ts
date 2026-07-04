@@ -174,7 +174,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 export const glmBackend: AgentBackend = {
   id: 'glm',
   label: 'GLM',
-  models: [DEFAULT_MODEL, 'glm-4.5-air'],
+  // glm-5.2 / glm-5.1 are the premium (opus-tier) models; glm-4.6 stays the fast default.
+  // Override the whole list with GRASP_GLM_MODELS if needed.
+  models: (process.env.GRASP_GLM_MODELS ?? 'glm-4.6,glm-5.2,glm-5.1,glm-4.5-air').split(',').map((s) => s.trim()).filter(Boolean),
   available: () => (getKey() ? { ok: true } : { ok: false, reason: 'no GLM key in the vault' }),
   run
 }

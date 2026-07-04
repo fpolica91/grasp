@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AgentEvent, AgentTurn, ChatMessage, FuzzParams, GraspApi, ObserveParams, SessionRecord } from '../shared/types'
+import type { AgentEvent, AgentTurn, ChatMessage, FuzzParams, GraspApi, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
 
 const api: GraspApi = {
   chat: (messages: ChatMessage[]) => ipcRenderer.invoke('grasp:chat', messages),
@@ -18,7 +18,10 @@ const api: GraspApi = {
   sessions: () => ipcRenderer.invoke('grasp:sessions'),
   saveSession: (rec: SessionRecord) => ipcRenderer.invoke('grasp:saveSession', rec),
   deleteSession: (id: string) => ipcRenderer.invoke('grasp:deleteSession', id),
-  approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok)
+  approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok),
+  workflows: () => ipcRenderer.invoke('grasp:workflows'),
+  saveWorkflow: (rec: WorkflowRecord) => ipcRenderer.invoke('grasp:saveWorkflow', rec),
+  deleteWorkflow: (id: string) => ipcRenderer.invoke('grasp:deleteWorkflow', id)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

@@ -29,6 +29,7 @@ export function Sidebar(props: {
   sessions: { id: string; title: string }[]
   activeSession: string
   onSelectSession: (id: string) => void
+  onNewWorkflow: () => void
   theme: Theme
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
@@ -49,6 +50,10 @@ export function Sidebar(props: {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         Search
         <span className="k">⌘K</span>
+      </button>
+      <button className="side-btn" onClick={props.onNewWorkflow}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M5 6h14M5 12h14M5 18h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><circle cx="19" cy="18" r="2.5" stroke="currentColor" strokeWidth="1.6" /></svg>
+        New workflow
       </button>
 
       <div className="side-sec">Sessions</div>

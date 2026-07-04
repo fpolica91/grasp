@@ -194,6 +194,26 @@ export interface BackendInfo {
   reason?: string
 }
 
+// A durable workflow: an ordered list of prompt-steps run one at a time against a
+// carried conversation. Progress persists so a restart mid-run resumes from the
+// interrupted step (completed steps are skipped).
+export interface WorkflowStep {
+  prompt: string
+  status: 'pending' | 'running' | 'done' | 'error'
+}
+export interface WorkflowRecord {
+  id: string
+  title: string
+  workspace: string
+  backend: string
+  model: string
+  steps: WorkflowStep[]
+  currentStep: number // index of the step in progress / next to run
+  status: 'idle' | 'running' | 'paused' | 'done'
+  history: unknown[] // backend-opaque conversation carried across steps
+  updatedAt: number
+}
+
 // A persisted session: transcript for display + backend-opaque history so the
 // conversation continues across app launches.
 export interface SessionRecord {
@@ -221,4 +241,7 @@ export interface GraspApi {
   saveSession(rec: SessionRecord): Promise<void>
   deleteSession(id: string): Promise<void>
   approve(id: string, ok: boolean): Promise<void>
+  workflows(): Promise<WorkflowRecord[]>
+  saveWorkflow(rec: WorkflowRecord): Promise<void>
+  deleteWorkflow(id: string): Promise<void>
 }

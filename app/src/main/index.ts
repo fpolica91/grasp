@@ -5,8 +5,9 @@ import { observe, fuzz } from './engine'
 import { runAgent, listBackends } from './agent'
 import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession } from './sessions'
+import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
-import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord } from '../shared/types'
+import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -41,6 +42,9 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
   ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
   ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
+  ipcMain.handle('grasp:workflows', () => listWorkflows())
+  ipcMain.handle('grasp:saveWorkflow', (_e, rec: WorkflowRecord) => saveWorkflow(rec))
+  ipcMain.handle('grasp:deleteWorkflow', (_e, id: string) => deleteWorkflow(id))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
