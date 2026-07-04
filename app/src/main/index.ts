@@ -23,6 +23,7 @@ import { listSessions, saveSession, deleteSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
+import { listSkills, ensureDefaultSkills } from './skills'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
 import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
@@ -60,6 +61,8 @@ app.whenReady().then(() => {
     rememberProject(w)
     return w
   })
+  ensureDefaultSkills()
+  ipcMain.handle('grasp:skills', (_e, workspace: string) => listSkills(workspace))
   ipcMain.handle('grasp:projects', () => listProjects())
   ipcMain.handle('grasp:openFolder', () => openFolder())
   ipcMain.handle('grasp:newProject', (_e, name: string) => newProject(name))

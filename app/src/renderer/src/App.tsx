@@ -104,7 +104,11 @@ export function App(): React.JSX.Element {
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
+  const [skills, setSkills] = useState<{ name: string; description: string }[]>([])
   const history = useRef<unknown[]>([])
+  useEffect(() => {
+    if (workspace) void window.grasp.skills(workspace).then(setSkills)
+  }, [workspace])
   const refreshBackends = (): void => {
     void window.grasp.backends().then(setBackends)
   }
@@ -359,6 +363,15 @@ export function App(): React.JSX.Element {
             { id: 'view-terminal', group: 'View', label: 'Toggle terminal', hint: '⌃`', run: toggleBottom },
             { id: 'view-sidebar', group: 'View', label: 'Toggle sidebar', hint: '⌘B', run: () => setSidebarOpen((s) => !s) },
             { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
+            ...skills.map(
+              (s): Command => ({
+                id: 'skill-' + s.name,
+                group: 'Skill',
+                label: s.name,
+                hint: s.description.slice(0, 44),
+                run: () => void send(`Use the "${s.name}" skill.`)
+              })
+            ),
             ...sessions.map(
               (s): Command => ({ id: 'sess-' + s.id, group: 'Session', label: s.title, run: () => loadSession(s.id) })
             )

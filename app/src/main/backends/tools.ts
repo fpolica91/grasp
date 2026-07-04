@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { diff, fuzz, observe } from '../engine'
+import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
 
 const OUT_CAP = 8000
@@ -190,6 +191,28 @@ export const TOOLS: Tool[] = [
         return `fuzzed ${input.entrypoint}: ${nv} operand(s) varied across inputs, ${nr} raise(s). Reproducing inputs attached.`
       }
       return `could not fuzz: ${res.error ?? 'unknown'}`
+    }
+  },
+  {
+    name: 'use_skill',
+    description:
+      'Load a reusable SKILL — a packaged set of instructions for a task (e.g. "observe-change", ' +
+      '"harden-input"). Call with NO name to LIST the available skills; call with a name to load ' +
+      "that skill's instructions and then follow them. Skills orchestrate grasp's observe/diff/fuzz " +
+      'loop; they guide, they never judge. Prefer a matching skill before improvising a workflow.',
+    input_schema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'the skill name, or omit to list all skills' } }
+    },
+    async run(input, { workspace }) {
+      const name = String(input.name ?? '').trim()
+      if (!name) {
+        const list = listSkills(workspace)
+        if (!list.length) return 'No skills installed. Skills are .md files in ~/.grasp/skills or <project>/.grasp/skills.'
+        return 'Available skills (call use_skill with a name to load one):\n' + list.map((s) => `- ${s.name}: ${s.description}`).join('\n')
+      }
+      const s = readSkill(workspace, name)
+      return s ? `Skill "${s.name}" — follow these instructions:\n\n${s.body}` : `No skill named "${name}". Call use_skill with no name to list available skills.`
     }
   },
   {

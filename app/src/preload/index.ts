@@ -23,6 +23,7 @@ const api: GraspApi = {
   saveWorkflow: (rec: WorkflowRecord) => ipcRenderer.invoke('grasp:saveWorkflow', rec),
   deleteWorkflow: (id: string) => ipcRenderer.invoke('grasp:deleteWorkflow', id),
   projects: () => ipcRenderer.invoke('grasp:projects'),
+  skills: (workspace: string) => ipcRenderer.invoke('grasp:skills', workspace),
   openFolder: () => ipcRenderer.invoke('grasp:openFolder'),
   newProject: (name: string) => ipcRenderer.invoke('grasp:newProject', name),
   termCreate: (id: string, cwd: string, cols: number, rows: number) =>
