@@ -258,6 +258,7 @@ export function Conversation(props: {
   onApprovePlan: (text: string) => void
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
+  onStop: () => void
   onToggleTerminal?: () => void
   onToggleSidebar?: () => void
   banner?: React.ReactNode
@@ -423,9 +424,15 @@ export function Conversation(props: {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             )}
-            <button className="send" onClick={submit} disabled={props.busy} title="Send (Enter · Shift+Enter for newline)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </button>
+            {props.busy ? (
+              <button className="send stop" onClick={props.onStop} title="Stop the agent">
+                <svg width="13" height="13" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
+              </button>
+            ) : (
+              <button className="send" onClick={submit} title="Send (Enter · Shift+Enter for newline)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            )}
           </div>
         </div>
       </div>

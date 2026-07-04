@@ -26,13 +26,15 @@ async function callModel(
   model: string,
   messages: unknown[],
   system: string,
-  tools: Tool[]
+  tools: Tool[],
+  signal?: AbortSignal
 ): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey()
   if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
   try {
     const res = await fetch(`${BASE}/v1/messages`, {
       method: 'POST',
+      signal,
       headers: { 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model,
@@ -99,8 +101,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 
   let turnTokens = 0
   for (let step = 0; step < MAX_STEPS; step++) {
-    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS)
+    if (turn.signal?.aborted) {
+      emit({ type: 'done', note: 'stopped by you' })
+      return { messages }
+    }
+    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS, turn.signal)
     if (!r.ok) {
+      if (turn.signal?.aborted) {
+        emit({ type: 'done', note: 'stopped by you' })
+        return { messages }
+      }
       emit({ type: 'error', error: r.error })
       return { messages }
     }

@@ -600,3 +600,5 @@ input, textarea { font-family: inherit; }
 .theme-dot.graphite { background: linear-gradient(135deg, #1b2029 50%, #5b93ff 50%); }
 .theme-dot.carbon { background: linear-gradient(135deg, #0f1115 50%, #6a9cff 50%); }
 .theme-dot.daylight { background: linear-gradient(135deg, #ffffff 50%, #2f6fe0 50%); }
+.composer .send.stop { background: var(--question); color: var(--on-accent); }
+.composer .send.stop:hover { filter: brightness(1.1); }

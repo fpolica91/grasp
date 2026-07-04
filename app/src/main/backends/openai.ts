@@ -28,13 +28,15 @@ async function callModel(
   model: string,
   messages: Msg[],
   system: string,
-  tools: Tool[]
+  tools: Tool[],
+  signal?: AbortSignal
 ): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
   try {
     const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
+      signal,
       headers: { authorization: `Bearer ${KEY}`, 'content-type': 'application/json' },
       body: JSON.stringify({
         model,
@@ -102,8 +104,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 
   let turnTokens = 0
   for (let step = 0; step < MAX_STEPS; step++) {
-    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS)
+    if (turn.signal?.aborted) {
+      emit({ type: 'done', note: 'stopped by you' })
+      return { messages }
+    }
+    const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS, turn.signal)
     if (!r.ok || !r.msg) {
+      if (turn.signal?.aborted) {
+        emit({ type: 'done', note: 'stopped by you' })
+        return { messages }
+      }
       emit({ type: 'error', error: r.error })
       return { messages }
     }

@@ -71,6 +71,14 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 
   return new Promise((resolveRun) => {
     const cp = spawn('claude', args, { cwd: turn.workspace, env })
+    // user-initiated stop: kill the CLI; the close handler reports "stopped by you".
+    turn.signal?.addEventListener('abort', () => {
+      try {
+        cp.kill()
+      } catch {
+        /* already gone */
+      }
+    })
     let sessionId = prev?.__claude_session ?? ''
     let buf = ''
     let stderr = ''
@@ -149,7 +157,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       // Trailing surface: catch the final state of the working tree.
       mutatedSinceSurface = mutatingIds.size > 0
       await maybeSurface()
-      if (!sawResult && code !== 0) {
+      if (turn.signal?.aborted) {
+        emit({ type: 'done', note: 'stopped by you' })
+      } else if (!sawResult && code !== 0) {
         emit({ type: 'error', error: `claude exited ${code}: ${stderr.slice(0, 300)}` })
       } else {
         emit({ type: 'done' })

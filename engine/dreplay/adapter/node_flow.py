@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -83,7 +84,38 @@ function __dreplayBindArgs(fn, input){
 }
 """
 
-_FLOW_WORKER_JS = _BIND_ARGS_JS + r"""
+# Module-loading ladder (the "type": "module" trap). A repo-root package.json with
+# "type": "module" makes Node parse every .js as ESM — a CJS file (e.g. esbuild output)
+# then dies with "module is not defined", and require() of true ESM can throw
+# ERR_REQUIRE_ESM on older Nodes. The ladder: require → dynamic import() → copy the file
+# beside itself as .cjs (so its relative requires still resolve) and require that.
+# Honest: if every rung fails, the ORIGINAL error propagates — nothing is faked.
+_LOAD_MODULE_JS = r"""
+async function __dreplayLoad(p){
+  let e1;
+  try { return require(p); } catch (err) { e1 = err; }
+  const msg = String((e1 && e1.message) || e1);
+  const esmish = (e1 && e1.code === 'ERR_REQUIRE_ESM')
+    || /module is not defined|exports is not defined|Cannot use import statement|Unexpected token 'export'/.test(msg);
+  if (!esmish) throw e1;
+  try {
+    return await import(require('url').pathToFileURL(p).href);
+  } catch (e2) {
+    const fs = require('fs');
+    const alt = p.replace(/\.[cm]?js$/, '') + '.__dreplay.cjs';
+    try {
+      fs.copyFileSync(p, alt);
+      return require(alt);
+    } catch (e3) {
+      throw e1; // report the original failure, not the workaround's
+    } finally {
+      try { fs.unlinkSync(alt); } catch (_) {}
+    }
+  }
+}
+"""
+
+_FLOW_WORKER_JS = _BIND_ARGS_JS + _LOAD_MODULE_JS + r"""
 const path = require('path');
 const input = JSON.parse(process.env.DREPLAY_INPUT);
 const out = {return_value: null, has_return: false, exception: null,
@@ -114,7 +146,7 @@ for (const name of ['http','https']) {
 }
 (async () => {
   try {
-    const mod = require(path.resolve(input.module));
+    const mod = await __dreplayLoad(path.resolve(input.module));
     // Resolve the fn across CommonJS shapes: `module.exports = function name()`,
     // `module.exports = {name: fn}`, and ESM-interop `mod.default` (fn or obj).
     let fn = null;
@@ -242,6 +274,13 @@ def _node_flow_traced(module_path: str, func: str, kwargs: dict, timeout_s: floa
     rewritten, ok = js_trace.rewrite(source)
     if not ok:
         return None
+    # ESM sources can't be hosted by this CJS tracing harness: Node >=22.7 auto-detects
+    # `import`/`export` syntax and parses the tempfile as ESM, where the harness's
+    # `module.exports` reference throws — and that HARNESS failure would be misreported
+    # as the target function throwing (faked evidence). Decline honestly; the plain
+    # worker's load ladder handles ESM endpoints-only.
+    if re.search(r"^\s*(import\s|export\s)", source, re.MULTILINE):
+        return None
 
     worker = _TRACING_HEADER_JS + "\n" + rewritten + "\n;\n" + _TRACING_HARNESS_JS
     env = dict(os.environ)
@@ -266,6 +305,13 @@ def _node_flow_traced(module_path: str, func: str, kwargs: dict, timeout_s: floa
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
         return None  # worker failed under rewrite → fall back to clean endpoints-only
+
+    # A HARNESS-environment failure (CJS globals missing because the tempfile got parsed
+    # as ESM) must never be reported as the target function throwing — that would be
+    # faked evidence. Decline; the plain worker re-runs the real module honestly.
+    err_msg = str((data.get("error") or {}).get("message", ""))
+    if re.search(r"\b(module|exports|require) is not defined\b", err_msg):
+        return None
 
     return _flow_from_traced(f"{os.path.basename(module_path)}::{func}", kwargs, data, func)
 

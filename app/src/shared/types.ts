@@ -245,6 +245,7 @@ export interface GraspApi {
   deleteSession(id: string): Promise<void>
   approve(id: string, ok: boolean): Promise<void>
   flowNow(workspace: string): Promise<{ ok: boolean; error?: string }>
+  stopAgent(): Promise<void>
   workflows(): Promise<WorkflowRecord[]>
   saveWorkflow(rec: WorkflowRecord): Promise<void>
   deleteWorkflow(id: string): Promise<void>

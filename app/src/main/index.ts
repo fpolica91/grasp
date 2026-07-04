@@ -17,7 +17,7 @@ function defaultWorkspace(): string {
 }
 import { chat } from './model'
 import { observe, fuzz } from './engine'
-import { runAgent, listBackends } from './agent'
+import { runAgent, listBackends, stopAgent } from './agent'
 import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
@@ -72,6 +72,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
   ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
   ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
+  ipcMain.handle('grasp:stopAgent', () => stopAgent())
   ipcMain.handle('grasp:flowNow', (e, workspace: string) =>
     flowNow(workspace, (event) => {
       if (!e.sender.isDestroyed()) e.sender.send('agent:event', event)

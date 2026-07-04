@@ -11,6 +11,13 @@ import type { AgentBackend, Emit } from './backends/types'
 
 const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, openaiBackend]
 
+// The user's stop button. One active turn at a time; stopping aborts its signal —
+// owned loops end at the next await, the Claude Code child process is killed.
+let activeAbort: AbortController | null = null
+export function stopAgent(): void {
+  activeAbort?.abort()
+}
+
 export function listBackends(): { id: string; label: string; models: string[]; ok: boolean; reason?: string }[] {
   return BACKENDS.map((b) => ({ id: b.id, label: b.label, models: b.models, ...b.available() }))
 }
@@ -46,19 +53,29 @@ export async function runAgent(
   // read-only). No-ops on a clean tree.
   if (params.mode !== 'plan') checkpointWorkspace(workspace, `baseline before "${params.prompt.slice(0, 48)}"`)
 
-  const result = await backend.run(
-    {
-      workspace,
-      prompt: params.prompt,
-      history: params.history,
-      watch: params.watch,
-      model: params.model,
-      mode: params.mode,
-      budget: params.budget,
-      flowAuto: params.flowAuto
-    },
-    emit
-  )
+  activeAbort?.abort() // a new turn supersedes any stuck one
+  const ac = new AbortController()
+  activeAbort = ac
+
+  let result: { messages: unknown[] }
+  try {
+    result = await backend.run(
+      {
+        workspace,
+        prompt: params.prompt,
+        history: params.history,
+        watch: params.watch,
+        model: params.model,
+        mode: params.mode,
+        budget: params.budget,
+        flowAuto: params.flowAuto,
+        signal: ac.signal
+      },
+      emit
+    )
+  } finally {
+    if (activeAbort === ac) activeAbort = null
+  }
 
   if (params.mode !== 'plan') checkpointWorkspace(workspace, params.prompt.slice(0, 60))
   return result

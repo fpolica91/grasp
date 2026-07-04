@@ -13,6 +13,7 @@ export interface BackendTurn {
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each mutating tool; plan: read-only + propose
   budget?: number // per-turn token ceiling; loop stops when the turn's usage exceeds it
   flowAuto?: boolean // false = don't auto re-observe after edits (Flow runs on demand)
+  signal?: AbortSignal // user-initiated stop: loops end cleanly, child agents are killed
 }
 
 export interface AgentBackend {

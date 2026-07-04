@@ -155,3 +155,49 @@ def test_kwargs_bind_by_parameter_name(tmp_path):
     f3 = node_flow(module_path=str(mod), func="bag", kwargs={"x": 1, "y": 2})
     ret3 = [n for n in f3.nodes if n.kind == "return"]
     assert ret3 and any(o.name == "keys" and o.value == ["x", "y"] for o in ret3[0].operands)
+
+
+def test_type_module_repo_cjs_output(tmp_path):
+    """The TodoApp trap: repo-root package.json says "type": "module", but the target
+    file is CJS syntax (esbuild output). Plain require -> "module is not defined".
+    The load ladder must still bind and observe honestly."""
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (tmp_path / "colorUtils.js").write_text(
+        '"use strict";\n'
+        "function isDarkMode(theme) { return { dark: theme === 'dark' }; }\n"
+        "module.exports = { isDarkMode };\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f = node_flow(module_path=str(tmp_path / "colorUtils.js"), func="isDarkMode", kwargs={"theme": "dark"})
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "dark" and o.value is True for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]
+
+
+def test_true_esm_module(tmp_path):
+    """Real ESM source (export function) under "type": "module" loads via the ladder."""
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (tmp_path / "esm.js").write_text(
+        "export function greet(name) { return { msg: 'hi ' + name }; }\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f = node_flow(module_path=str(tmp_path / "esm.js"), func="greet", kwargs={"name": "z"})
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "msg" and o.value == "hi z" for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]
+
+
+def test_cjs_extension_and_path_entrypoint(tmp_path):
+    """.cjs files work, and the path-form entrypoint "dir/file.cjs:func" parses."""
+    sub = tmp_path / "grasp_out"
+    sub.mkdir()
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (sub / "util.cjs").write_text("module.exports = { double: (n) => ({ out: n * 2 }) };\n")
+    from dreplay.flow_cli import _trace
+
+    f = _trace("js", "grasp_out/util.cjs:double", {"n": 21}, str(tmp_path))
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "out" and o.value == 42 for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]
