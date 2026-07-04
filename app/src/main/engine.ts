@@ -18,6 +18,7 @@ export function observe(params: ObserveParams): Promise<ObserveResult> {
     }
     const args = ['-m', 'dreplay.skill', 'observe', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint]
     if (params.input) args.push('--input', params.input)
+    if (params.language && params.language !== 'auto') args.push('--language', params.language)
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''
     let err = ''
@@ -44,6 +45,7 @@ export function diff(params: DiffParams): Promise<DiffResult> {
     }
     const args = ['-m', 'dreplay.skill', 'diff', '--repo', (params.repo || process.env.GRASP_WORKSPACE || '.'), '--entrypoint', params.entrypoint, '--old', params.oldRef || 'HEAD']
     if (params.input) args.push('--input', params.input)
+    if (params.language && params.language !== 'auto') args.push('--language', params.language)
     const cp = spawn(PY, args, { cwd: ENGINE })
     let out = ''
     let err = ''

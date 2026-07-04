@@ -14,11 +14,30 @@ const OUT_CAP = 8000
 export const SYSTEM = [
   'You are grasp, a coding agent inside the post-editor. You edit code with the file and',
   'shell tools. But you do NOT assert a change "works", is "fixed", or is "safe".',
-  'After you EDIT an existing code path, call grasp_diff on the entrypoint you touched —',
-  'it observes the behavior BEFORE your edit (git HEAD) vs AFTER (your working tree) and',
-  'returns the A->B change. For brand-new code with no prior version, call grasp_observe',
-  'instead. Both run the code FOR REAL. Present what they surface and end in the neutral',
-  'question they give you; the human adjudicates. Never render a verdict.'
+  '',
+  "grasp's whole reason to exist is the OBSERVED DATAFLOW rail: it runs the code FOR REAL",
+  'and shows the human the values it bound and the paths it took. That rail is populated',
+  'by grasp_observe / grasp_diff — and ONLY by them. This is non-negotiable:',
+  '',
+  '• To verify ANY code you write or change, you MUST use grasp_observe (brand-new code) or',
+  '  grasp_diff (edited existing code) on the entrypoint. This is your PRIMARY way to show a',
+  '  change did what you intended — do it proactively, not only when asked.',
+  '• NEVER verify by writing an ad-hoc test script and running it through run_bash (e.g.',
+  "  `node -e ...`, a throwaway test.py, a harness file). That runs the code but leaves grasp's",
+  '  dataflow rail BLIND — the human sees nothing. An ad-hoc harness is a failure, not a shortcut.',
+  '• They work across languages (Python, JS/TS, Go, Java, C#, C++). Entrypoint form:',
+  '  module.func (py/js/ts), path/file.go:Func, Class.method (java), Namespace.Class.Method (c#).',
+  '  grasp auto-detects the language from repo files; if a repo has no marker (e.g. a bare .js',
+  '  module and no package.json), pass the `language` argument explicitly (py/js/ts/go/java/csharp/cpp).',
+  '• If the code is UI/DOM-coupled with no directly-callable entrypoint (a frontend handler, a',
+  '  React component), SEPARATE the core logic into a plain callable function in its own module',
+  '  and call grasp_observe on THAT. Do not shrug and reach for run_bash — extract, then observe.',
+  '• run_bash is for genuinely non-observable steps only: installing deps, starting a server,',
+  '  a build. When you use it to RUN logic because you think there is no entrypoint, stop and',
+  '  extract an entrypoint first.',
+  '',
+  'Present exactly what grasp_observe/grasp_diff surface and end in the neutral question they',
+  'give you; the human adjudicates against business rules only they know. Never render a verdict.'
 ].join(' ')
 
 // PLAN MODE: inspect-only. The agent may read and observe, never mutate; its final
@@ -112,13 +131,23 @@ export const TOOLS: Tool[] = [
       'to show what the change does, instead of asserting it works.',
     input_schema: {
       type: 'object',
-      properties: { entrypoint: { type: 'string' }, input: { type: 'string', description: 'JSON kwargs' } },
+      properties: {
+        entrypoint: { type: 'string' },
+        input: { type: 'string', description: 'JSON kwargs' },
+        language: {
+          type: 'string',
+          description:
+            "the target language when it can't be auto-detected from repo files (e.g. a .js module " +
+            "with no package.json). One of: py, js, ts, go, java, csharp, cpp. Omit to auto-detect."
+        }
+      },
       required: ['entrypoint']
     },
     async run(input, { workspace, emit }) {
-      const res = await observe({ repo: workspace, entrypoint: String(input.entrypoint), input: input.input as string })
+      const language = input.language ? String(input.language) : undefined
+      const res = await observe({ repo: workspace, entrypoint: String(input.entrypoint), input: input.input as string, language })
       if (res.observed && res.graph) {
-        rememberWatch(workspace, String(input.entrypoint), input.input as string) // auto-re-observe on later edits
+        rememberWatch(workspace, String(input.entrypoint), input.input as string, language) // auto-re-observe on later edits
         emit({ type: 'dataflow', graph: res.graph }) // surface the graph in the UI
         const qs = res.graph.questions.length ? res.graph.questions.join(' | ') : '(no open question)'
         return `observed dataflow for ${input.entrypoint}. Open question(s): ${qs}`
@@ -138,19 +167,27 @@ export const TOOLS: Tool[] = [
       properties: {
         entrypoint: { type: 'string' },
         input: { type: 'string', description: 'JSON kwargs' },
-        old_ref: { type: 'string', description: 'git ref for the OLD side (default HEAD)' }
+        old_ref: { type: 'string', description: 'git ref for the OLD side (default HEAD)' },
+        language: {
+          type: 'string',
+          description:
+            "the target language when it can't be auto-detected from repo files. One of: py, js, ts, " +
+            'go, java, csharp, cpp. Omit to auto-detect.'
+        }
       },
       required: ['entrypoint']
     },
     async run(input, { workspace, emit }) {
+      const language = input.language ? String(input.language) : undefined
       const res = await diff({
         repo: workspace,
         entrypoint: String(input.entrypoint),
         oldRef: (input.old_ref as string) || 'HEAD',
-        input: input.input as string
+        input: input.input as string,
+        language
       })
       if (res.ok && res.graphDiff) {
-        rememberWatch(workspace, String(input.entrypoint), input.input as string) // auto-re-observe on later edits
+        rememberWatch(workspace, String(input.entrypoint), input.input as string, language) // auto-re-observe on later edits
         emit({ type: 'dataflow_diff', diff: res.graphDiff })
         if (res.graphDiff.empty) return `no behavioral change surfaced for ${input.entrypoint} on this input.`
         const qs = res.graphDiff.questions.length ? res.graphDiff.questions.join(' | ') : '(no question)'
@@ -249,15 +286,23 @@ export const SUBAGENT_SYSTEM =
 // entrypoint (which it does as part of its work), grasp REMEMBERS it per workspace;
 // then after every subsequent edit it re-observes that entrypoint automatically, so the
 // dataflow updates on every iteration without the human typing a function name.
-const lastWatch = new Map<string, { entrypoint: string; input?: string }>()
+const lastWatch = new Map<string, { entrypoint: string; input?: string; language?: string }>()
 
-export function rememberWatch(workspace: string, entrypoint: string, input?: string): void {
-  if (entrypoint) lastWatch.set(workspace, { entrypoint, input })
+export function rememberWatch(workspace: string, entrypoint: string, input?: string, language?: string): void {
+  if (entrypoint) lastWatch.set(workspace, { entrypoint, input, language })
 }
 
 export async function liveSurface(workspace: string, mutated: boolean, emit: Emit): Promise<void> {
   const w = lastWatch.get(workspace)
   if (!mutated || !w?.entrypoint) return
-  const d = await diff({ repo: workspace, entrypoint: w.entrypoint, oldRef: 'HEAD', input: w.input })
-  if (d.ok && d.graphDiff) emit({ type: 'dataflow_diff', diff: d.graphDiff })
+  // Prefer the A->B change (HEAD vs working tree). But a brand-new entrypoint has no HEAD
+  // version, so the diff is empty or errors — fall back to a plain observation so the live
+  // rail still shows what the code now does, rather than going silently blank.
+  const d = await diff({ repo: workspace, entrypoint: w.entrypoint, oldRef: 'HEAD', input: w.input, language: w.language })
+  if (d.ok && d.graphDiff && !d.graphDiff.empty) {
+    emit({ type: 'dataflow_diff', diff: d.graphDiff })
+    return
+  }
+  const o = await observe({ repo: workspace, entrypoint: w.entrypoint, input: w.input, language: w.language })
+  if (o.observed && o.graph) emit({ type: 'dataflow', graph: o.graph })
 }

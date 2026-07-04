@@ -476,9 +476,11 @@ export function App(): React.JSX.Element {
                     <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
                   ) : (
                     <div className="inst-empty">
-                      The dataflow shows up here <b>automatically</b> — the moment the agent runs a function, grasp
-                      observes it for real and re-observes it after every edit. Nothing to configure. It ends in a
-                      question, never a verdict.
+                      This is where grasp shows the <b>observed dataflow</b> — the real values a function binds and
+                      the paths it takes, re-observed after every edit. It fills in as soon as the agent runs a
+                      function through grasp (any language). Code with no callable entrypoint yet — a pure UI handler,
+                      a not-yet-wired module — stays blank here until there's something to run. It ends in a question,
+                      never a verdict.
                     </div>
                   )}
                 </div>

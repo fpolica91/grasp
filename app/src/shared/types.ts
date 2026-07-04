@@ -55,6 +55,7 @@ export interface ObserveParams {
   repo: string
   entrypoint: string
   input?: string
+  language?: string // 'auto' (default), 'py', 'js', 'ts', 'go', 'java', 'csharp', 'cpp'
 }
 
 export interface ObserveResult {
@@ -100,6 +101,7 @@ export interface DiffParams {
   entrypoint: string
   oldRef: string
   input?: string
+  language?: string // 'auto' (default), 'py', 'js', 'ts', 'go', 'java', 'csharp', 'cpp'
 }
 
 export interface DiffResult {
