@@ -23,7 +23,7 @@ export async function runAgent(
     watch?: { entrypoint: string; input?: string }
     backend?: string
     model?: string
-    mode?: 'auto' | 'plan'
+    mode?: 'auto' | 'ask' | 'plan'
   }
 ): Promise<{ messages: unknown[] }> {
   const emit: Emit = (event) => {

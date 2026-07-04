@@ -163,6 +163,7 @@ export type AgentEvent =
   | { type: 'dataflow_diff'; diff: GraphDiffModel }
   | { type: 'fuzz'; report: FuzzReport }
   | { type: 'plan'; text: string }
+  | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
 
@@ -180,7 +181,7 @@ export interface AgentTurn {
   watch?: Watch
   backend?: string // backend id ('glm' | 'claude-code' | 'openai'); default glm
   model?: string // model id within the backend
-  mode?: 'auto' | 'plan' // plan: read-only, propose a plan for approval before any edit
+  mode?: 'auto' | 'ask' | 'plan' // ask: approve each edit; plan: read-only, propose first
 }
 
 export interface BackendInfo {
@@ -217,4 +218,5 @@ export interface GraspApi {
   sessions(): Promise<SessionRecord[]>
   saveSession(rec: SessionRecord): Promise<void>
   deleteSession(id: string): Promise<void>
+  approve(id: string, ok: boolean): Promise<void>
 }

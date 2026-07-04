@@ -5,6 +5,7 @@ import { observe, fuzz } from './engine'
 import { runAgent, listBackends } from './agent'
 import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession } from './sessions'
+import { resolveApproval } from './approvals'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord } from '../shared/types'
 
 function createWindow(): void {
@@ -39,6 +40,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:sessions', () => listSessions())
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
   ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
+  ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -30,7 +30,13 @@ export function App(): React.JSX.Element {
   const [backends, setBackends] = useState<BackendInfo[]>([])
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
-  const [agentMode, setAgentMode] = useState<'auto' | 'plan'>('auto')
+  const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
+
+  // Resolve an Ask-mode approval and mark it decided in the transcript.
+  function decideApproval(id: string, ok: boolean): void {
+    void window.grasp.approve(id, ok)
+    setTranscript((t) => t.map((it) => (it.id === id ? { ...it, status: 'done', summary: ok ? 'allowed' : 'denied' } : it)))
+  }
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const history = useRef<unknown[]>([])
@@ -145,6 +151,8 @@ export function App(): React.JSX.Element {
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
+      else if (e.type === 'approval_request')
+        setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
       else if (e.type === 'done') setBusy(false)
       else if (e.type === 'error') {
         setError(e.error)
@@ -153,7 +161,7 @@ export function App(): React.JSX.Element {
     })
   }, [])
 
-  async function send(prompt: string, modeOverride?: 'auto' | 'plan'): Promise<void> {
+  async function send(prompt: string, modeOverride?: 'auto' | 'ask' | 'plan'): Promise<void> {
     if (busy) return
     setError(null)
     setBusy(true)
@@ -212,6 +220,7 @@ export function App(): React.JSX.Element {
         onModel={setModel}
         onMode={setAgentMode}
         onApprovePlan={approvePlan}
+        onDecideApproval={decideApproval}
         onSend={send}
       />
 

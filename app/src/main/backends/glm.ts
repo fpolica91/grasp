@@ -2,7 +2,8 @@
 // (GLM natively speaks Anthropic Messages + tool_use — verified). Owned code,
 // no external agent binary.
 import { getKey } from '../vault'
-import { PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
+import { MUTATING_TOOLS, PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
+import { requestApproval } from '../approvals'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
@@ -78,6 +79,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       const tool = TOOLS.find((t) => t.name === tu.name)
       emit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
       let output = ''
+      // ASK MODE: pause for approval before a tool that changes the workspace.
+      if (turn.mode === 'ask' && tu.name && MUTATING_TOOLS.has(tu.name)) {
+        const ok = await requestApproval(emit, tu.name, tu.input ?? {})
+        if (!ok) {
+          output = 'skipped — you denied this action.'
+          emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
+          continue
+        }
+      }
       try {
         output = tool ? await tool.run(tu.input ?? {}, { workspace, emit }) : `unknown tool: ${tu.name}`
       } catch (e) {

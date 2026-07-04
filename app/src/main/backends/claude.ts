@@ -58,6 +58,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   if (turn.model && turn.model !== 'default') args.push('--model', turn.model)
   if (prev) args.push('--resume', prev.__claude_session)
 
+  // Honest: grasp's per-tool Ask gate governs our OWN loops. Claude Code executes its
+  // tools under its own permission system, so we don't intercept them — say so.
+  if (turn.mode === 'ask') {
+    emit({ type: 'text', text: '_Claude Code runs its tools under its own permission system; grasp’s per-tool approval applies to the GLM and OpenAI backends._' })
+  }
+
   const env = { ...process.env }
   const cfg = configDir()
   if (cfg) env.CLAUDE_CONFIG_DIR = cfg

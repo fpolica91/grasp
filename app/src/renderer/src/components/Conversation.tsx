@@ -7,7 +7,7 @@ import type { BackendInfo } from '../../../shared/types'
 
 export interface TranscriptItem {
   id?: string
-  role: 'user' | 'assistant' | 'tool' | 'plan'
+  role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval'
   text?: string
   name?: string
   input?: Record<string, unknown>
@@ -94,6 +94,36 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
   )
 }
 
+// An Ask-mode approval: a mutating tool is paused until you allow or deny it.
+function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: boolean) => void }): React.JSX.Element {
+  const { it } = props
+  const detail =
+    it.name === 'run_bash' ? String(it.input?.command ?? '') : String(it.input?.path ?? '')
+  const decided = it.status === 'done'
+  return (
+    <div className={`approval-card${decided ? ' decided' : ''}`}>
+      <div className="approval-head">
+        <span className="eyebrow q">approval needed</span>
+        {decided && <span className={`approval-verdict ${it.summary}`}>{it.summary}</span>}
+      </div>
+      <div className="approval-body">
+        <span className="tn">{it.name}</span>
+        <span className="approval-detail">{detail}</span>
+      </div>
+      {!decided && (
+        <div className="approval-actions">
+          <button className="btn primary" onClick={() => props.onDecide(it.id!, true)}>
+            Allow
+          </button>
+          <button className="btn" onClick={() => props.onDecide(it.id!, false)}>
+            Deny
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Conversation(props: {
   transcript: TranscriptItem[]
   busy: boolean
@@ -101,11 +131,12 @@ export function Conversation(props: {
   backends: BackendInfo[]
   backend: string
   model: string
-  mode: 'auto' | 'plan'
+  mode: 'auto' | 'ask' | 'plan'
   onBackend: (id: string) => void
   onModel: (m: string) => void
-  onMode: (m: 'auto' | 'plan') => void
+  onMode: (m: 'auto' | 'ask' | 'plan') => void
   onApprovePlan: (text: string) => void
+  onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
 }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -155,6 +186,8 @@ export function Conversation(props: {
               busy={props.busy}
               onApprove={props.onApprovePlan}
             />
+          ) : it.role === 'approval' ? (
+            <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
           ) : it.role === 'tool' ? (
             <Tool key={it.id ?? i} it={it} />
           ) : it.role === 'user' ? (
@@ -203,9 +236,15 @@ export function Conversation(props: {
               onBackend={props.onBackend}
               onModel={props.onModel}
             />
-            <span className="mode-toggle" title="Build edits directly. Plan proposes first — nothing changes until you approve.">
+            <span
+              className="mode-toggle"
+              title="Build: edit directly. Ask: approve each edit. Plan: propose first — nothing changes until you approve."
+            >
               <button className={props.mode === 'auto' ? 'on' : ''} onClick={() => props.onMode('auto')}>
                 Build
+              </button>
+              <button className={props.mode === 'ask' ? 'on' : ''} onClick={() => props.onMode('ask')}>
+                Ask
               </button>
               <button className={props.mode === 'plan' ? 'on' : ''} onClick={() => props.onMode('plan')}>
                 Plan

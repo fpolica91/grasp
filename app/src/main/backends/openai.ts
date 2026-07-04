@@ -3,7 +3,8 @@
 // GLM's /api/coding/paas/v4 speaks this wire, which is how the seam is provable
 // without an OpenAI key. Same tools, same events, same live surfacing as GLM.
 import { getKey } from '../vault'
-import { PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
+import { MUTATING_TOOLS, PLAN_SYSTEM, PLAN_TOOL_NAMES, SYSTEM, TOOLS, liveSurface } from './tools'
+import { requestApproval } from '../approvals'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
@@ -82,14 +83,24 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       const tool = TOOLS.find((t) => t.name === name)
       emit({ type: 'tool_use', id: tc.id, name, input })
       let output = ''
-      try {
-        output = tool ? await tool.run(input, { workspace, emit }) : `unknown tool: ${name}`
-      } catch (e) {
-        output = `tool error: ${e instanceof Error ? e.message : String(e)}`
+      if (plan) {
+        // read-only tools only; a mutating call in plan mode is refused honestly
+        if (MUTATING_TOOLS.has(name)) output = 'plan mode: cannot edit; propose it in the plan.'
+      }
+      if (!output && turn.mode === 'ask' && MUTATING_TOOLS.has(name)) {
+        const ok = await requestApproval(emit, name, input)
+        if (!ok) output = 'skipped — you denied this action.'
+      }
+      if (!output) {
+        try {
+          output = tool ? await tool.run(input, { workspace, emit }) : `unknown tool: ${name}`
+        } catch (e) {
+          output = `tool error: ${e instanceof Error ? e.message : String(e)}`
+        }
       }
       emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120) })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
-      if (name === 'write_file' || name === 'run_bash') mutated = true
+      if ((name === 'write_file' || name === 'run_bash') && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
     }
 
     await liveSurface(workspace, turn.watch, mutated, emit)

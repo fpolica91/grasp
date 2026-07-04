@@ -17,7 +17,8 @@ const api: GraspApi = {
   backends: () => ipcRenderer.invoke('grasp:backends'),
   sessions: () => ipcRenderer.invoke('grasp:sessions'),
   saveSession: (rec: SessionRecord) => ipcRenderer.invoke('grasp:saveSession', rec),
-  deleteSession: (id: string) => ipcRenderer.invoke('grasp:deleteSession', id)
+  deleteSession: (id: string) => ipcRenderer.invoke('grasp:deleteSession', id),
+  approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

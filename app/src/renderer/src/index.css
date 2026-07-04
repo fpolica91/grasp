@@ -289,6 +289,18 @@ input, textarea { font-family: inherit; }
 .plan-actions { display: flex; align-items: center; gap: 12px; margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--hair-soft); }
 .plan-hint { font-size: 12px; color: var(--faint); }
 
+/* ask mode — per-tool approval */
+.approval-card { align-self: stretch; background: var(--question-bg); border: 1px solid var(--question-hair); border-left: 3px solid var(--question); border-radius: 12px; padding: 14px 16px; box-shadow: var(--sh-1); }
+.approval-card.decided { opacity: .7; border-left-color: var(--hair); background: var(--surface-2); }
+.approval-head { display: flex; align-items: center; gap: 10px; }
+.approval-verdict { margin-left: auto; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 9px; border-radius: 20px; }
+.approval-verdict.allowed { color: var(--accent); border: 1px solid var(--accent-hair); }
+.approval-verdict.denied { color: var(--ghost); border: 1px solid var(--hair); }
+.approval-body { display: flex; align-items: baseline; gap: 9px; margin: 9px 0 0; font-family: var(--mono); font-size: 12.5px; }
+.approval-body .tn { color: var(--question); font-weight: 600; }
+.approval-detail { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.approval-actions { display: flex; gap: 9px; margin-top: 13px; }
+
 /* provider/model picker — a chip that is a control */
 .picker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); box-shadow: var(--sh-1); }
 .picker .g { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }

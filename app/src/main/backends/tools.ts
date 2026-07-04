@@ -30,6 +30,9 @@ export const PLAN_SYSTEM =
   ' exact changes you propose (files, edits, and how the change should be observed). The human' +
   ' will approve the plan before anything is executed.'
 
+// ASK MODE: these tools change the workspace, so they pause for human approval.
+export const MUTATING_TOOLS = new Set(['write_file', 'run_bash'])
+
 export interface Tool {
   name: string
   description: string
