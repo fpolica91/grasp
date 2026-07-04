@@ -442,6 +442,7 @@ export function App(): React.JSX.Element {
                 onApprovePlan={approvePlan}
                 onDecideApproval={decideApproval}
                 onSend={send}
+                onStop={() => void window.grasp.stopAgent()}
                 onToggleTerminal={toggleBottom}
                 onToggleSidebar={() => setSidebarOpen((s) => !s)}
                 banner={
