@@ -124,6 +124,8 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         }
       } else if (ev.type === 'result') {
         sawResult = true
+        const u = ev.usage as { input_tokens?: number; output_tokens?: number } | undefined
+        if (u) emit({ type: 'usage', input: u.input_tokens ?? 0, output: u.output_tokens ?? 0 })
         if (ev.is_error) emit({ type: 'error', error: String(ev.result ?? 'claude exited with an error') })
         // In plan mode Claude Code's result is the proposal — hand it to the human.
         else if (plan && typeof ev.result === 'string' && ev.result) emit({ type: 'plan', text: ev.result })

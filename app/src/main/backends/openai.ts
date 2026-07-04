@@ -29,7 +29,7 @@ async function callModel(
   messages: Msg[],
   system: string,
   tools: Tool[]
-): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string }> {
+): Promise<{ ok: boolean; msg?: Msg; finish?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
   try {
@@ -44,10 +44,18 @@ async function callModel(
       })
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
-    const data = (await res.json()) as { choices?: { message?: Msg; finish_reason?: string }[] }
+    const data = (await res.json()) as {
+      choices?: { message?: Msg; finish_reason?: string }[]
+      usage?: { prompt_tokens?: number; completion_tokens?: number }
+    }
     const choice = data.choices?.[0]
     if (!choice?.message) return { ok: false, error: 'model returned no choices' }
-    return { ok: true, msg: choice.message, finish: choice.finish_reason }
+    return {
+      ok: true,
+      msg: choice.message,
+      finish: choice.finish_reason,
+      usage: { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0 }
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -92,11 +100,20 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     return finalText || '(subagent reached step limit)'
   }
 
+  let turnTokens = 0
   for (let step = 0; step < MAX_STEPS; step++) {
     const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS)
     if (!r.ok || !r.msg) {
       emit({ type: 'error', error: r.error })
       return { messages }
+    }
+    if (r.usage) {
+      emit({ type: 'usage', input: r.usage.input, output: r.usage.output })
+      turnTokens += r.usage.input + r.usage.output
+      if (turn.budget && turnTokens > turn.budget) {
+        emit({ type: 'done', note: `stopped: reached the ${turn.budget.toLocaleString()}-token turn budget (used ${turnTokens.toLocaleString()}).` })
+        return { messages }
+      }
     }
     messages.push(r.msg)
     const calls = r.msg.tool_calls ?? []

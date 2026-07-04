@@ -27,7 +27,7 @@ async function callModel(
   messages: unknown[],
   system: string,
   tools: Tool[]
-): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string }> {
+): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey()
   if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
   try {
@@ -43,8 +43,17 @@ async function callModel(
       })
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
-    const data = (await res.json()) as { content?: AnyBlock[]; stop_reason?: string }
-    return { ok: true, content: data.content ?? [], stop: data.stop_reason }
+    const data = (await res.json()) as {
+      content?: AnyBlock[]
+      stop_reason?: string
+      usage?: { input_tokens?: number; output_tokens?: number }
+    }
+    return {
+      ok: true,
+      content: data.content ?? [],
+      stop: data.stop_reason,
+      usage: { input: data.usage?.input_tokens ?? 0, output: data.usage?.output_tokens ?? 0 }
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
@@ -88,11 +97,20 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     return finalText || '(subagent reached step limit)'
   }
 
+  let turnTokens = 0
   for (let step = 0; step < MAX_STEPS; step++) {
     const r = await callModel(model, messages, plan ? PLAN_SYSTEM : SYSTEM, plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS)
     if (!r.ok) {
       emit({ type: 'error', error: r.error })
       return { messages }
+    }
+    if (r.usage) {
+      emit({ type: 'usage', input: r.usage.input, output: r.usage.output })
+      turnTokens += r.usage.input + r.usage.output
+      if (turn.budget && turnTokens > turn.budget) {
+        emit({ type: 'done', note: `stopped: reached the ${turn.budget.toLocaleString()}-token turn budget (used ${turnTokens.toLocaleString()}).` })
+        return { messages }
+      }
     }
     const blocks = r.content ?? []
     messages.push({ role: 'assistant', content: blocks })

@@ -31,6 +31,8 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
+  const [tokens, setTokens] = useState(0)
+  const [budget, setBudget] = useState('')
 
   // Resolve an Ask-mode approval and mark it decided in the transcript.
   function decideApproval(id: string, ok: boolean): void {
@@ -153,7 +155,11 @@ export function App(): React.JSX.Element {
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
-      else if (e.type === 'done') setBusy(false)
+      else if (e.type === 'usage') setTokens((n) => n + e.input + e.output)
+      else if (e.type === 'done') {
+        setBusy(false)
+        if (e.note) setTranscript((t) => [...t, { role: 'assistant', text: `_${e.note}_` }])
+      }
       else if (e.type === 'error') {
         setError(e.error)
         setBusy(false)
@@ -167,6 +173,7 @@ export function App(): React.JSX.Element {
     setBusy(true)
     setTranscript((t) => [...t, { role: 'user', text: prompt }])
     const watch = watchEp.trim() ? { entrypoint: watchEp.trim(), input: watchInput.trim() || undefined } : undefined
+    const b = parseInt(budget, 10)
     const res = await window.grasp.agent({
       workspace,
       prompt,
@@ -174,7 +181,8 @@ export function App(): React.JSX.Element {
       watch,
       backend,
       model,
-      mode: modeOverride ?? agentMode
+      mode: modeOverride ?? agentMode,
+      budget: Number.isFinite(b) && b > 0 ? b : undefined
     })
     history.current = res.messages
   }
@@ -216,6 +224,9 @@ export function App(): React.JSX.Element {
         backend={backend}
         model={model}
         mode={agentMode}
+        tokens={tokens}
+        budget={budget}
+        onBudget={setBudget}
         onBackend={pickBackend}
         onModel={setModel}
         onMode={setAgentMode}

@@ -24,6 +24,7 @@ export async function runAgent(
     backend?: string
     model?: string
     mode?: 'auto' | 'ask' | 'plan'
+    budget?: number
   }
 ): Promise<{ messages: unknown[] }> {
   const emit: Emit = (event) => {
@@ -37,7 +38,15 @@ export async function runAgent(
   }
   const workspace = params.workspace || process.env.GRASP_WORKSPACE || process.cwd()
   return backend.run(
-    { workspace, prompt: params.prompt, history: params.history, watch: params.watch, model: params.model, mode: params.mode },
+    {
+      workspace,
+      prompt: params.prompt,
+      history: params.history,
+      watch: params.watch,
+      model: params.model,
+      mode: params.mode,
+      budget: params.budget
+    },
     emit
   )
 }

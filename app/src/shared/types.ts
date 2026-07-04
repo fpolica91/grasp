@@ -164,6 +164,7 @@ export type AgentEvent =
   | { type: 'fuzz'; report: FuzzReport }
   | { type: 'plan'; text: string }
   | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
+  | { type: 'usage'; input: number; output: number }
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
 
@@ -182,6 +183,7 @@ export interface AgentTurn {
   backend?: string // backend id ('glm' | 'claude-code' | 'openai'); default glm
   model?: string // model id within the backend
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each edit; plan: read-only, propose first
+  budget?: number // optional per-turn token ceiling; the loop stops honestly when reached
 }
 
 export interface BackendInfo {

@@ -11,6 +11,7 @@ export interface BackendTurn {
   watch?: { entrypoint: string; input?: string }
   model?: string // model id within the backend; backend default when absent
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each mutating tool; plan: read-only + propose
+  budget?: number // per-turn token ceiling; loop stops when the turn's usage exceeds it
 }
 
 export interface AgentBackend {

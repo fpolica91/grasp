@@ -135,6 +135,9 @@ export function Conversation(props: {
   backend: string
   model: string
   mode: 'auto' | 'ask' | 'plan'
+  tokens: number
+  budget: string
+  onBudget: (v: string) => void
   onBackend: (id: string) => void
   onModel: (m: string) => void
   onMode: (m: 'auto' | 'ask' | 'plan') => void
@@ -142,6 +145,7 @@ export function Conversation(props: {
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
 }): React.JSX.Element {
+  const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
   const [input, setInput] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
 
@@ -200,6 +204,21 @@ export function Conversation(props: {
       <header className="conv-head">
         <span className="conv-title">
           Session<span className="sub">post-editor</span>
+        </span>
+        <span className="meter" title="tokens used this session · optional per-turn budget">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".4" />
+            <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          {fmtTokens(props.tokens)}
+          <span className="meter-sep">budget</span>
+          <input
+            className="budget"
+            value={props.budget}
+            onChange={(e) => props.onBudget(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="none"
+            spellCheck={false}
+          />
         </span>
         <span className="chip">
           <span className="g" />
