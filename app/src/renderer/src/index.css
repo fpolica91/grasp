@@ -208,7 +208,7 @@ input, textarea { font-family: inherit; }
 .cb-lang { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 .cb-copy { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 11px; padding: 2px 6px; border-radius: 5px; }
 .cb-copy:hover { color: var(--ink); background: var(--surface-3); }
-.cb-pre { margin: 0; padding: 11px 13px; overflow-x: auto; }
+.cb-pre { margin: 0; padding: 11px 13px; max-height: 30em; overflow: auto; overscroll-behavior: contain; }
 .cb-pre.collapsed { max-height: 15em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
 .cb-pre code { font-family: var(--mono); font-size: 12px; line-height: 1.6; background: none; border: 0; padding: 0; }
 .cb-more { display: block; width: 100%; text-align: left; background: var(--surface-2); border: 0; border-top: 1px solid var(--hair-soft); color: var(--muted); font-size: 11.5px; padding: 6px 12px; }
@@ -230,7 +230,11 @@ input, textarea { font-family: inherit; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .tb-body { padding: 0 10px 10px; }
 .tb-body .codeblock { margin: 4px 0 8px; }
-.tb-out { margin: 0; padding: 10px 12px; background: var(--ground); border: 1px solid var(--hair-soft); border-radius: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--muted); white-space: pre-wrap; word-break: break-word; max-height: 20em; overflow: auto; }
+.tb-out { margin: 0; padding: 10px 12px; background: var(--ground); border: 1px solid var(--hair-soft); border-radius: 8px; font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--muted); white-space: pre-wrap; word-break: break-word; max-height: 22em; overflow: auto; overscroll-behavior: contain; }
+/* visible scrollbars inside blocks (thin, unobtrusive) */
+.tb-out::-webkit-scrollbar, .cb-pre::-webkit-scrollbar { width: 8px; height: 8px; }
+.tb-out::-webkit-scrollbar-thumb, .cb-pre::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 6px; }
+.tb-out::-webkit-scrollbar-thumb:hover, .cb-pre::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 
 /* thinking indicator */
 .working { display: inline-flex; gap: 5px; padding: 4px 0; }
