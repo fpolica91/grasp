@@ -19,7 +19,7 @@ import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
 const MODELS = (process.env.GRASP_OPENAI_MODELS ?? 'gpt-5.2,gpt-5.1,gpt-4.1').split(',').map((s) => s.trim()).filter(Boolean)
-const MAX_STEPS = 16
+const MAX_STEPS = 40
 
 type ToolCall = { id: string; function: { name: string; arguments: string } }
 type Msg = { role: string; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }

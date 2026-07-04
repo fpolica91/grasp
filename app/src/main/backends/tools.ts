@@ -3,8 +3,8 @@
 // they run code FOR REAL and surface observed dataflow into the UI. Claude Code
 // brings its own tools, so it does not use this registry (but shares liveSurface).
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
 import { diff, fuzz, observe } from '../engine'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
@@ -95,6 +95,7 @@ export const TOOLS: Tool[] = [
     input_schema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] },
     async run(input, { workspace }) {
       const p = inside(workspace, input.path as string)
+      mkdirSync(dirname(p), { recursive: true }) // creating src/x.js must not fail on a fresh dir
       writeFileSync(p, String(input.content ?? ''), 'utf-8')
       return `wrote ${input.path} (${String(input.content ?? '').length} bytes)`
     }
@@ -128,7 +129,10 @@ export const TOOLS: Tool[] = [
     description:
       'Run an entrypoint FOR REAL and get the observed dataflow — what values it binds, ' +
       'the paths it takes — ending in a neutral question. Use this after you change code ' +
-      'to show what the change does, instead of asserting it works.',
+      'to show what the change does, instead of asserting it works. Input binding: the ' +
+      'JSON input keys bind to the function’s declared parameter names (any key order); ' +
+      'a JS function taking a single options object — fn(opts) or fn({a, b}) — receives ' +
+      'the whole input object. Do not write adapter shims for grasp; call the real function.',
     input_schema: {
       type: 'object',
       properties: {

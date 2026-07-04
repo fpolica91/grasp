@@ -30,8 +30,9 @@ export function App(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
   const [varying, setVarying] = useState(false)
-  // Flow auto-refresh: on = re-observe after every agent edit; off = run on demand via the CTA.
-  const [flowAuto, setFlowAuto] = useState<boolean>(() => localStorage.getItem('grasp-flow-auto') !== 'off')
+  // Flow auto-refresh: on = re-observe after every agent edit; off (DEFAULT) = build first,
+  // run the Flow on demand via the CTA when you're ready to inspect behavior.
+  const [flowAuto, setFlowAuto] = useState<boolean>(() => localStorage.getItem('grasp-flow-auto') === 'on')
   const [flowNote, setFlowNote] = useState<string | null>(null)
   const [flowRunning, setFlowRunning] = useState(false)
 

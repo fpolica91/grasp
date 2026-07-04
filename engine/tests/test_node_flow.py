@@ -125,3 +125,33 @@ def test_no_interior_node_synthesized(tmp_path):
     assert note.business_meaningful is False
     assert note.provenance == "unknown"
     assert note not in flow.default_nodes()
+
+
+def test_kwargs_bind_by_parameter_name(tmp_path):
+    """JSON input keys bind to DECLARED JS parameter names, not insertion order.
+
+    Pins the fix for the car-rental session failure: a destructured options-object
+    param receives the whole kwargs object; a multi-param function binds each key by
+    name even when the JSON key order is shuffled; fn(opts) receives the whole object.
+    """
+    mod = tmp_path / "svc.js"
+    mod.write_text(
+        "function optsFn({ a, b } = {}) { return { sum: a + b }; }\n"
+        "function multi(a, b, c) { return { got: [a, b, c] }; }\n"
+        "function bag(opts) { return { keys: Object.keys(opts).sort() }; }\n"
+        "module.exports = { optsFn, multi, bag };\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f1 = node_flow(module_path=str(mod), func="optsFn", kwargs={"a": 2, "b": 3})
+    ret1 = [n for n in f1.nodes if n.kind == "return"]
+    assert ret1 and any(o.name == "sum" and o.value == 5 for o in ret1[0].operands)
+
+    # shuffled key order must still bind by name
+    f2 = node_flow(module_path=str(mod), func="multi", kwargs={"c": 3, "a": 1, "b": 2})
+    ret2 = [n for n in f2.nodes if n.kind == "return"]
+    assert ret2 and any(o.name == "got" and o.value == [1, 2, 3] for o in ret2[0].operands)
+
+    f3 = node_flow(module_path=str(mod), func="bag", kwargs={"x": 1, "y": 2})
+    ret3 = [n for n in f3.nodes if n.kind == "return"]
+    assert ret3 and any(o.name == "keys" and o.value == ["x", "y"] for o in ret3[0].operands)

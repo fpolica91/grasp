@@ -250,15 +250,26 @@ export function Conversation(props: {
 }): React.JSX.Element {
   const [input, setInput] = useState('')
   const logRef = useRef<HTMLDivElement>(null)
+  // Stick-to-bottom ONLY when the reader is already at the bottom. Streaming events used
+  // to yank the scroll down on every update, which made scrolling up and expanding tool
+  // blocks impossible during a turn.
+  const stickBottom = useRef(true)
   const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight })
+    const el = logRef.current
+    if (el && stickBottom.current) el.scrollTo({ top: el.scrollHeight })
   }, [props.transcript, props.busy])
+
+  function onLogScroll(): void {
+    const el = logRef.current
+    if (el) stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+  }
 
   function submit(): void {
     const t = input.trim()
     if (!t || props.busy) return
+    stickBottom.current = true // sending re-engages follow-the-stream
     props.onSend(t)
     setInput('')
   }
@@ -333,7 +344,7 @@ export function Conversation(props: {
 
       {props.banner}
 
-      <div className="conv-log" ref={logRef}>
+      <div className="conv-log" ref={logRef} onScroll={onLogScroll}>
         {props.transcript.length === 0 && (
           <div className="conv-empty">
             <h2>What should we change?</h2>

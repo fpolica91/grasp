@@ -18,7 +18,7 @@ import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic'
 const DEFAULT_MODEL = process.env.GRASP_MODEL ?? 'glm-5.2'
-const MAX_STEPS = 16
+const MAX_STEPS = 40
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
 
