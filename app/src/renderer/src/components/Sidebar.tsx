@@ -29,6 +29,7 @@ export function Sidebar(props: {
   sessions: { id: string; title: string }[]
   activeSession: string
   onSelectSession: (id: string) => void
+  onDeleteSession: (id: string) => void
   onNewWorkflow: () => void
   theme: Theme
   onTheme: (t: Theme) => void
@@ -66,7 +67,17 @@ export function Sidebar(props: {
             onClick={() => props.onSelectSession(s.id)}
             title={s.title}
           >
-            {s.title}
+            <span className="si-title">{s.title}</span>
+            <button
+              className="si-del"
+              title="Delete chat"
+              onClick={(e) => {
+                e.stopPropagation()
+                props.onDeleteSession(s.id)
+              }}
+            >
+              ✕
+            </button>
           </div>
         ))}
       </div>

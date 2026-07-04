@@ -245,6 +245,7 @@ export function Conversation(props: {
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
   onToggleTerminal?: () => void
+  onToggleSidebar?: () => void
   banner?: React.ReactNode
 }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -301,6 +302,11 @@ export function Conversation(props: {
   return (
     <section className="conv">
       <header className="conv-head">
+        {props.onToggleSidebar && (
+          <button className="head-icon" onClick={props.onToggleSidebar} title="Toggle sidebar (⌘B)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        )}
         <span className="conv-title">
           Session<span className="sub">post-editor</span>
         </span>

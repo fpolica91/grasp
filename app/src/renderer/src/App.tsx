@@ -34,12 +34,18 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [rightTab, setRightTab] = useState<'editor' | 'flow'>('flow')
-  const [bottomTab, setBottomTab] = useState<'terminal' | 'browser'>('terminal')
+  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'browser'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const bottomRef = useRef<ImperativePanelHandle>(null)
+  const rightRef = useRef<ImperativePanelHandle>(null)
   const toggleBottom = (): void => {
     const p = bottomRef.current
+    if (!p) return
+    p.isCollapsed() ? p.expand() : p.collapse()
+  }
+  const toggleRight = (): void => {
+    const p = rightRef.current
     if (!p) return
     p.isCollapsed() ? p.expand() : p.collapse()
   }
@@ -47,6 +53,21 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     if (surface) setRightTab('flow')
   }, [surface])
+
+  // Keyboard shortcuts (Cmd/Ctrl): N new session · J toggle terminal · B sidebar · \ right pane.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      const k = e.key.toLowerCase()
+      if (k === 'n') { e.preventDefault(); newSession() }
+      else if (k === 'j') { e.preventDefault(); toggleBottom() }
+      else if (k === 'b') { e.preventDefault(); setSidebarOpen((s) => !s) }
+      else if (k === '\\') { e.preventDefault(); toggleRight() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -282,22 +303,31 @@ export function App(): React.JSX.Element {
     setError(null)
   }
 
+  function deleteSessionById(id: string): void {
+    void window.grasp.deleteSession(id)
+    setSessions((ss) => ss.filter((s) => s.id !== id))
+    if (id === sessionId) newSession()
+  }
+
   return (
     <div className="app">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
 
-      <Sidebar
-        workspace={workspace}
-        onWorkspace={setWorkspace}
-        onNewSession={newSession}
-        sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
-        activeSession={sessionId}
-        onSelectSession={loadSession}
-        onNewWorkflow={() => setShowWfModal(true)}
-        theme={theme}
-        onTheme={setTheme}
-      />
+      {sidebarOpen && (
+        <Sidebar
+          workspace={workspace}
+          onWorkspace={setWorkspace}
+          onNewSession={newSession}
+          sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
+          activeSession={sessionId}
+          onSelectSession={loadSession}
+          onDeleteSession={deleteSessionById}
+          onNewWorkflow={() => setShowWfModal(true)}
+          theme={theme}
+          onTheme={setTheme}
+        />
+      )}
 
       <PanelGroup direction="vertical" className="workarea" autoSaveId="grasp-vert">
         <Panel defaultSize={72} minSize={30}>
@@ -322,6 +352,7 @@ export function App(): React.JSX.Element {
                 onDecideApproval={decideApproval}
                 onSend={send}
                 onToggleTerminal={toggleBottom}
+                onToggleSidebar={() => setSidebarOpen((s) => !s)}
                 banner={
                   activeWf ? (
                     <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
@@ -330,8 +361,8 @@ export function App(): React.JSX.Element {
               />
             </Panel>
             <PanelResizeHandle className="rh rh-v" />
-            {/* editor / flow */}
-            <Panel defaultSize={46} minSize={24} className="col right-col">
+            {/* editor / flow / browser — the tall side pane */}
+            <Panel ref={rightRef} defaultSize={46} minSize={22} collapsible collapsedSize={0} className="col right-col">
               <div className="panebar">
                 <button className={rightTab === 'editor' ? 'on' : ''} onClick={() => setRightTab('editor')}>
                   Editor
@@ -339,16 +370,25 @@ export function App(): React.JSX.Element {
                 <button className={rightTab === 'flow' ? 'on' : ''} onClick={() => setRightTab('flow')}>
                   Flow
                 </button>
+                <button className={rightTab === 'browser' ? 'on' : ''} onClick={() => setRightTab('browser')}>
+                  Browser
+                </button>
                 {surface && (
                   <span className="pane-live">
                     <span className="pulse" />
                     live
                   </span>
                 )}
+                <button className="dock-toggle" onClick={toggleRight} title="Close side pane (⌘\)">
+                  ✕
+                </button>
               </div>
               <div className="pane-body">
                 <div className={`pane${rightTab === 'editor' ? ' on' : ''}`}>
                   <FilesPane workspace={workspace} active={rightTab === 'editor'} />
+                </div>
+                <div className={`pane${rightTab === 'browser' ? ' on' : ''}`}>
+                  <BrowserPane active={rightTab === 'browser'} />
                 </div>
                 <div className={`pane flow-pane${rightTab === 'flow' ? ' on' : ''}`}>
                   {surface?.kind === 'diff' ? (
@@ -370,11 +410,11 @@ export function App(): React.JSX.Element {
           </PanelGroup>
         </Panel>
         <PanelResizeHandle className="rh rh-h" />
-        {/* docked terminal / browser */}
+        {/* docked terminal — wide+short belongs here; the browser lives in the side pane */}
         <Panel
           ref={bottomRef}
-          defaultSize={28}
-          minSize={12}
+          defaultSize={26}
+          minSize={10}
           collapsible
           collapsedSize={0}
           onCollapse={() => setBottomCollapsed(true)}
@@ -382,22 +422,14 @@ export function App(): React.JSX.Element {
           className="bottom-dock"
         >
           <div className="panebar">
-            <button className={bottomTab === 'terminal' ? 'on' : ''} onClick={() => setBottomTab('terminal')}>
-              Terminal
-            </button>
-            <button className={bottomTab === 'browser' ? 'on' : ''} onClick={() => setBottomTab('browser')}>
-              Browser
-            </button>
-            <button className="dock-toggle" onClick={toggleBottom} title="Hide panel">
-              ▾
+            <button className="on">Terminal</button>
+            <button className="dock-toggle" onClick={toggleBottom} title="Hide terminal (⌘J)">
+              ✕
             </button>
           </div>
           <div className="pane-body">
-            <div className={`pane${bottomTab === 'terminal' ? ' on' : ''}`}>
-              <TerminalPane workspace={workspace} active={!bottomCollapsed && bottomTab === 'terminal'} />
-            </div>
-            <div className={`pane${bottomTab === 'browser' ? ' on' : ''}`}>
-              <BrowserPane active={!bottomCollapsed && bottomTab === 'browser'} />
+            <div className="pane on">
+              <TerminalPane workspace={workspace} active={!bottomCollapsed} />
             </div>
           </div>
         </Panel>

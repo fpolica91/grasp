@@ -77,8 +77,17 @@ input, textarea { font-family: inherit; }
 .pane.flow-pane.on { display: block; overflow-y: auto; padding: 0; }
 .pane-live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
 .pane-live .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.dock-toggle { margin-left: auto; background: transparent; border: 0; color: var(--faint); font-size: 12px; padding: 2px 8px; }
-.dock-toggle:hover { color: var(--ink); }
+.dock-toggle { margin-left: auto; background: transparent; border: 0; color: var(--faint); font-size: 12px; padding: 2px 8px; border-radius: 5px; }
+.dock-toggle:hover { color: var(--ink); background: var(--surface-3); }
+.pane-live + .dock-toggle { margin-left: 8px; }
+.head-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: transparent; border: 0; color: var(--muted); -webkit-app-region: no-drag; }
+.head-icon:hover { color: var(--ink); background: var(--surface-2); }
+/* delete chat */
+.side-item { display: flex; align-items: center; gap: 6px; }
+.si-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-del { flex: none; background: transparent; border: 0; color: var(--faint); font-size: 11px; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity .1s; }
+.side-item:hover .si-del { opacity: 1; }
+.si-del:hover { color: var(--question); background: var(--surface-3); }
 .composer-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: transparent; border: 1px solid var(--hair); color: var(--muted); }
 .composer-icon:hover { color: var(--ink); border-color: var(--faint); }
 .rh { position: relative; background: transparent; transition: background .12s; flex: none; }
