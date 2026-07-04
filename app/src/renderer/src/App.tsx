@@ -6,6 +6,7 @@ import { Sidebar, type Theme } from './components/Sidebar'
 import { Conversation, type TranscriptItem } from './components/Conversation'
 import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
+import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels'
 import { FuzzView } from './components/FuzzView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
@@ -33,7 +34,19 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [pane, setPane] = useState<'chat' | 'files' | 'terminal' | 'browser'>('chat')
+  const [rightTab, setRightTab] = useState<'editor' | 'flow'>('flow')
+  const [bottomTab, setBottomTab] = useState<'terminal' | 'browser'>('terminal')
+  const [bottomCollapsed, setBottomCollapsed] = useState(false)
+  const bottomRef = useRef<ImperativePanelHandle>(null)
+  const toggleBottom = (): void => {
+    const p = bottomRef.current
+    if (!p) return
+    p.isCollapsed() ? p.expand() : p.collapse()
+  }
+  // When the agent surfaces dataflow, flip the right pane to Flow so it's seen.
+  useEffect(() => {
+    if (surface) setRightTab('flow')
+  }, [surface])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -286,85 +299,109 @@ export function App(): React.JSX.Element {
         onTheme={setTheme}
       />
 
-      <div className="center">
-        <div className="panebar">
-          <button className={pane === 'chat' ? 'on' : ''} onClick={() => setPane('chat')}>
-            Chat
-          </button>
-          <button className={pane === 'files' ? 'on' : ''} onClick={() => setPane('files')}>
-            Files
-          </button>
-          <button className={pane === 'terminal' ? 'on' : ''} onClick={() => setPane('terminal')}>
-            Terminal
-          </button>
-          <button className={pane === 'browser' ? 'on' : ''} onClick={() => setPane('browser')}>
-            Browser
-          </button>
-        </div>
-        <div className="pane-stack">
-          <div className={`pane${pane === 'chat' ? ' on' : ''}`}>
-            <Conversation
-              transcript={transcript}
-              busy={busy}
-              error={error}
-              backends={backends}
-              backend={backend}
-              model={model}
-              mode={agentMode}
-              tokens={tokens}
-              budget={budget}
-              onBudget={setBudget}
-              onBackend={pickBackend}
-              onModel={setModel}
-              onMode={setAgentMode}
-              onApprovePlan={approvePlan}
-              onDecideApproval={decideApproval}
-              onSend={send}
-              banner={
-                activeWf ? (
-                  <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
-                ) : null
-              }
-            />
+      <PanelGroup direction="vertical" className="workarea" autoSaveId="grasp-vert">
+        <Panel defaultSize={72} minSize={30}>
+          <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
+            {/* chat */}
+            <Panel defaultSize={54} minSize={28} className="col chat-col">
+              <Conversation
+                transcript={transcript}
+                busy={busy}
+                error={error}
+                backends={backends}
+                backend={backend}
+                model={model}
+                mode={agentMode}
+                tokens={tokens}
+                budget={budget}
+                onBudget={setBudget}
+                onBackend={pickBackend}
+                onModel={setModel}
+                onMode={setAgentMode}
+                onApprovePlan={approvePlan}
+                onDecideApproval={decideApproval}
+                onSend={send}
+                onToggleTerminal={toggleBottom}
+                banner={
+                  activeWf ? (
+                    <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
+                  ) : null
+                }
+              />
+            </Panel>
+            <PanelResizeHandle className="rh rh-v" />
+            {/* editor / flow */}
+            <Panel defaultSize={46} minSize={24} className="col right-col">
+              <div className="panebar">
+                <button className={rightTab === 'editor' ? 'on' : ''} onClick={() => setRightTab('editor')}>
+                  Editor
+                </button>
+                <button className={rightTab === 'flow' ? 'on' : ''} onClick={() => setRightTab('flow')}>
+                  Flow
+                </button>
+                {surface && (
+                  <span className="pane-live">
+                    <span className="pulse" />
+                    live
+                  </span>
+                )}
+              </div>
+              <div className="pane-body">
+                <div className={`pane${rightTab === 'editor' ? ' on' : ''}`}>
+                  <FilesPane workspace={workspace} active={rightTab === 'editor'} />
+                </div>
+                <div className={`pane flow-pane${rightTab === 'flow' ? ' on' : ''}`}>
+                  {surface?.kind === 'diff' ? (
+                    <DataflowDiff diff={surface.diff} />
+                  ) : surface?.kind === 'fuzz' ? (
+                    <FuzzView report={surface.report} />
+                  ) : surface?.kind === 'flow' ? (
+                    <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
+                  ) : (
+                    <div className="inst-empty">
+                      The dataflow shows up here <b>automatically</b> — the moment the agent runs a function, grasp
+                      observes it for real and re-observes it after every edit. Nothing to configure. It ends in a
+                      question, never a verdict.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Panel>
+          </PanelGroup>
+        </Panel>
+        <PanelResizeHandle className="rh rh-h" />
+        {/* docked terminal / browser */}
+        <Panel
+          ref={bottomRef}
+          defaultSize={28}
+          minSize={12}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setBottomCollapsed(true)}
+          onExpand={() => setBottomCollapsed(false)}
+          className="bottom-dock"
+        >
+          <div className="panebar">
+            <button className={bottomTab === 'terminal' ? 'on' : ''} onClick={() => setBottomTab('terminal')}>
+              Terminal
+            </button>
+            <button className={bottomTab === 'browser' ? 'on' : ''} onClick={() => setBottomTab('browser')}>
+              Browser
+            </button>
+            <button className="dock-toggle" onClick={toggleBottom} title="Hide panel">
+              ▾
+            </button>
           </div>
-          <div className={`pane${pane === 'files' ? ' on' : ''}`}>
-            <FilesPane workspace={workspace} active={pane === 'files'} />
-          </div>
-          <div className={`pane${pane === 'terminal' ? ' on' : ''}`}>
-            <TerminalPane workspace={workspace} active={pane === 'terminal'} />
-          </div>
-          <div className={`pane${pane === 'browser' ? ' on' : ''}`}>
-            <BrowserPane active={pane === 'browser'} />
-          </div>
-        </div>
-      </div>
-
-      <aside className="instrument">
-        <div className="inst-head">
-          <span className="lbl">
-            {surface?.kind === 'diff' ? 'dataflow change' : surface?.kind === 'fuzz' ? 'fuzzed inputs' : 'observed dataflow'}
-          </span>
-          <span className="live">
-            <span className="pulse" />
-            live
-          </span>
-        </div>
-        <div className="inst-body">
-          {surface?.kind === 'diff' ? (
-            <DataflowDiff diff={surface.diff} />
-          ) : surface?.kind === 'fuzz' ? (
-            <FuzzView report={surface.report} />
-          ) : surface?.kind === 'flow' ? (
-            <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
-          ) : (
-            <div className="inst-empty">
-              The dataflow shows up here <b>automatically</b> — the moment the agent runs a function, grasp observes
-              it for real and re-observes it after every edit. Nothing to configure. It ends in a question, never a
-              verdict.
+          <div className="pane-body">
+            <div className={`pane${bottomTab === 'terminal' ? ' on' : ''}`}>
+              <TerminalPane workspace={workspace} active={!bottomCollapsed && bottomTab === 'terminal'} />
             </div>
-          )}
-        </div>
-      </aside>
+            <div className={`pane${bottomTab === 'browser' ? ' on' : ''}`}>
+              <BrowserPane active={!bottomCollapsed && bottomTab === 'browser'} />
+            </div>
+          </div>
+        </Panel>
+      </PanelGroup>
     </div>
   )
 }

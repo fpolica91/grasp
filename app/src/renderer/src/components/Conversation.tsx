@@ -244,6 +244,7 @@ export function Conversation(props: {
   onApprovePlan: (text: string) => void
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
+  onToggleTerminal?: () => void
   banner?: React.ReactNode
 }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -386,6 +387,11 @@ export function Conversation(props: {
                 Plan
               </button>
             </span>
+            {props.onToggleTerminal && (
+              <button className="composer-icon" onClick={props.onToggleTerminal} title="Toggle terminal panel">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            )}
             <button className="send" onClick={submit} disabled={props.busy} title="Send (Enter · Shift+Enter for newline)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
