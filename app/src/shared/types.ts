@@ -244,6 +244,9 @@ export interface GraspApi {
   workflows(): Promise<WorkflowRecord[]>
   saveWorkflow(rec: WorkflowRecord): Promise<void>
   deleteWorkflow(id: string): Promise<void>
+  projects(): Promise<{ path: string; name: string }[]>
+  openFolder(): Promise<string>
+  newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void
   termWrite(id: string, data: string): void
   termResize(id: string, cols: number, rows: number): void

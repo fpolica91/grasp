@@ -22,6 +22,7 @@ import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
+import { listProjects, openFolder, newProject, rememberProject } from './projects'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
 import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
@@ -54,7 +55,14 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
   ipcMain.handle('grasp:keyStatus', () => hasKey())
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
-  ipcMain.handle('grasp:defaultWorkspace', () => defaultWorkspace())
+  ipcMain.handle('grasp:defaultWorkspace', () => {
+    const w = defaultWorkspace()
+    rememberProject(w)
+    return w
+  })
+  ipcMain.handle('grasp:projects', () => listProjects())
+  ipcMain.handle('grasp:openFolder', () => openFolder())
+  ipcMain.handle('grasp:newProject', (_e, name: string) => newProject(name))
   ipcMain.handle('grasp:backends', () => listBackends())
   ipcMain.handle('grasp:sessions', () => listSessions())
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))

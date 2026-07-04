@@ -1,5 +1,7 @@
 // The left rail — makes grasp a product, not a two-pane debug tool. Wordmark, new
-// session, sessions, the workspace the agent operates in, and the theme scheme.
+// session, sessions, the active project, and the theme scheme.
+import { ProjectSwitcher } from './ProjectSwitcher'
+
 export type Theme = 'graphite' | 'carbon' | 'daylight'
 const THEMES: { id: Theme; label: string }[] = [
   { id: 'graphite', label: 'Graphite' },
@@ -95,10 +97,7 @@ export function Sidebar(props: {
             />
           ))}
         </div>
-        <div className="ws-field" title="the folder the agent works in">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" strokeWidth="1.7" /></svg>
-          <input value={props.workspace} onChange={(e) => props.onWorkspace(e.target.value)} placeholder="workspace path" spellCheck={false} />
-        </div>
+        <ProjectSwitcher workspace={props.workspace} onSwitch={props.onWorkspace} />
       </div>
     </nav>
   )

@@ -321,6 +321,12 @@ export function App(): React.JSX.Element {
     setError(null)
   }
 
+  function switchProject(path: string): void {
+    if (!path || path === workspace) return
+    setWorkspace(path)
+    newSession()
+  }
+
   function deleteSessionById(id: string): void {
     void window.grasp.deleteSession(id)
     setSessions((ss) => ss.filter((s) => s.id !== id))
@@ -335,7 +341,7 @@ export function App(): React.JSX.Element {
       {sidebarOpen && (
         <Sidebar
           workspace={workspace}
-          onWorkspace={setWorkspace}
+          onWorkspace={switchProject}
           onNewSession={newSession}
           sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
           activeSession={sessionId}
