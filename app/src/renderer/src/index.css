@@ -650,3 +650,7 @@ input, textarea { font-family: inherit; }
 .fl-output pre { margin: 8px 0 0; padding: 10px 12px; background: var(--ground); border: 1px solid var(--hair-soft); border-radius: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); max-height: 18em; overflow: auto; }
 .fl-output pre.err { color: var(--question); }
 .fl-foot { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--hair-soft); font-size: 11.5px; color: var(--faint); line-height: 1.6; }
+.fl-runs { display: flex; gap: 4px; padding: 8px 14px 0; flex-wrap: wrap; }
+.fl-run { font-size: 11px; font-family: var(--mono); padding: 3px 9px; border-radius: 6px; border: 1px solid var(--hair); background: var(--surface-2); color: var(--muted); }
+.fl-run:hover { color: var(--ink); }
+.fl-run.on { color: var(--accent); border-color: var(--accent-hair); background: var(--accent-bg); }

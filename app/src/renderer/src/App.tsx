@@ -8,6 +8,7 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels'
 import { FuzzView } from './components/FuzzView'
+import { FlowView } from './components/FlowView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { Settings } from './components/Settings'
@@ -16,16 +17,19 @@ import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
+import type { TraceDoc } from '../../shared/trace'
 
 type Surface =
   | { kind: 'flow'; graph: GraphModel }
   | { kind: 'diff'; diff: GraphDiffModel }
   | { kind: 'fuzz'; report: FuzzReport }
+  | { kind: 'trace'; ix: number }
 
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
   const [transcript, setTranscript] = useState<TranscriptItem[]>([])
   const [surface, setSurface] = useState<Surface | null>(null)
+  const [traces, setTraces] = useState<TraceDoc[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
@@ -321,6 +325,12 @@ export function App(): React.JSX.Element {
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
+      else if (e.type === 'trace')
+        setTraces((ts) => {
+          const next = [...ts, e.trace]
+          setSurface({ kind: 'trace', ix: next.length - 1 })
+          return next
+        })
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
@@ -525,7 +535,31 @@ export function App(): React.JSX.Element {
                     </button>
                   </div>
                   {flowNote && <div className="flow-note">{flowNote}</div>}
-                  {surface?.kind === 'diff' ? (
+                  {surface?.kind === 'trace' && traces[surface.ix] ? (
+                    <>
+                      {traces.length > 1 && (
+                        <div className="fl-runs">
+                          {traces.map((tr, i) => (
+                            <button
+                              key={tr.id}
+                              className={`fl-run${i === surface.ix ? ' on' : ''}`}
+                              onClick={() => setSurface({ kind: 'trace', ix: i })}
+                              title={tr.entry}
+                            >
+                              {i === traces.length - 1 ? 'latest' : `run ${i + 1}`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <FlowView
+                        trace={traces[surface.ix]}
+                        onOpenSource={(file) => {
+                          setRightTab('editor')
+                          void window.grasp.readFile(workspace, file)
+                        }}
+                      />
+                    </>
+                  ) : surface?.kind === 'diff' ? (
                     <DataflowDiff diff={surface.diff} />
                   ) : surface?.kind === 'fuzz' ? (
                     <FuzzView report={surface.report} />

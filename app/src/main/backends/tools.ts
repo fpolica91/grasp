@@ -6,8 +6,22 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { diff, fuzz, observe } from '../engine'
+import { runTrace } from '../tracer'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
+
+// Detect the target language from repo files, for the native trace path.
+function detectLang(workspace: string): string {
+  try {
+    const files = readdirSync(workspace)
+    if (files.some((f) => f.endsWith('.py')) || files.includes('pyproject.toml') || files.includes('requirements.txt')) return 'py'
+    if (files.includes('tsconfig.json')) return 'ts'
+    if (files.includes('package.json')) return 'js'
+  } catch {
+    /* unreadable -> default python */
+  }
+  return 'py'
+}
 
 const OUT_CAP = 8000
 
@@ -257,6 +271,36 @@ export const TOOLS: Tool[] = [
         cp.on('error', (e) => res(`error: ${e.message}`))
         cp.on('close', (code) => res(cap(out) + `\n[exit ${code}]`))
       })
+    }
+  },
+  {
+    name: 'grasp_trace',
+    description:
+      'Trace a REAL execution of an entrypoint and surface it as the interactive Flow — the ' +
+      'call tree with the actual values that flowed through it (args -> calls -> return). Use ' +
+      'this to SHOW what your code does after a change, instead of asserting it works. Python ' +
+      'is traced now (native settrace); other languages report honestly until their tracer is ' +
+      'wired. Input keys bind to the function parameter names.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entrypoint: { type: 'string', description: 'module.func (the real function to run)' },
+        input: { type: 'string', description: 'JSON kwargs to call it with' },
+        language: { type: 'string', description: 'py/js/ts — omit to auto-detect from repo files' }
+      },
+      required: ['entrypoint']
+    },
+    async run(input, { workspace, emit }) {
+      let kwargs: Record<string, unknown> = {}
+      try { kwargs = input.input ? JSON.parse(String(input.input)) : {} } catch { /* empty */ }
+      const lang = input.language ? String(input.language) : detectLang(workspace)
+      const trace = await runTrace(workspace, String(input.entrypoint), kwargs, lang)
+      emit({ type: 'trace', trace })
+      if (trace.status === 'unobservable')
+        return `could not trace ${input.entrypoint}: ${trace.unobservable?.reason ?? 'unknown'}`
+      const n = trace.frames.length
+      const tail = trace.status === 'threw' ? `threw ${trace.threw?.type}` : `returned ${trace.ret?.repr ?? '(void)'}`
+      return `traced ${input.entrypoint}: ${n} frame(s), ${tail}. Flow rendered.`
     }
   },
   {
