@@ -158,12 +158,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
     }
 
-    await liveSurface(
-      workspace,
-      turn.watch,
-      toolUses.some((t) => t.name === 'write_file' || t.name === 'run_bash'),
-      emit
-    )
+    await liveSurface(workspace, toolUses.some((t) => t.name === 'write_file' || t.name === 'run_bash'), emit)
 
     messages.push({ role: 'user', content: results })
   }

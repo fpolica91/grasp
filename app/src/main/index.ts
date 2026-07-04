@@ -1,5 +1,20 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { mkdirSync } from 'node:fs'
+
+// The default home for projects the agent builds — NEVER grasp's own source dir.
+// Override with GRASP_WORKSPACE.
+function defaultWorkspace(): string {
+  if (process.env.GRASP_WORKSPACE) return process.env.GRASP_WORKSPACE
+  const root = join(homedir(), 'GraspProjects')
+  try {
+    mkdirSync(root, { recursive: true })
+  } catch {
+    /* fall through; the field is still editable */
+  }
+  return root
+}
 import { chat } from './model'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends } from './agent'
@@ -39,7 +54,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
   ipcMain.handle('grasp:keyStatus', () => hasKey())
   ipcMain.handle('grasp:setKey', (_e, key: string) => setKey(key))
-  ipcMain.handle('grasp:defaultWorkspace', () => process.env.GRASP_WORKSPACE || process.cwd())
+  ipcMain.handle('grasp:defaultWorkspace', () => defaultWorkspace())
   ipcMain.handle('grasp:backends', () => listBackends())
   ipcMain.handle('grasp:sessions', () => listSessions())
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))

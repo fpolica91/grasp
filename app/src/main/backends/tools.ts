@@ -117,6 +117,7 @@ export const TOOLS: Tool[] = [
     async run(input, { workspace, emit }) {
       const res = await observe({ repo: workspace, entrypoint: String(input.entrypoint), input: input.input as string })
       if (res.observed && res.graph) {
+        rememberWatch(workspace, String(input.entrypoint), input.input as string) // auto-re-observe on later edits
         emit({ type: 'dataflow', graph: res.graph }) // surface the graph in the UI
         const qs = res.graph.questions.length ? res.graph.questions.join(' | ') : '(no open question)'
         return `observed dataflow for ${input.entrypoint}. Open question(s): ${qs}`
@@ -148,6 +149,7 @@ export const TOOLS: Tool[] = [
         input: input.input as string
       })
       if (res.ok && res.graphDiff) {
+        rememberWatch(workspace, String(input.entrypoint), input.input as string) // auto-re-observe on later edits
         emit({ type: 'dataflow_diff', diff: res.graphDiff })
         if (res.graphDiff.empty) return `no behavioral change surfaced for ${input.entrypoint} on this input.`
         const qs = res.graphDiff.questions.length ? res.graphDiff.questions.join(' | ') : '(no question)'
@@ -220,17 +222,19 @@ export const SUBAGENT_SYSTEM =
   ' with a concise result for the main agent — what you found or did, and any observed' +
   ' dataflow question. Do not delegate further.'
 
-// LIVE SURFACING — shared by ALL backends: when an agent (ours or an external CLI)
-// mutated code and there's a watched entrypoint, auto re-observe it (OLD=HEAD vs
-// NEW=working tree) and stream the evolving dataflow — the graph moves as the agent
-// works, without it having to ask.
-export async function liveSurface(
-  workspace: string,
-  watch: { entrypoint: string; input?: string } | undefined,
-  mutated: boolean,
-  emit: Emit
-): Promise<void> {
-  if (!watch?.entrypoint || !mutated) return
-  const d = await diff({ repo: workspace, entrypoint: watch.entrypoint, oldRef: 'HEAD', input: watch.input })
+// AUTO-OBSERVE — no manual "watch" config. The moment the agent observes/diffs an
+// entrypoint (which it does as part of its work), grasp REMEMBERS it per workspace;
+// then after every subsequent edit it re-observes that entrypoint automatically, so the
+// dataflow updates on every iteration without the human typing a function name.
+const lastWatch = new Map<string, { entrypoint: string; input?: string }>()
+
+export function rememberWatch(workspace: string, entrypoint: string, input?: string): void {
+  if (entrypoint) lastWatch.set(workspace, { entrypoint, input })
+}
+
+export async function liveSurface(workspace: string, mutated: boolean, emit: Emit): Promise<void> {
+  const w = lastWatch.get(workspace)
+  if (!mutated || !w?.entrypoint) return
+  const d = await diff({ repo: workspace, entrypoint: w.entrypoint, oldRef: 'HEAD', input: w.input })
   if (d.ok && d.graphDiff) emit({ type: 'dataflow_diff', diff: d.graphDiff })
 }

@@ -86,7 +86,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       surfacing = true
       while (mutatedSinceSurface) {
         mutatedSinceSurface = false
-        await liveSurface(turn.workspace, turn.watch, true, emit)
+        await liveSurface(turn.workspace, true, emit)
       }
       surfacing = false
     }

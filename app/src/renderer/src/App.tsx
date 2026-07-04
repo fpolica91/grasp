@@ -26,10 +26,8 @@ export function App(): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
-  const [watchEp, setWatchEp] = useState('')
-  const [watchInput, setWatchInput] = useState('')
   const [varying, setVarying] = useState(false)
-  const [fuzzReal, setFuzzReal] = useState(false) // false = walled (network denied)
+  const [fuzzReal] = useState(false) // false = walled (network denied); toggled in the fuzz view
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('grasp-theme') as Theme) || 'graphite')
   const [backends, setBackends] = useState<BackendInfo[]>([])
   const [backend, setBackend] = useState('glm')
@@ -244,13 +242,11 @@ export function App(): React.JSX.Element {
     setError(null)
     setBusy(true)
     setTranscript((t) => [...t, { role: 'user', text: prompt }])
-    const watch = watchEp.trim() ? { entrypoint: watchEp.trim(), input: watchInput.trim() || undefined } : undefined
     const b = parseInt(budget, 10)
     const res = await window.grasp.agent({
       workspace,
       prompt,
       history: history.current,
-      watch,
       backend,
       model,
       mode: modeOverride ?? agentMode,
@@ -353,34 +349,6 @@ export function App(): React.JSX.Element {
             live
           </span>
         </div>
-        <div className="watch-field">
-          <label>watch</label>
-          <input
-            className="we"
-            value={watchEp}
-            onChange={(e) => setWatchEp(e.target.value)}
-            placeholder="module.func"
-            spellCheck={false}
-          />
-          <input
-            className="wi"
-            value={watchInput}
-            onChange={(e) => setWatchInput(e.target.value)}
-            placeholder='{"name":"x"}'
-            spellCheck={false}
-          />
-          <button
-            className={`fuzz-toggle${fuzzReal ? ' real' : ''}`}
-            onClick={() => setFuzzReal((r) => !r)}
-            title={
-              fuzzReal
-                ? 'Fuzzing runs FOR REAL — network + side-effects fire on every variant. Click to wall it.'
-                : 'Fuzzing is walled: network denied so N variants can’t fire real payments/calls. Click to fuzz for real.'
-            }
-          >
-            fuzz: {fuzzReal ? 'real' : 'walled'}
-          </button>
-        </div>
         <div className="inst-body">
           {surface?.kind === 'diff' ? (
             <DataflowDiff diff={surface.diff} />
@@ -390,8 +358,9 @@ export function App(): React.JSX.Element {
             <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
           ) : (
             <div className="inst-empty">
-              Set an entrypoint to <b>watch</b>, then ask the agent to change code. After each edit grasp runs it
-              for real and shows the dataflow change here — ending in a question, never a verdict.
+              The dataflow shows up here <b>automatically</b> — the moment the agent runs a function, grasp observes
+              it for real and re-observes it after every edit. Nothing to configure. It ends in a question, never a
+              verdict.
             </div>
           )}
         </div>
