@@ -14,6 +14,7 @@ import type { Emit } from './types'
 function detectLang(workspace: string): string {
   try {
     const files = readdirSync(workspace)
+    if (files.includes('go.mod')) return 'go'
     if (files.some((f) => f.endsWith('.py')) || files.includes('pyproject.toml') || files.includes('requirements.txt')) return 'py'
     if (files.includes('tsconfig.json')) return 'ts'
     if (files.includes('package.json')) return 'js'

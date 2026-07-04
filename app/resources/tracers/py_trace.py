@@ -34,8 +34,16 @@ def main():
     ap.add_argument("--input", default="{}")
     a = ap.parse_args()
     repo = os.path.abspath(a.repo)
-    mod_name, _, func_name = a.entry.rpartition(".")
     kwargs = json.loads(a.input or "{}")
+    # entry is "path/to/file.py:func" (robust on repos without __init__.py) OR "module.func"
+    path_form = ":" in a.entry
+    if path_form:
+        _fp, _, func_name = a.entry.rpartition(":")
+        mod_name = None
+        mod_file = os.path.join(repo, _fp)
+    else:
+        mod_name, _, func_name = a.entry.rpartition(".")
+        mod_file = None
 
     doc = {
         "grasp_trace_version": "1", "id": uuid.uuid4().hex, "createdAt": 0,
@@ -50,7 +58,13 @@ def main():
     import importlib
     importlib.invalidate_caches()
     try:
-        mod = importlib.import_module(mod_name)
+        if path_form:
+            import importlib.util as _u
+            _spec = _u.spec_from_file_location("__grasp_target__", mod_file)
+            mod = _u.module_from_spec(_spec)
+            _spec.loader.exec_module(mod)
+        else:
+            mod = importlib.import_module(mod_name)
         fn = getattr(mod, func_name)
     except Exception as e:  # import/resolution = config fact, NOT behavior
         doc["unobservable"] = {"reason": f"{type(e).__name__}: {e}",

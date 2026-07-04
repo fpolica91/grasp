@@ -98,7 +98,37 @@ export function traceJs(workspace: string, entry: string, input: Record<string, 
   })
 }
 
-// Language dispatch: python via settrace, js/ts via the Babel-instrumenting Node harness.
+
+const GO = process.env.GRASP_GO ?? 'go'
+
+// Trace a Go entrypoint (path/file.go:Func) by running the AST-instrumenting orchestrator,
+// which rewrites the target package and `go run`s it. No fake nodes; failures -> unobservable.
+export function traceGo(workspace: string, entry: string, input: Record<string, unknown>): Promise<TraceDoc> {
+  return new Promise((res) => {
+    const dir = join(tracerDir(), 'go_trace')
+    if (!existsSync(join(dir, 'go_trace.go'))) return res(unobservable(entry, 'go', `go tracer not found at ${dir}`))
+    const cp = spawn(GO, ['run', '.', '--repo', workspace || '.', '--entry', entry, '--input', JSON.stringify(input ?? {})], {
+      cwd: dir,
+      env: { ...process.env }
+    })
+    let out = ''
+    let err = ''
+    cp.stdout.on('data', (d) => (out += d))
+    cp.stderr.on('data', (d) => (err += d))
+    cp.on('error', (e) => res(unobservable(entry, 'go', `could not start go tracer: ${e.message}`)))
+    cp.on('close', () => {
+      try {
+        const doc = JSON.parse(out.trim().split('\n').pop() || '{}') as TraceDoc
+        doc.createdAt = Date.now()
+        res(doc)
+      } catch {
+        res(unobservable(entry, 'go', err.trim().split('\n').slice(-3).join(' ') || 'go tracer produced no trace JSON'))
+      }
+    })
+  })
+}
+
+// Language dispatch: python via settrace, js/ts via Babel harness, go via AST rewrite.
 export function runTrace(
   workspace: string,
   entry: string,
@@ -107,6 +137,7 @@ export function runTrace(
 ): Promise<TraceDoc> {
   if (language === 'py' || language === 'python') return tracePython(workspace, entry, input)
   if (language === 'js' || language === 'ts' || language === 'jsx' || language === 'tsx') return traceJs(workspace, entry, input, language)
+  if (language === 'go') return traceGo(workspace, entry, input)
   return Promise.resolve(
     unobservable(entry, language, `no native tracer wired for ${language} yet`, 'Python, JS and TS are traced; other languages are next.')
   )
