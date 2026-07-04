@@ -602,3 +602,51 @@ input, textarea { font-family: inherit; }
 .theme-dot.daylight { background: linear-gradient(135deg, #ffffff 50%, #2f6fe0 50%); }
 .composer .send.stop { background: var(--question); color: var(--on-accent); }
 .composer .send.stop:hover { filter: brightness(1.1); }
+
+/* ── the Flow view (Trace v1 call tree) ─────────────────────── */
+.flow2 { padding: 16px 18px; font-size: 13px; }
+.fl-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fl-entry { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--ink); word-break: break-all; }
+.fl-lang { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-hair); border-radius: 20px; padding: 1px 8px; }
+.fl-meta { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+.fl-how { margin: 4px 0 14px; font-size: 12px; color: var(--faint); }
+.fl-how::before { content: ''; }
+
+.fl-tree { display: flex; flex-direction: column; gap: 2px; }
+.fl-frame { position: relative; }
+.fl-node { display: flex; align-items: flex-start; gap: 4px; border-radius: 8px; padding: 5px 6px; transition: background .1s; }
+.fl-node:hover { background: var(--surface-2); }
+.fl-caret { background: transparent; border: 0; padding: 2px; margin-top: 1px; line-height: 1; }
+.fl-tri { display: inline-block; font-size: 9px; color: var(--faint); transition: transform .12s; }
+.fl-tri.open { transform: rotate(90deg); }
+.fl-tri.leaf { opacity: 0; }
+.fl-node-main { min-width: 0; flex: 1; }
+.fl-node-head { display: flex; align-items: baseline; gap: 9px; }
+.fl-fn { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+.fl-loc { background: transparent; border: 0; padding: 0; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.fl-loc:hover { color: var(--accent); text-decoration: underline; }
+.fl-dur { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.fl-io { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 4px; }
+.fl-io-args { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.fl-arrow { color: var(--faint); font-size: 12px; }
+.fl-val { display: inline-flex; align-items: baseline; font-family: var(--mono); font-size: 11.5px; border: 1px solid var(--hair); border-radius: 6px; overflow: hidden; }
+.fl-val-k { padding: 2px 6px; color: var(--muted); background: var(--surface-2); }
+.fl-val-r { padding: 2px 7px; color: var(--ink); }
+.fl-ret { font-family: var(--mono); font-size: 11.5px; color: var(--accent); background: var(--accent-bg); border: 1px solid var(--accent-hair); border-radius: 6px; padding: 2px 8px; font-weight: 500; }
+.fl-threw { font-family: var(--mono); font-size: 11.5px; color: var(--question); background: var(--question-bg); border: 1px solid var(--question-hair); border-radius: 6px; padding: 2px 8px; }
+.fl-none { font-size: 11px; color: var(--faint); font-style: italic; }
+.fl-q { margin-top: 6px; font-size: 12.5px; color: var(--question); }
+.fl-children { margin-left: 14px; padding-left: 12px; border-left: 1.5px solid var(--hair); }
+.fl-frame.threw > .fl-node { box-shadow: inset 2px 0 0 var(--question); }
+
+.fl-unobs { margin-top: 18px; padding: 16px 18px; border: 1px dashed var(--hair); border-radius: 12px; background: var(--surface-2); }
+.fl-unobs-t { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.fl-unobs-r { margin-top: 6px; font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-word; }
+.fl-unobs-h { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.fl-unobs-note { margin-top: 12px; font-size: 12px; color: var(--faint); line-height: 1.5; }
+
+.fl-output { margin-top: 16px; }
+.fl-output summary { font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); cursor: pointer; }
+.fl-output pre { margin: 8px 0 0; padding: 10px 12px; background: var(--ground); border: 1px solid var(--hair-soft); border-radius: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); max-height: 18em; overflow: auto; }
+.fl-output pre.err { color: var(--question); }
+.fl-foot { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--hair-soft); font-size: 11.5px; color: var(--faint); line-height: 1.6; }
