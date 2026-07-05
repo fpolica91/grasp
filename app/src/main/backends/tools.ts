@@ -10,6 +10,10 @@ import { validateTrace, diffTraces, type TraceDoc } from '../../shared/trace'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
 
+function resolvePath(workspace: string, p: string): string {
+  return p.startsWith('/') ? p : join(workspace || '.', p)
+}
+
 
 const OUT_CAP = 8000
 
@@ -273,12 +277,18 @@ export const TOOLS: Tool[] = [
       'submit status:"unobservable" with the reason.',
     input_schema: {
       type: 'object',
-      properties: { trace: { type: 'string', description: 'a Trace v1 JSON document (see the trace-flow skill for the shape)' } },
-      required: ['trace']
+      properties: {
+        trace: { type: 'string', description: 'a Trace v1 JSON document inline' },
+        trace_file: { type: 'string', description: 'OR a path to a file containing the Trace v1 JSON (preferred for large traces)' }
+      }
     },
-    async run(input, { emit }) {
+    async run(input, { workspace, emit }) {
+      let raw: string
+      try {
+        raw = input.trace_file ? readFileSync(resolvePath(workspace, String(input.trace_file)), 'utf-8') : String(input.trace ?? '')
+      } catch (e) { return `could not read trace_file: ${(e as Error).message}` }
       let parsed: unknown
-      try { parsed = JSON.parse(String(input.trace)) } catch (e) { return `trace is not valid JSON: ${(e as Error).message}` }
+      try { parsed = JSON.parse(raw) } catch (e) { return `trace is not valid JSON: ${(e as Error).message}` }
       const err = validateTrace(parsed)
       if (err) return `trace rejected: ${err}. Fix the Trace v1 shape and resubmit (see the trace-flow skill).`
       const trace = parsed as TraceDoc
@@ -300,14 +310,19 @@ export const TOOLS: Tool[] = [
     input_schema: {
       type: 'object',
       properties: {
-        old: { type: 'string', description: 'Trace v1 JSON observed on the OLD code' },
-        new: { type: 'string', description: 'Trace v1 JSON observed on the NEW code' }
-      },
-      required: ['old', 'new']
+        old: { type: 'string', description: 'Trace v1 JSON (inline) of the OLD code' },
+        new: { type: 'string', description: 'Trace v1 JSON (inline) of the NEW code' },
+        old_file: { type: 'string', description: 'OR a path to the OLD trace JSON (preferred)' },
+        new_file: { type: 'string', description: 'OR a path to the NEW trace JSON (preferred)' }
+      }
     },
-    async run(input, { emit }) {
+    async run(input, { workspace, emit }) {
       let oldT: unknown, newT: unknown
-      try { oldT = JSON.parse(String(input.old)); newT = JSON.parse(String(input.new)) } catch (e) { return `a trace is not valid JSON: ${(e as Error).message}` }
+      try {
+        const or = input.old_file ? readFileSync(resolvePath(workspace, String(input.old_file)), 'utf-8') : String(input.old ?? '')
+        const nr = input.new_file ? readFileSync(resolvePath(workspace, String(input.new_file)), 'utf-8') : String(input.new ?? '')
+        oldT = JSON.parse(or); newT = JSON.parse(nr)
+      } catch (e) { return `could not read/parse a trace: ${(e as Error).message}` }
       const bad = validateTrace(oldT) || validateTrace(newT)
       if (bad) return `trace rejected: ${bad}. Fix the Trace v1 shape (see the trace-flow skill).`
       const diff = diffTraces(oldT as TraceDoc, newT as TraceDoc)
