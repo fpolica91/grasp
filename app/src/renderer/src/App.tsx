@@ -176,6 +176,9 @@ export function App(): React.JSX.Element {
   const refreshMcpServers = (): void => {
     if (workspace) void window.grasp.mcpServers(workspace).then(setMcpServers)
   }
+  const refreshPlugins = (): void => {
+    if (workspace) void window.grasp.plugins(workspace).then(setPlugins)
+  }
 
   // Load persisted workflows; surface the most recent unfinished one so it can resume.
   useEffect(() => {
@@ -479,7 +482,7 @@ export function App(): React.JSX.Element {
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
       {showSettings && (
-        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onClose={() => setShowSettings(false)} />
+        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onPluginsChanged={refreshPlugins} onClose={() => setShowSettings(false)} />
       )}
       {showPalette && (
         <CommandPalette

@@ -63,10 +63,12 @@ function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: s
   )
 }
 
-export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onClose: () => void }): React.JSX.Element {
+export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; onClose: () => void }): React.JSX.Element {
   const [mcpName, setMcpName] = useState('')
   const [mcpCmd, setMcpCmd] = useState('')
   const [mcpArgs, setMcpArgs] = useState('')
+  const [pluginUrl, setPluginUrl] = useState('')
+  const [pluginMsg, setPluginMsg] = useState('')
   return (
     <div className="gate-overlay" onClick={props.onClose}>
       <div className="gate settings" onClick={(e) => e.stopPropagation()}>
@@ -172,7 +174,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
         <div className="set-section">
           <div className="eyebrow">Plugins</div>
           <p className="set-note">
-            Distribution units that bundle skills (and optionally an MCP server). Drop one in <code>~/.grasp/plugins/&lt;name&gt;/</code> with a <code>plugin.json</code> and a <code>skills/</code> dir.
+            Distribution units that bundle skills (and optionally an MCP server). Install one from a git URL, or drop a dir in <code>~/.grasp/plugins/&lt;name&gt;/</code>.
           </p>
           {props.plugins.length === 0 ? (
             <div className="set-empty">No plugins installed.</div>
@@ -183,6 +185,15 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   <div className="set-skill-head">
                     <span className="set-skill-name">{p.name}</span>
                     <span className={`set-skill-src ${p.source}`}>{p.source}</span>
+                    {p.source === 'user' && (
+                      <button
+                        className="si-del"
+                        title="Uninstall"
+                        onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                   <div className="set-skill-desc">
                     {p.description || '(no description)'}
@@ -193,6 +204,32 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
               ))}
             </div>
           )}
+          <div className="set-mcp-add">
+            <input
+              className="mcp-cmd"
+              placeholder="git URL (https://…/plugin.git)"
+              value={pluginUrl}
+              onChange={(e) => setPluginUrl(e.target.value)}
+              spellCheck={false}
+            />
+            <button
+              className="btn sm primary"
+              disabled={!pluginUrl.trim()}
+              onClick={() => {
+                void window.grasp.installPlugin(pluginUrl.trim()).then((r) => {
+                  if (r.ok) {
+                    setPluginUrl('')
+                    setPluginMsg(`installed ${r.name}`)
+                  } else setPluginMsg(r.error ?? 'install failed')
+                  props.onPluginsChanged()
+                  setTimeout(() => setPluginMsg(''), 3000)
+                })
+              }}
+            >
+              Install
+            </button>
+          </div>
+          {pluginMsg && <div className="set-key-hint">{pluginMsg}</div>}
         </div>
       </div>
     </div>

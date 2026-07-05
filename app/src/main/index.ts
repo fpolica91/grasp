@@ -24,7 +24,7 @@ import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
 import { flowNow, clearMcpCache } from './backends/tools'
 import { loadMcpConfig, saveMcpServer } from './backends/mcp'
-import { listPlugins } from './plugins'
+import { listPlugins, installPlugin, uninstallPlugin } from './plugins'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
 import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
 import { listCommands } from './commands'
@@ -73,6 +73,16 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:keybindings', () => loadKeybindings())
   ipcMain.handle('grasp:mcpServers', (_e, workspace: string) => loadMcpConfig(workspace))
   ipcMain.handle('grasp:plugins', (_e, workspace: string) => listPlugins(workspace))
+  ipcMain.handle('grasp:installPlugin', (_e, url: string) => {
+    const r = installPlugin(url)
+    clearMcpCache() // a plugin may bundle MCP servers -> re-read on the next turn
+    return r
+  })
+  ipcMain.handle('grasp:uninstallPlugin', (_e, name: string) => {
+    const r = uninstallPlugin(name)
+    clearMcpCache()
+    return r
+  })
   ipcMain.handle('grasp:saveMcpServer', (_e, name: string, command: string, args: string) => {
     const cfg = { command, ...(args.trim() ? { args: args.trim().split(/\s+/) } : {}) }
     saveMcpServer(name, cfg)

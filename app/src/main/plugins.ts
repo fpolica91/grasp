@@ -4,12 +4,13 @@
 // and an optional .mcp.json (or mcpServers in the manifest). Plugin skills are discovered by
 // the skills loader (so use_skill sees them); plugin MCP servers merge into the MCP config.
 //
-// v1: discovery + skill bundling + a Settings listing. Install-from-marketplace, signing, and
-// sandboxing are deferred (a plugin is, for now, a directory you drop into place by hand —
-// consistent with how skills and commands already work).
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+// v1: discovery + skill bundling + a Settings listing + install-from-git. Signing and
+// sandboxing remain deferred — install is consent-based (the user provides the URL) and MCP
+// tools stay gated by ask-mode, which is the right model for an OSS tool.
+import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 export interface Plugin {
   name: string
@@ -94,4 +95,54 @@ export function pluginMcpConfigs(workspace: string): { name: string; dir: string
     .filter(
       (p): p is { name: string; dir: string; servers: Record<string, PluginMcpServer> } => p.servers !== null
     )
+}
+
+// Install a plugin from a git URL (consent-based — the user pasted the URL, so trust is
+// explicit; MCP tools stay gated by ask-mode). Clones --depth 1 into ~/.grasp/plugins/<name>/
+// and validates it looks like a grasp plugin. Skills/MCP register on the next turn (the caller
+// also calls clearMcpCache so MCP servers pick up immediately).
+export function installPlugin(gitUrl: string): { ok: boolean; name?: string; error?: string } {
+  const url = gitUrl.trim()
+  const name = url.replace(/\.git$/, '').split('/').pop()?.trim() ?? ''
+  if (!name || !/^[A-Za-z0-9._-]+$/.test(name)) return { ok: false, error: 'could not derive a valid plugin name from the URL' }
+  const dir = userPluginsDir()
+  try {
+    mkdirSync(dir, { recursive: true })
+  } catch {
+    /* may already exist */
+  }
+  const target = join(dir, name)
+  if (existsSync(target)) return { ok: false, error: `a plugin named "${name}" already exists` }
+  const r = spawnSync('git', ['clone', '--depth', '1', url, target], { timeout: 60_000 })
+  const stderr = (r.stderr ?? '').toString().trim()
+  if (r.error || r.status !== 0) {
+    try {
+      rmSync(target, { recursive: true, force: true })
+    } catch {
+      /* best-effort cleanup of a partial clone */
+    }
+    return { ok: false, error: `git clone failed: ${stderr || r.error?.message || 'unknown'}` }
+  }
+  // validate it's a grasp plugin: at least one of plugin.json / skills/ / .mcp.json
+  if (!existsSync(join(target, 'plugin.json')) && !existsSync(join(target, 'skills')) && !existsSync(join(target, '.mcp.json'))) {
+    try {
+      rmSync(target, { recursive: true, force: true })
+    } catch {
+      /* ignore */
+    }
+    return { ok: false, error: 'cloned, but the repo has no plugin.json, skills/, or .mcp.json — not a grasp plugin' }
+  }
+  return { ok: true, name }
+}
+
+// Remove a user plugin directory by name.
+export function uninstallPlugin(name: string): { ok: boolean; error?: string } {
+  const target = join(userPluginsDir(), name)
+  if (!existsSync(target)) return { ok: false, error: `no plugin named "${name}"` }
+  try {
+    rmSync(target, { recursive: true, force: true })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }
