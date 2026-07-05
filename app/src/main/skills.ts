@@ -2,7 +2,8 @@
 // markdown file (frontmatter: name, description; body: the instructions) in
 // ~/.grasp/skills (user) or <project>/.grasp/skills (project). Thesis-aligned: skills
 // orchestrate grasp's observe/diff/fuzz loop — they don't judge, they guide.
-import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, cpSync } from 'node:fs'
+import { resolve as pathResolve } from 'node:path'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -59,26 +60,49 @@ export function readSkill(workspace: string, name: string): Skill | null {
 const EXAMPLES: Record<string, string> = {
   'trace-flow.md': `---
 name: trace-flow
-description: Show the real dataflow of code — the live call tree with actual values — instead of asserting it works.
+description: Show a codebase's real behavior as the interactive Flow — you observe and submit nodes; grasp renders. Never assert "works".
 ---
-grasp's Flow shows what code ACTUALLY does when it runs: the call tree, the real values that
-flow through it, ending in a neutral question. Use it to SHOW behavior, never to claim correctness.
+grasp does NOT run the target codebase — YOU do. You are the compiler: you make any repo
+observable, capture what its code really does, and submit it as nodes. grasp validates and
+renders the Flow, ending in a neutral question. Never say a change \"works\" or is \"correct\".
 
-WHEN YOU WRITE OR CHANGE CODE:
-1. Pick a real, exercisable entrypoint — a function that can run for real with a concrete input.
-   - Python: module.func (e.g. app.orders.checkout)
-   - JS/TS: path/to/file.ts:func (e.g. src/utils/colorUtils.ts:getFontColor)
-   Prefer a pure function (logic, no DOM/network). If the target needs deps, they must be installed.
-2. Call grasp_trace with that entrypoint and a representative input. The Flow renders the real
-   call tree — args → interior calls → return — with observed values and source lines.
-3. AFTER an edit, call grasp_trace_diff (same entrypoint + input) to show the A→B behavioral
-   change: which frames and values differ, ending in "… — intended?".
+## 1. Preload — learn how THIS repo runs
+- Read README.md, AGENTS.md, CLAUDE.md and the manifests (package.json, pyproject.toml, go.mod,
+  Makefile) to find: the entrypoint, how it is run/tested, and its dependencies.
+- Install deps if needed (npm/pnpm install, pip install -e ., go mod download, ...).
+- Identify the exact code you changed (git diff). You trace THAT, not the whole app.
 
-RULES:
-- Present exactly what the Flow returns. Do NOT say the code "works", is "fixed", or is "correct".
-- If grasp reports it could not observe the run (unobservable), say so plainly and why — never
-  invent a flow. A tooling gap is not the code's behavior.
-- The human adjudicates against business rules only they know. You surface; they judge.`,
+## 2. Observe a real run
+Run the real code and capture the call flow of the part you changed: every function entered, the
+ACTUAL argument values, what it returned or threw, in call-tree order. Use whatever fits the stack:
+Python sys.settrace; JS/TS a loader/require hook or added trace calls under node; Go go/ast rewrite
+or delve; anything else — instrument it, or parse a real test run. Reference starting-point tracers
+are seeded at ~/.grasp/skills/tracers (py_trace.py, js_trace/, go_trace/): COPY and ADAPT them. If one
+does not fit this repo, change it or write your own. Do not ask grasp to trace for you.
+
+## 3. Keep it legible
+Scope to the code you changed. When it calls into a library/framework you usually want the boundary,
+not the internals — mark plumbing frames meaningful:false so grasp collapses them by default. A
+400-frame dump of a library is a failure; the reader must see YOUR logic first.
+
+## 4. Submit
+- Single flow: call grasp_flow with the Trace v1 JSON.
+- A to B change: trace the NEW code and the OLD code (git stash/checkout the old ref) with the SAME
+  input, then call grasp_flow_diff with both.
+
+## 5. Honesty (non-negotiable)
+- Every value is a REAL observation. Never invent a frame or a value.
+- If you cannot run it (deps fail, no entrypoint, needs a live service): submit status \"unobservable\"
+  with a reason. A tooling gap is not the code's behavior.
+- No verdicts. End in the neutral question grasp renders; the human adjudicates.
+
+## Trace v1 protocol (the nodes)
+JSON object: { grasp_trace_version:\"1\", id, entry, language, how, input|null,
+status:\"returned\"|\"threw\"|\"unobservable\", frames:[...], ret|null, threw|null, durationMs, stdout,
+stderr, unobservable|null }. Each frame: { id, parent(null|frame id), seq, depth, fn, file, line,
+callLine, args:[{name,repr,json}], ret:{name,repr,json}|null, threw:{type,message}|null, durMs,
+language, meaningful?:bool }. grasp enforces: version \"1\"; valid status; unobservable needs a reason;
+every frame needs id+fn; parent must reference a real frame id. Invalid traces are rejected — fix and resubmit.`,
   'observe-change.md': `---
 name: observe-change
 description: After editing a function, observe its real behavior and surface the A→B change.
@@ -105,6 +129,16 @@ export function ensureDefaultSkills(): void {
     mkdirSync(dir, { recursive: true })
     const hasAny = readdirSync(dir).some((f) => f.endsWith('.md'))
     if (!hasAny) for (const [f, body] of Object.entries(EXAMPLES)) writeFileSync(join(dir, f), body)
+    // Seed the reference tracers as ADAPTABLE assets the agent can copy (grasp never runs them).
+    const dest = join(dir, 'tracers')
+    if (!existsSync(dest)) {
+      const srcDir = existsSync(pathResolve(process.cwd(), 'resources', 'tracers'))
+        ? pathResolve(process.cwd(), 'resources', 'tracers')
+        : join(process.resourcesPath ?? process.cwd(), 'tracers')
+      try {
+        cpSync(srcDir, dest, { recursive: true, filter: (p) => !p.includes('node_modules') })
+      } catch { /* reference tracers are optional */ }
+    }
   } catch {
     /* ignore */
   }

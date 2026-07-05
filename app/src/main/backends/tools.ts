@@ -6,23 +6,10 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fuzz } from '../engine'
-import { runTrace, traceDiff } from '../tracer'
+import { validateTrace, diffTraces, type TraceDoc } from '../../shared/trace'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
 
-// Detect the target language from repo files, for the native trace path.
-function detectLang(workspace: string): string {
-  try {
-    const files = readdirSync(workspace)
-    if (files.includes('go.mod')) return 'go'
-    if (files.some((f) => f.endsWith('.py')) || files.includes('pyproject.toml') || files.includes('requirements.txt')) return 'py'
-    if (files.includes('tsconfig.json')) return 'ts'
-    if (files.includes('package.json')) return 'js'
-  } catch {
-    /* unreadable -> default python */
-  }
-  return 'py'
-}
 
 const OUT_CAP = 8000
 
@@ -32,10 +19,10 @@ export const SYSTEM = [
   '',
   "grasp's whole reason to exist is the OBSERVED DATAFLOW rail: it runs the code FOR REAL",
   'and shows the human the values it bound and the paths it took. That rail is populated',
-  'by grasp_trace / grasp_trace_diff — and ONLY by them. This is non-negotiable:',
+  'by grasp_flow / grasp_flow_diff — and ONLY by them. This is non-negotiable:',
   '',
-  '• To verify ANY code you write or change, you MUST use grasp_trace (show the real flow) or',
-  '  grasp_trace_diff (edited existing code — shows the A→B change) on the entrypoint. This is your PRIMARY way to show a',
+  '• To verify ANY code you write or change, you MUST use grasp_flow (submit the observed Flow) or',
+  '  grasp_flow_diff (edited existing code — the A→B change) on the entrypoint. This is your PRIMARY way to show a',
   '  change did what you intended — do it proactively, not only when asked.',
   '• NEVER verify by writing an ad-hoc test script and running it through run_bash (e.g.',
   "  `node -e ...`, a throwaway test.py, a harness file). That runs the code but leaves grasp's",
@@ -46,7 +33,7 @@ export const SYSTEM = [
   '  module and no package.json), pass the `language` argument explicitly (py/js/ts/go/java/csharp/cpp).',
   '• If the code is UI/DOM-coupled with no directly-callable entrypoint (a frontend handler, a',
   '  React component), SEPARATE the core logic into a plain callable function in its own module',
-  '  and call grasp_trace on THAT. Do not shrug and reach for run_bash — extract, then trace.',
+  '  and observe THAT and submit via grasp_flow. Do not shrug and reach for run_bash — extract, then trace.',
   '• run_bash is for genuinely non-observable steps only: installing deps, starting a server,',
   '  a build. When you use it to RUN logic because you think there is no entrypoint, stop and',
   '  extract an entrypoint first.',
@@ -55,16 +42,16 @@ export const SYSTEM = [
   '  snippet you specify, so it is safer; use write_file to create a file or replace it entirely.',
   '  Use TodoWrite to plan any task with three or more steps.',
   '',
-  'Present exactly what grasp_trace/grasp_trace_diff surface and end in the neutral question they',
+  'Present exactly what grasp_flow/grasp_flow_diff surface and end in the neutral question they',
   'give you; the human adjudicates against business rules only they know. Never render a verdict.'
 ].join(' ')
 
 // PLAN MODE: inspect-only. The agent may read and observe, never mutate; its final
 // message is the proposed plan, which grasp holds for human approval before execution.
-export const PLAN_TOOL_NAMES = new Set(['read_file', 'list_dir', 'grasp_trace'])
+export const PLAN_TOOL_NAMES = new Set(['read_file', 'list_dir', 'grasp_flow'])
 export const PLAN_SYSTEM =
   SYSTEM +
-  ' PLAN MODE IS ACTIVE: you may only inspect (read_file, list_dir, grasp_trace). You cannot' +
+  ' PLAN MODE IS ACTIVE: you may only inspect (read_file, list_dir, grasp_flow). You cannot' +
   ' edit files or run commands. Investigate, then end with a concrete step-by-step plan of the' +
   ' exact changes you propose (files, edits, and how the change should be observed). The human' +
   ' will approve the plan before anything is executed.'
@@ -275,65 +262,58 @@ export const TOOLS: Tool[] = [
     }
   },
   {
-    name: 'grasp_trace_diff',
+    name: 'grasp_flow',
     description:
-      'After you EDIT code, SHOW the behavioral consequence: traces the same entrypoint+input ' +
-      'at the OLD code (a git ref, default HEAD) vs your NEW working tree, and renders the A->B ' +
-      'flow — which frames changed, which values differ, which calls appeared or vanished — ending ' +
-      'in neutral questions. Use this instead of claiming your edit "works". Requires a git repo.',
+      'SHOW a real execution as the interactive Flow. YOU (the agent) produce a grasp Trace v1 JSON ' +
+      'document — the call tree of the code you changed, with the ACTUAL values that flowed through it — ' +
+      'and submit it here; grasp validates and renders it, ending in a neutral question. Follow the ' +
+      'trace-flow skill: read the repo (README/AGENTS.md/CLAUDE.md) to learn how it runs, install deps, ' +
+      'run the real entrypoint, capture the flow of the part you changed. Mark library/plumbing frames ' +
+      'meaningful:false so the Flow stays legible. NEVER fabricate a frame — if you could not run it, ' +
+      'submit status:"unobservable" with the reason.',
     input_schema: {
       type: 'object',
-      properties: {
-        entrypoint: { type: 'string', description: 'module.func to run on both sides' },
-        input: { type: 'string', description: 'JSON kwargs (same input drives both sides)' },
-        old_ref: { type: 'string', description: 'git ref for the OLD side (default HEAD)' },
-        language: { type: 'string', description: 'py/js/ts — omit to auto-detect' }
-      },
-      required: ['entrypoint']
+      properties: { trace: { type: 'string', description: 'a Trace v1 JSON document (see the trace-flow skill for the shape)' } },
+      required: ['trace']
     },
-    async run(input, { workspace, emit }) {
-      let kwargs: Record<string, unknown> = {}
-      try { kwargs = input.input ? JSON.parse(String(input.input)) : {} } catch { /* empty */ }
-      const lang = input.language ? String(input.language) : detectLang(workspace)
-      const ref = input.old_ref ? String(input.old_ref) : 'HEAD'
-      rememberWatch(workspace, String(input.entrypoint), input.input as string, lang)
-      const { diff, error } = await traceDiff(workspace, String(input.entrypoint), kwargs, ref, lang)
-      if (!diff) return `could not diff: ${error ?? 'unknown'}`
-      emit({ type: 'trace_diff', diff })
-      if (diff.empty) return `no behavioral change for ${input.entrypoint} on this input (same flow ${ref} -> working tree).`
-      const qs = diff.questions.slice(0, 4).join(' | ')
-      return `A->B flow for ${input.entrypoint}: ${diff.changedCount} change(s). Questions: ${qs}`
+    async run(input, { emit }) {
+      let parsed: unknown
+      try { parsed = JSON.parse(String(input.trace)) } catch (e) { return `trace is not valid JSON: ${(e as Error).message}` }
+      const err = validateTrace(parsed)
+      if (err) return `trace rejected: ${err}. Fix the Trace v1 shape and resubmit (see the trace-flow skill).`
+      const trace = parsed as TraceDoc
+      trace.createdAt = Date.now()
+      emit({ type: 'trace', trace })
+      if (trace.status === 'unobservable') return `surfaced as unobservable: ${trace.unobservable?.reason}`
+      const n = trace.frames.length
+      const tail = trace.status === 'threw' ? `threw ${trace.threw?.type}` : `returned ${trace.ret?.repr ?? '(void)'}`
+      return `Flow rendered: ${trace.entry} — ${n} frame(s), ${tail}.`
     }
   },
   {
-    name: 'grasp_trace',
+    name: 'grasp_flow_diff',
     description:
-      'Trace a REAL execution of an entrypoint and surface it as the interactive Flow — the ' +
-      'call tree with the actual values that flowed through it (args -> calls -> return). Use ' +
-      'this to SHOW what your code does after a change, instead of asserting it works. Python ' +
-      'is traced now (native settrace); other languages report honestly until their tracer is ' +
-      'wired. Input keys bind to the function parameter names.',
+      'SHOW the behavioral consequence of your edit as an A→B Flow. Submit two Trace v1 documents — the ' +
+      'SAME entrypoint+input observed on the OLD code and the NEW code — and grasp renders which frames ' +
+      'and values changed, ending in neutral questions. Produce both traces per the trace-flow skill ' +
+      '(trace the new code, then git stash/checkout the old ref and trace again with the same input).',
     input_schema: {
       type: 'object',
       properties: {
-        entrypoint: { type: 'string', description: 'module.func (the real function to run)' },
-        input: { type: 'string', description: 'JSON kwargs to call it with' },
-        language: { type: 'string', description: 'py/js/ts — omit to auto-detect from repo files' }
+        old: { type: 'string', description: 'Trace v1 JSON observed on the OLD code' },
+        new: { type: 'string', description: 'Trace v1 JSON observed on the NEW code' }
       },
-      required: ['entrypoint']
+      required: ['old', 'new']
     },
-    async run(input, { workspace, emit }) {
-      let kwargs: Record<string, unknown> = {}
-      try { kwargs = input.input ? JSON.parse(String(input.input)) : {} } catch { /* empty */ }
-      const lang = input.language ? String(input.language) : detectLang(workspace)
-      rememberWatch(workspace, String(input.entrypoint), input.input as string, lang)
-      const trace = await runTrace(workspace, String(input.entrypoint), kwargs, lang)
-      emit({ type: 'trace', trace })
-      if (trace.status === 'unobservable')
-        return `could not trace ${input.entrypoint}: ${trace.unobservable?.reason ?? 'unknown'}`
-      const n = trace.frames.length
-      const tail = trace.status === 'threw' ? `threw ${trace.threw?.type}` : `returned ${trace.ret?.repr ?? '(void)'}`
-      return `traced ${input.entrypoint}: ${n} frame(s), ${tail}. Flow rendered.`
+    async run(input, { emit }) {
+      let oldT: unknown, newT: unknown
+      try { oldT = JSON.parse(String(input.old)); newT = JSON.parse(String(input.new)) } catch (e) { return `a trace is not valid JSON: ${(e as Error).message}` }
+      const bad = validateTrace(oldT) || validateTrace(newT)
+      if (bad) return `trace rejected: ${bad}. Fix the Trace v1 shape (see the trace-flow skill).`
+      const diff = diffTraces(oldT as TraceDoc, newT as TraceDoc)
+      emit({ type: 'trace_diff', diff })
+      if (diff.empty) return `no behavioral change surfaced for ${diff.entry} on this input.`
+      return `A→B flow: ${diff.changedCount} change(s). Questions: ${diff.questions.slice(0, 4).join(' | ')}`
     }
   },
   {
@@ -471,44 +451,21 @@ export const SUBAGENT_SYSTEM =
   ' with a concise result for the main agent — what you found or did, and any observed' +
   ' dataflow question. Do not delegate further.'
 
-// AUTO-OBSERVE — no manual "watch" config. The moment the agent observes/diffs an
-// entrypoint (which it does as part of its work), grasp REMEMBERS it per workspace;
-// then after every subsequent edit it re-observes that entrypoint automatically, so the
-// dataflow updates on every iteration without the human typing a function name.
-const lastWatch = new Map<string, { entrypoint: string; input?: string; language?: string }>()
-
-export function rememberWatch(workspace: string, entrypoint: string, input?: string, language?: string): void {
-  if (entrypoint) lastWatch.set(workspace, { entrypoint, input, language })
+// grasp does NOT execute the target codebase. The AGENT is the compiler: it reads the repo
+// (README / AGENTS.md / CLAUDE.md), installs deps, runs the real entrypoint, observes the flow
+// of the part it changed, and submits nodes via grasp_flow. These remain as no-op seams so the
+// backends that reference them keep compiling; there is no host-side tracing to trigger.
+export function rememberWatch(_workspace: string, _entrypoint: string, _input?: string, _language?: string): void {
+  /* no-op: grasp no longer runs code; the agent submits traces explicitly */
 }
 
-// On-demand Flow (the call-to-action when auto is off, or a manual refresh any time):
-// re-observe the remembered entrypoint right now. Honest when there's nothing to run.
-export async function flowNow(workspace: string, emit: Emit): Promise<{ ok: boolean; error?: string }> {
-  const w = lastWatch.get(workspace)
-  if (!w?.entrypoint) {
-    return {
-      ok: false,
-      error: 'Nothing observed yet in this project — ask the agent to run or observe a function first.'
-    }
+export async function flowNow(_workspace: string, _emit: Emit): Promise<{ ok: boolean; error?: string }> {
+  return {
+    ok: false,
+    error: 'grasp renders the Flow the agent produces — ask the agent to trace the change (it reads the repo, runs the real entrypoint, and submits the flow).'
   }
-  await liveSurface(workspace, true, emit)
-  return { ok: true }
 }
 
-export async function liveSurface(workspace: string, mutated: boolean, emit: Emit): Promise<void> {
-  const w = lastWatch.get(workspace)
-  if (!mutated || !w?.entrypoint) return
-  const lang = w.language ?? detectLang(workspace)
-  let kwargs: Record<string, unknown> = {}
-  try { kwargs = w.input ? JSON.parse(w.input) : {} } catch { /* empty */ }
-  // Prefer the A->B change (HEAD vs working tree). A brand-new entrypoint has no HEAD
-  // version (empty/failed diff) -> fall back to a plain trace so the rail still shows
-  // what the code now does, rather than going silently blank.
-  const { diff } = await traceDiff(workspace, w.entrypoint, kwargs, 'HEAD', lang)
-  if (diff && !diff.empty) {
-    emit({ type: 'trace_diff', diff })
-    return
-  }
-  const trace = await runTrace(workspace, w.entrypoint, kwargs, lang)
-  if (trace.status !== 'unobservable') emit({ type: 'trace', trace })
+export async function liveSurface(_workspace: string, _mutated: boolean, _emit: Emit): Promise<void> {
+  /* no-op: the agent surfaces the Flow via grasp_flow after it observes a real run */
 }

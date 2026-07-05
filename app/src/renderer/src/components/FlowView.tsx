@@ -84,6 +84,7 @@ export function FlowView({
   trace: TraceDoc
   onOpenSource?: (file: string, line: number | null) => void
 }): React.JSX.Element {
+  const [showPlumbing, setShowPlumbing] = useState(false)
   // Honest tooling-failure state — a separate surface, never a frame.
   if (trace.status === 'unobservable') {
     return (
@@ -104,11 +105,25 @@ export function FlowView({
     )
   }
 
+  // The agent marks plumbing frames meaningful:false; collapse them by default so a deep
+  // library flow stays legible. grasp hardcodes no classifier — this only honors the flag.
+  const plumbingCount = trace.frames.filter((f) => f.meaningful === false).length
+  const visible = showPlumbing ? trace.frames : trace.frames.filter((f) => f.meaningful !== false)
   const byParent = new Map<string | null, TraceFrame[]>()
-  for (const f of trace.frames) {
-    const arr = byParent.get(f.parent) ?? []
+  for (const f of visible) {
+    // re-parent to the nearest visible ancestor so hiding plumbing doesn't orphan real frames
+    let p = f.parent
+    if (!showPlumbing) {
+      const byId = new Map(trace.frames.map((x) => [x.id, x]))
+      while (p) {
+        const pf = byId.get(p)
+        if (!pf || pf.meaningful !== false) break
+        p = pf.parent
+      }
+    }
+    const arr = byParent.get(p) ?? []
     arr.push(f)
-    byParent.set(f.parent, arr)
+    byParent.set(p, arr)
   }
   const roots = byParent.get(null) ?? []
 
@@ -129,6 +144,12 @@ export function FlowView({
           <Frame key={r.id} frame={r} children={byParent.get(r.id) ?? []} byParent={byParent} onOpenSource={onOpenSource} />
         ))}
       </div>
+
+      {plumbingCount > 0 && (
+        <button className="fl-toggle-unchanged" onClick={() => setShowPlumbing((v) => !v)}>
+          {showPlumbing ? 'hide plumbing' : `show ${plumbingCount} plumbing frame${plumbingCount === 1 ? '' : 's'}`}
+        </button>
+      )}
 
       {(trace.stdout || trace.stderr) && (
         <details className="fl-output">

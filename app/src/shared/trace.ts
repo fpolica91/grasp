@@ -37,7 +37,10 @@ export interface TraceFrame {
   ret: TraceValue | null // returned value (null if it threw or is void)
   threw: { type: string; message: string } | null // the code's REAL exception, if any
   durMs: number // measured wall-clock for this frame
-  language: string // 'python' | 'js' | 'ts' | 'go' | …
+  language: string
+  // OPTIONAL: the agent marks plumbing frames false so the UI collapses them by default.
+  // grasp hardcodes NO classifier — legibility is the agent's call, surfaced as a node property.
+  meaningful?: boolean // 'python' | 'js' | 'ts' | 'go' | …
 }
 
 export interface TraceDoc {

@@ -27,6 +27,11 @@ export async function resolve(specifier, context, nextResolve) {
     if (specifier.startsWith('.') || specifier.startsWith('/')) {
       const base = context.parentURL ? new URL(specifier, context.parentURL) : pathToFileURL(specifier)
       const basePath = fileURLToPath(base)
+      // TS ESM convention: `import "./x.js"` maps to ./x.ts (source has .js in the specifier)
+      const rewrites = []
+      const m = basePath.match(/\.(js|mjs|cjs)$/)
+      if (m) rewrites.push(basePath.replace(/\.(js|mjs|cjs)$/, '.ts'), basePath.replace(/\.(js|mjs|cjs)$/, '.tsx'), basePath.replace(/\.(js|mjs|cjs)$/, '.mts'))
+      for (const cand of rewrites) if (existsSync(cand)) return { url: pathToFileURL(cand).href, format: 'module', shortCircuit: true }
       for (const ext of CANDIDATES) {
         const cand = basePath + ext
         if (existsSync(cand)) return { url: pathToFileURL(cand).href, format: 'module', shortCircuit: true }

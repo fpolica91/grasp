@@ -69,7 +69,9 @@ const frames = []
 const stack = []
 let seq = 0
 globalThis.__grasp = {
+  armed: false,
   enter(name, args, file, line) {
+    if (!this.armed) return  // ignore import-time module init; record only the traced call
     seq++
     const rel = file && isAbsolute(file) && file.startsWith(repo) ? relative(repo, file) : file
     const rec = {
@@ -142,6 +144,8 @@ function bindArgs(fn, obj) {
   const m = src.match(/^[^(]*\(([^)]*)\)/s) || src.match(/^\s*(?:async\s*)?\(?([^)=]*)\)?\s*=>/s)
   const names = m ? m[1].split(',').map((s) => s.trim().split('=')[0].trim().replace(/[{}[\]]/g, '')).filter(Boolean) : []
   if (names.length === 0) return []
+  const isPlainObj = obj !== null && typeof obj === 'object' && !Array.isArray(obj)
+  if (!isPlainObj) return [obj] // a scalar/array input is the single positional argument
   if (names.length === 1 && !(names[0] in obj) && Object.keys(obj).length > 0) return [obj]
   return names.map((n) => obj[n])
 }
@@ -154,10 +158,13 @@ try {
   const args = bindArgs(fn, input)
   let result
   try {
+    globalThis.__grasp.armed = true // record only the call flow, not import-time module init
     result = await fn(...args)
+    globalThis.__grasp.armed = false
     doc.status = 'returned'
     doc.ret = { name: 'return', repr: rep(result), json: jsonable(result) }
   } catch (e) {
+    globalThis.__grasp.armed = false
     doc.status = 'threw'
     doc.threw = { type: (e && e.name) || 'Error', message: rep(e && e.message !== undefined ? e.message : e) }
   }
