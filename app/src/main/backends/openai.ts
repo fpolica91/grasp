@@ -143,6 +143,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   }
 
   let turnTokens = 0
+  let fuzzNudged = false
   for (let step = 0; step < MAX_STEPS; step++) {
     if (turn.signal?.aborted) {
       emit({ type: 'done', note: 'stopped by you' })
@@ -193,6 +194,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     }
 
     let mutated = false
+    let diffed = false
     for (const tc of calls) {
       const name = tc.function.name
       let input: Record<string, unknown> = {}
@@ -222,8 +224,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
       if (MUTATING_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
+      if (name === 'grasp_fuzz_diff' || name === 'grasp_flow_diff') diffed = true
     }
 
+    if (mutated && !diffed && !fuzzNudged) {
+      fuzzNudged = true
+      const last = messages[messages.length - 1] as { role: string; content: string }
+      if (last && last.role === 'tool')
+        last.content +=
+          '\n\n<system-reminder>You changed code. Before concluding, run grasp_fuzz_diff on the changed entrypoint across a spread of inputs (valid, boundary, malformed, missing, wrong-type) to reveal any input where old vs new diverge — a bug that only breaks inputs you did not try reads as "same flow". See the fuzz-diff skill. Do not claim the change works.</system-reminder>'
+    }
     if (turn.flowAuto !== false) await liveSurface(workspace, mutated, emit)
   }
   emit({ type: 'done', note: 'reached step limit' })

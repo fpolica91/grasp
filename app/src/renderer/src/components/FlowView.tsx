@@ -249,6 +249,7 @@ export function FlowDiffView({ diff, onOpenSource }: { diff: TraceDiff; onOpenSo
 
 // ── Differential fuzz view: varied N inputs, surface the K where behavior diverged ──
 export function FuzzDiffView({ fuzz, onOpenSource }: { fuzz: FuzzDiff; onOpenSource?: (file: string, line: number | null) => void }): React.JSX.Element {
+  const [open, setOpen] = useState<number | null>(null)
   return (
     <div className="flow2">
       <div className="fl-head">
@@ -263,25 +264,40 @@ export function FuzzDiffView({ fuzz, onOpenSource }: { fuzz: FuzzDiff; onOpenSou
             const changed = c.diff.frames.filter((f) => f.status !== 'unchanged')
             const root = changed.find((f) => f.frame.depth === 0) ?? changed[0]
             const ret = root?.changes.find((ch) => ch.name === '→return' || ch.name === 'return')
+            const isOpen = open === i
+            const canExpand = changed.length > 1
             return (
-              <div className="fl-case" key={i}>
-                <div className="fl-case-input">
-                  <span className="fl-case-tag">input</span>
-                  <span className="fl-case-val">{JSON.stringify(c.input)}</span>
-                </div>
-                <div className="fl-case-outcome">
-                  {ret ? (
-                    <>
-                      <span className="fl-delta-old">{ret.old}</span>
-                      <span className="fl-arrow">→</span>
-                      <span className="fl-delta-new">{ret.new}</span>
-                    </>
-                  ) : (
-                    <span className="fl-none">{changed.length} frame(s) changed</span>
+              <div className={`fl-case${isOpen ? ' open' : ''}`} key={i}>
+                <div
+                  className={`fl-case-hd${canExpand ? ' clickable' : ''}`}
+                  onClick={canExpand ? () => setOpen(isOpen ? null : i) : undefined}
+                >
+                  <div className="fl-case-input">
+                    {canExpand && <span className={`fl-tri${isOpen ? ' open' : ''}`}>▸</span>}
+                    <span className="fl-case-tag">input</span>
+                    <span className="fl-case-val">{JSON.stringify(c.input)}</span>
+                  </div>
+                  <div className="fl-case-outcome">
+                    {ret ? (
+                      <>
+                        <span className="fl-delta-old">{ret.old}</span>
+                        <span className="fl-arrow">→</span>
+                        <span className="fl-delta-new">{ret.new}</span>
+                      </>
+                    ) : (
+                      <span className="fl-none">{changed.length} frame(s) changed</span>
+                    )}
+                  </div>
+                  {canExpand && !isOpen && (
+                    <div className="fl-case-more">+{changed.length - 1} deeper frame(s) changed — click to open the full call-tree diff</div>
                   )}
                 </div>
-                {changed.length > 1 && (
-                  <div className="fl-case-more">+{changed.length - 1} deeper frame(s) also changed</div>
+                {isOpen && (
+                  <div className="fl-tree fl-case-tree">
+                    {changed.map((d, j) => (
+                      <DeltaRow key={j} d={d} onOpenSource={onOpenSource} />
+                    ))}
+                  </div>
                 )}
               </div>
             )

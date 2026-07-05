@@ -142,6 +142,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   }
 
   let turnTokens = 0
+  let fuzzNudged = false // remind once per turn to surface the differential fuzz after an edit
   for (let step = 0; step < MAX_STEPS; step++) {
     if (turn.signal?.aborted) {
       emit({ type: 'done', note: 'stopped by you' })
@@ -224,8 +225,20 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
     }
 
+    // An edit is not SHOWN until its behavioral consequence is surfaced. If this step
+    // changed code but ran no differential surface, nudge the agent (once) to fuzz-diff it —
+    // a bug that only breaks inputs it didn't try otherwise reads as "same flow".
+    const mutatedNow = toolUses.some((t) => t.name && MUTATING_TOOLS.has(t.name))
+    const diffedNow = toolUses.some((t) => t.name === 'grasp_fuzz_diff' || t.name === 'grasp_flow_diff')
+    if (mutatedNow && !diffedNow && !fuzzNudged && results.length > 0) {
+      fuzzNudged = true
+      const last = results[results.length - 1] as { content: string }
+      last.content +=
+        '\n\n<system-reminder>You changed code. It is not shown until you surface its behavioral consequence. Before concluding, run grasp_fuzz_diff on the changed entrypoint across a SPREAD of inputs (valid, boundary, malformed, missing, wrong-type) so any input where old vs new diverge is revealed — a bug that only breaks inputs you did not try otherwise reads as "same flow". See the fuzz-diff skill. Do not claim the change works.</system-reminder>'
+    }
+
     if (turn.flowAuto !== false)
-      await liveSurface(workspace, toolUses.some((t) => t.name && MUTATING_TOOLS.has(t.name)), emit)
+      await liveSurface(workspace, mutatedNow, emit)
 
     messages.push({ role: 'user', content: results })
   }

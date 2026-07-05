@@ -681,3 +681,9 @@ input, textarea { font-family: inherit; }
 .fl-case-val { font-family: var(--mono); font-size: 11.5px; color: var(--ink); word-break: break-all; }
 .fl-case-outcome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--mono); font-size: 11.5px; }
 .fl-case-more { margin-top: 6px; font-size: 11px; color: var(--faint); }
+.fl-case-hd.clickable { cursor: pointer; }
+.fl-case-hd.clickable:hover .fl-case-val { color: var(--accent); }
+.fl-case.open { border-color: var(--accent-hair); }
+.fl-case-tree { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hair-soft); }
+.fl-case .fl-tri { font-size: 9px; color: var(--faint); transition: transform .12s; margin-right: 2px; }
+.fl-case .fl-tri.open { transform: rotate(90deg); }
