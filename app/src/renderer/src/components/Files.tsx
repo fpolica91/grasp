@@ -1,7 +1,6 @@
 // The editor pane: a workspace file tree + a multi-file editor with tabs and split view.
-// Each open file is a tab; the editor can split side-by-side (two groups, independent
-// active tabs). CodeMirror (not Monaco — clean Vite/Electron bundling). A file's Diff
-// view (git HEAD vs working) sits alongside grasp's behavioral dataflow diff.
+// Each open file is a tab; the editor can split side-by-side. CodeMirror with ZCode theme.
+// Migrated to Tailwind v4 utilities.
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorView, basicSetup } from 'codemirror'
@@ -21,19 +20,18 @@ function langFor(path: string): Extension {
 
 const graspTheme = EditorView.theme(
   {
-    '&': { color: 'var(--ink)', backgroundColor: 'transparent', fontSize: '12.5px', height: '100%' },
-    '.cm-content': { fontFamily: "'Geist Mono', ui-monospace, monospace", caretColor: 'var(--accent)' },
-    '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--faint)', border: 'none' },
-    '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--accent) 6%, transparent)' },
-    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--muted)' },
-    '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--accent-bg) !important' },
-    '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--accent-bg) !important' },
-    '.cm-cursor': { borderLeftColor: 'var(--accent)' }
+    '&': { color: '#d4d4d4', backgroundColor: 'transparent', fontSize: '12.5px', height: '100%' },
+    '.cm-content': { fontFamily: 'ui-monospace, monospace', caretColor: '#ffffff' },
+    '.cm-gutters': { backgroundColor: 'transparent', color: '#d4d4d44d', border: 'none' },
+    '.cm-activeLine': { backgroundColor: '#ffffff08' },
+    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#d4d4d499' },
+    '.cm-selectionBackground, ::selection': { backgroundColor: '#ffffff1a !important' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#ffffff1a !important' },
+    '.cm-cursor': { borderLeftColor: '#ffffff' }
   },
   { dark: true }
 )
 
-// One file's editor: CodeMirror with an Edit/Diff toggle + save (Cmd/Ctrl+S when focused).
 function Editor({ workspace, file }: { workspace: string; file: string }): React.JSX.Element {
   const [mode, setMode] = useState<'edit' | 'diff'>('edit')
   const [dirty, setDirty] = useState(false)
@@ -64,26 +62,14 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
         viewRef.current = new EditorView({
           parent: host,
           doc: docRef.current,
-          extensions: [
-            basicSetup,
-            langFor(file),
-            graspTheme,
-            EditorView.updateListener.of((u) => {
-              if (u.docChanged) {
-                docRef.current = u.state.doc.toString()
-                setDirty(true)
-              }
-            })
-          ]
+          extensions: [basicSetup, langFor(file), graspTheme, EditorView.updateListener.of((u) => {
+            if (u.docChanged) { docRef.current = u.state.doc.toString(); setDirty(true) }
+          })]
         })
       }
     }
     void build()
-    return () => {
-      disposed = true
-      viewRef.current?.destroy()
-      viewRef.current = null
-    }
+    return () => { disposed = true; viewRef.current?.destroy(); viewRef.current = null }
   }, [file, mode, workspace])
 
   const save = async (): Promise<void> => {
@@ -91,12 +77,10 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
     setDirty(false)
   }
 
-  // Cmd/Ctrl+S saves whichever editor holds focus (works with split).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && hostRef.current?.contains(document.activeElement)) {
-        e.preventDefault()
-        void save()
+        e.preventDefault(); void save()
       }
     }
     window.addEventListener('keydown', onKey, true)
@@ -105,60 +89,52 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
   }, [file])
 
   return (
-    <div className="editor">
-      <div className="ed-bar">
-        <span className="files-path">{file}</span>
-        <span className="mode-toggle sm">
-          <button className={mode === 'edit' ? 'on' : ''} onClick={() => setMode('edit')}>
-            Edit
-          </button>
-          <button className={mode === 'diff' ? 'on' : ''} onClick={() => setMode('diff')}>
-            Diff
-          </button>
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
+        <span className="truncate font-mono text-[12px] text-foreground-subtle">{file}</span>
+        <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+          <button className={`rounded px-2 py-0.5 transition-colors ${mode === 'edit' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMode('edit')}>Edit</button>
+          <button className={`rounded px-2 py-0.5 transition-colors ${mode === 'diff' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMode('diff')}>Diff</button>
         </span>
         {mode === 'edit' && (
-          <button className="btn sm" disabled={!dirty} onClick={() => void save()}>
+          <button
+            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-40"
+            disabled={!dirty}
+            onClick={() => void save()}
+          >
             {dirty ? 'Save' : 'Saved'}
           </button>
         )}
       </div>
-      <div className="cm-host" ref={hostRef} />
+      <div className="min-h-0 flex-1 overflow-hidden" ref={hostRef} />
     </div>
   )
 }
 
-// A tabbed editor group: tabs of the open files, showing the active file's Editor.
 function EditorGroup(props: {
-  workspace: string
-  open: string[]
-  active: string
-  onActivate: (f: string) => void
-  onClose: (f: string) => void
-  right?: React.ReactNode // toolbar action on the right (split / close-split)
+  workspace: string; open: string[]; active: string
+  onActivate: (f: string) => void; onClose: (f: string) => void; right?: React.ReactNode
 }): React.JSX.Element {
   return (
-    <div className="editor-group">
-      <div className="ed-tabs">
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center border-b border-border">
         {props.open.map((f) => (
           <div
             key={f}
-            className={`ed-tab${f === props.active ? ' on' : ''}`}
+            className={`group flex cursor-pointer items-center gap-1.5 border-r border-border px-3 py-1.5 text-[12px] transition-colors ${f === props.active ? 'bg-background text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
             onClick={() => props.onActivate(f)}
             title={f}
           >
-            <span className="ed-tab-name">{base(f)}</span>
+            <span className="truncate">{base(f)}</span>
             <button
-              className="ed-tab-x"
-              onClick={(e) => {
-                e.stopPropagation()
-                props.onClose(f)
-              }}
+              className="rounded p-0.5 text-[10px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); props.onClose(f) }}
             >
               ✕
             </button>
           </div>
         ))}
-        <span className="ed-tabs-actions">{props.right}</span>
+        <span className="ml-auto pr-2">{props.right}</span>
       </div>
       {props.active && <Editor key={props.active} workspace={props.workspace} file={props.active} />}
     </div>
@@ -170,24 +146,29 @@ function Tree({ nodes, selected, onOpen }: { nodes: TreeNode[]; selected: string
   const toggle = (p: string): void => setOpen((s) => (s.has(p) ? new Set([...s].filter((x) => x !== p)) : new Set(s).add(p)))
   const render = (list: TreeNode[], depth: number): React.JSX.Element[] =>
     list.flatMap((n) => {
-      const pad = { paddingLeft: 8 + depth * 13 }
+      const pad = { paddingLeft: `${8 + depth * 13}px` }
       if (n.dir) {
         const isOpen = open.has(n.path)
         return [
-          <div key={n.path} className="tree-row dir" style={pad} onClick={() => toggle(n.path)}>
-            <span className={`tri${isOpen ? ' open' : ''}`}>▸</span>
+          <div key={n.path} className="flex cursor-pointer items-center gap-1 rounded-md py-0.5 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover" style={pad} onClick={() => toggle(n.path)}>
+            <span className={`text-[8px] transition-transform ${isOpen ? 'rotate-90' : ''}`}>▸</span>
             {n.name}
           </div>,
           ...(isOpen && n.children ? render(n.children, depth + 1) : [])
         ]
       }
       return [
-        <div key={n.path} className={`tree-row file${selected === n.path ? ' sel' : ''}`} style={pad} onClick={() => onOpen(n.path)}>
+        <div
+          key={n.path}
+          className={`cursor-pointer rounded-md py-0.5 text-[13px] transition-colors ${selected === n.path ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+          style={pad}
+          onClick={() => onOpen(n.path)}
+        >
           {n.name}
         </div>
       ]
     })
-  return <div className="tree">{render(nodes, 0)}</div>
+  return <div className="flex flex-col gap-px py-1">{render(nodes, 0)}</div>
 }
 
 export function FilesPane({ workspace, active }: { workspace: string; active: boolean }): React.JSX.Element {
@@ -218,56 +199,60 @@ export function FilesPane({ workspace, active }: { workspace: string; active: bo
   }
 
   return (
-    <div className="files">
-      <div className="files-tree">
-        <div className="files-tree-head">
-          <span className="eyebrow">files</span>
-          <button className="mini" onClick={loadTree} title="refresh">
+    <div className="flex h-full">
+      {/* File tree */}
+      <div className="flex w-[200px] shrink-0 flex-col border-r border-border bg-background">
+        <div className="flex items-center px-3 py-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">files</span>
+          <button
+            className="ml-auto flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+            onClick={loadTree}
+            title="refresh"
+          >
             ↻
           </button>
         </div>
-        <Tree nodes={tree} selected={left} onOpen={openFile} />
+        <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
+          <Tree nodes={tree} selected={left} onOpen={openFile} />
+        </div>
       </div>
-      <div className="files-editors">
+      {/* Editors */}
+      <div className="flex min-w-0 flex-1 flex-col bg-background">
         {rightFile === null ? (
           <EditorGroup
-            workspace={workspace}
-            open={open}
-            active={left}
-            onActivate={setLeft}
-            onClose={closeFile}
-            right={
-              open.length > 0 && (
-                <button className="ed-action" onClick={() => setRightFile(left || open[0])} title="Split editor right">
-                  ⊟
-                </button>
-              )
-            }
+            workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile}
+            right={open.length > 0 && (
+              <button
+                className="flex size-5 items-center justify-center rounded text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+                onClick={() => setRightFile(left || open[0])}
+                title="Split editor right"
+              >⊟</button>
+            )}
           />
         ) : (
           <PanelGroup direction="horizontal" autoSaveId="grasp-editors">
             <Panel minSize={20}>
               <EditorGroup workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile} />
             </Panel>
-            <PanelResizeHandle className="rh rh-v" />
+            <PanelResizeHandle className="w-px shrink-0 bg-border" />
             <Panel minSize={20}>
               <EditorGroup
-                workspace={workspace}
-                open={open}
-                active={rightFile}
-                onActivate={setRightFile}
-                onClose={closeFile}
+                workspace={workspace} open={open} active={rightFile} onActivate={setRightFile} onClose={closeFile}
                 right={
-                  <button className="ed-action" onClick={() => setRightFile(null)} title="Close split">
-                    ✕
-                  </button>
+                  <button
+                    className="flex size-5 items-center justify-center rounded text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+                    onClick={() => setRightFile(null)}
+                    title="Close split"
+                  >✕</button>
                 }
               />
             </Panel>
           </PanelGroup>
         )}
         {open.length === 0 && (
-          <div className="files-empty">Pick a file from the tree to open it. Open several — they become tabs — and split the editor with ⊟.</div>
+          <div className="flex flex-1 items-center justify-center px-8 text-center text-[13px] text-foreground-subtlest">
+            Pick a file from the tree to open it. Open several — they become tabs — and split the editor with ⊟.
+          </div>
         )}
       </div>
     </div>
