@@ -1,5 +1,5 @@
 // Command palette (Cmd/Ctrl+K) — fuzzy over commands + sessions. Type to filter, arrows
-// to move, Enter to run, Esc to close.
+// to move, Enter to run, Esc to close. Migrated to Tailwind v4 utilities matching ZCode.
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 export interface Command {
@@ -40,7 +40,7 @@ export function CommandPalette({ items, onClose }: { items: Command[]; onClose: 
     setSel(0)
   }, [q])
   useEffect(() => {
-    listRef.current?.querySelector('.cmd-item.on')?.scrollIntoView({ block: 'nearest' })
+    listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [sel])
 
   const run = (c?: Command): void => {
@@ -51,11 +51,17 @@ export function CommandPalette({ items, onClose }: { items: Command[]; onClose: 
   }
 
   return (
-    <div className="gate-overlay palette-overlay" onClick={onClose}>
-      <div className="palette" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[1000] flex items-start justify-center bg-black/80 backdrop-blur-[3px] pt-[12vh]"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-[560px] max-w-[92vw] flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <input
           autoFocus
-          className="palette-input"
+          className="w-full border-0 border-b border-border bg-transparent px-4 py-3 text-[14px] text-foreground outline-none placeholder:text-foreground-subtlest"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -75,18 +81,27 @@ export function CommandPalette({ items, onClose }: { items: Command[]; onClose: 
           placeholder="Search commands and sessions…"
           spellCheck={false}
         />
-        <div className="palette-list" ref={listRef}>
-          {filtered.length === 0 && <div className="palette-empty">No matches.</div>}
+        <div className="max-h-[400px] overflow-y-auto p-1" ref={listRef}>
+          {filtered.length === 0 && (
+            <div className="px-3 py-6 text-center text-[13px] text-foreground-subtlest">No matches.</div>
+          )}
           {filtered.map((c, i) => (
             <div
               key={c.id}
-              className={`cmd-item${i === sel ? ' on' : ''}`}
+              data-selected={i === sel}
+              className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors ${
+                i === sel ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
+              }`}
               onMouseEnter={() => setSel(i)}
               onClick={() => run(c)}
             >
-              <span className="cmd-group">{c.group}</span>
-              <span className="cmd-label">{c.label}</span>
-              {c.hint && <span className="cmd-hint">{c.hint}</span>}
+              <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">
+                {c.group}
+              </span>
+              <span className="flex-1 truncate font-medium">{c.label}</span>
+              {c.hint && (
+                <span className="shrink-0 font-mono text-[11px] text-foreground-subtlest">{c.hint}</span>
+              )}
             </div>
           ))}
         </div>
