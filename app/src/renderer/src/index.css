@@ -644,8 +644,8 @@ input, textarea { font-family: inherit; }
 .set-mcp-add input { flex: 1 1 0; min-width: 80px; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12.5px; }
 .set-mcp-add .mcp-name { flex: 0 0 110px; }
 .set-mcp-add .mcp-env { flex: 1 1 100%; min-width: 0; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12px; font-family: var(--mono); resize: none; }
-.set-skill-src.err { color: #e06c75; border-color: #e06c75; }
-.set-mcp-err { margin-top: 4px; font-size: 11.5px; color: #e06c75; font-family: var(--mono); line-height: 1.4; }
+.set-skill-src.err { color: #ff5c5c; border-color: #ff5c5c; }
+.set-mcp-err { margin-top: 4px; font-size: 11.5px; color: #ff5c5c; font-family: var(--mono); line-height: 1.4; }
 .mcp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 12px; }
 .mcp-card { padding: 14px; border: 1px solid var(--hair); border-radius: 10px; background: var(--surface-2); display: flex; flex-direction: column; gap: 5px; }
 .mcp-card.installed { border-color: var(--accent-hair); }
@@ -660,9 +660,9 @@ input, textarea { font-family: inherit; }
 .theme-dot { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--hair); padding: 0; position: relative; transition: transform .1s, border-color .12s; }
 .theme-dot:hover { transform: scale(1.12); }
 .theme-dot.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
-.theme-dot.graphite { background: linear-gradient(135deg, #1b2029 50%, #5b93ff 50%); }
-.theme-dot.carbon { background: linear-gradient(135deg, #0f1115 50%, #6a9cff 50%); }
-.theme-dot.daylight { background: linear-gradient(135deg, #ffffff 50%, #2f6fe0 50%); }
+.theme-dot.graphite { background: linear-gradient(135deg, #161616 50%, #ffffff 50%); }
+.theme-dot.carbon { background: linear-gradient(135deg, #121212 50%, #e8e8e8 50%); }
+.theme-dot.daylight { background: linear-gradient(135deg, #ffffff 50%, #000000 50%); }
 .composer .send.stop { background: var(--question); color: var(--on-accent); }
 .composer .send.stop:hover { filter: brightness(1.1); }
 
