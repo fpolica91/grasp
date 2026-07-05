@@ -67,6 +67,23 @@ export function App(): React.JSX.Element {
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarWidth, setSidebarWidth] = useState(260)
+  const startSidebarResize = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = sidebarWidth
+    const onMove = (ev: MouseEvent): void => setSidebarWidth(Math.max(200, Math.min(420, startW + ev.clientX - startX)))
+    const onUp = (): void => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
@@ -560,8 +577,9 @@ export function App(): React.JSX.Element {
       )}
 
       {sidebarOpen && (
-        <Sidebar
-          workspace={workspace}
+        <div className="sidebar-wrap" style={{ width: sidebarWidth }}>
+          <Sidebar
+            workspace={workspace}
           onWorkspace={switchProject}
           onNewSession={newSession}
           sessions={sessions.map((s) => ({ id: s.id, title: s.title, workspace: s.workspace, updatedAt: s.updatedAt }))}
@@ -588,7 +606,9 @@ export function App(): React.JSX.Element {
           theme={theme}
           onTheme={setTheme}
         />
+        </div>
       )}
+      {sidebarOpen && <div className="sidebar-resizer" onMouseDown={startSidebarResize} />}
 
       <div className="workarea">
       <PanelGroup direction="vertical" className="panels" autoSaveId="grasp-vert">
