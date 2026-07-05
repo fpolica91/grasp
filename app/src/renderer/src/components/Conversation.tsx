@@ -113,6 +113,21 @@ function describe(it: TranscriptItem): { verb: string; arg: string } {
       return { verb: 'Diffed', arg: ep }
     case 'grasp_fuzz':
       return { verb: 'Fuzzed', arg: ep }
+    case 'grasp_flow': {
+      // a trace is big; extract its entry cheaply (no full parse), else show the file
+      const tf = String(it.input?.trace_file ?? '')
+      const inlineEntry = /"entry"\s*:\s*"([^"]+)"/.exec(String(it.input?.trace ?? ''))?.[1] ?? ''
+      return { verb: 'Flow', arg: tf ? base(tf) : (inlineEntry || 'inline trace') }
+    }
+    case 'grasp_flow_diff': {
+      const of = String(it.input?.old_file ?? '')
+      return { verb: 'A→B flow', arg: of ? base(of) : 'old vs new' }
+    }
+    case 'grasp_fuzz_diff': {
+      const e = String(it.input?.entry ?? '')
+      const cf = String(it.input?.cases_file ?? '')
+      return { verb: 'Fuzz-diff', arg: e || (cf ? base(cf) : 'cases') }
+    }
     case 'task':
     case 'Task':
       return { verb: 'Delegated', arg: String(it.input?.description ?? it.input?.prompt ?? '').slice(0, 60) }
