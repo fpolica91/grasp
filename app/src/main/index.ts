@@ -96,7 +96,8 @@ app.whenReady().then(() => {
   // to create it.
   ipcMain.handle('grasp:revealInFiles', (_e, key: string) => {
     const root = join(homedir(), '.grasp')
-    const p = join(root, key === 'mcp' ? 'mcp.json' : key)
+    const file = key === 'mcp' ? 'mcp.json' : key === 'keybindings' ? 'keybindings.json' : key
+    const p = join(root, file)
     try {
       if (existsSync(p) && statSync(p).isDirectory()) void shell.openPath(p)
       else if (existsSync(p)) void shell.showItemInFolder(p)

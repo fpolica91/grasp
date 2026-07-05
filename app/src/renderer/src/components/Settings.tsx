@@ -20,7 +20,9 @@ const SECTIONS = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp', label: 'MCP servers' },
-  { id: 'plugins', label: 'Plugins' }
+  { id: 'plugins', label: 'Plugins' },
+  { id: 'commands', label: 'Commands' },
+  { id: 'keybindings', label: 'Keybindings' }
 ] as const
 type Section = (typeof SECTIONS)[number]['id']
 
@@ -72,7 +74,7 @@ function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: s
   )
 }
 
-export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; onClose: () => void }): React.JSX.Element {
+export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; onClose: () => void }): React.JSX.Element {
   const [section, setSection] = useState<Section>('keys')
   const [mcpName, setMcpName] = useState('')
   const [mcpCmd, setMcpCmd] = useState('')
@@ -269,6 +271,47 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   </button>
                 </div>
                 {pluginMsg && <div className="set-key-hint">{pluginMsg}</div>}
+              </div>
+            )}
+
+            {section === 'commands' && (
+              <div className="set-section">
+                <div className="eyebrow">Commands <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('commands')}>reveal in files</button></div>
+                <p className="set-note">Slash commands the composer shows when you type <code>/</code>. A <code>commands/*.md</code> with a <code>skills:</code> key auto-loads a skill.</p>
+                {props.commands.length === 0 ? (
+                  <div className="set-empty">No commands. Drop a <code>.md</code> in <code>~/.grasp/commands/</code>.</div>
+                ) : (
+                  <div className="set-skills">
+                    {props.commands.map((c) => (
+                      <div className="set-skill" key={c.name}>
+                        <div className="set-skill-head">
+                          <span className="set-skill-name">/{c.name}</span>
+                          {c.skills && <span className="set-tag">skill: {c.skills}</span>}
+                        </div>
+                        <div className="set-skill-desc">{(c.description || '(no description)').slice(0, 180)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {section === 'keybindings' && (
+              <div className="set-section">
+                <div className="eyebrow">Keybindings <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('keybindings')}>reveal in files</button></div>
+                <p className="set-note">Rebindable chords — edit <code>~/.grasp/keybindings.json</code> (e.g. <code>{`{"new-session":"mod+shift+n"}`}</code>). <code>mod+</code> = Cmd on mac, Ctrl elsewhere.</p>
+                <div className="set-skills">
+                  {Object.entries(props.keybinds).map(([action, chord]) => (
+                    <div className="set-skill" key={action}>
+                      <div className="set-skill-head">
+                        <span className="set-skill-name">{action}</span>
+                        <span className="set-skill-src user">
+                          <kbd>{chord}</kbd>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

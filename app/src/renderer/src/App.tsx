@@ -517,7 +517,7 @@ export function App(): React.JSX.Element {
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
       {showSettings && (
-        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onPluginsChanged={refreshPlugins} onClose={() => setShowSettings(false)} />
+        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onPluginsChanged={refreshPlugins} commands={commands} keybinds={keybinds} onClose={() => setShowSettings(false)} />
       )}
       {showPalette && (
         <CommandPalette
