@@ -126,6 +126,14 @@ export function App(): React.JSX.Element {
       'toggle-side-pane': toggleRight
     }
     const onKey = (e: KeyboardEvent): void => {
+      // Esc stops a running agent (the standard escape hatch) — only when no overlay is open,
+      // so it never fights the palette/settings/modal.
+      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal) {
+        e.preventDefault()
+        e.stopPropagation()
+        void window.grasp.stopAgent()
+        return
+      }
       for (const [action, chord] of Object.entries(keybinds)) {
         if (matches(chord, e)) {
           const fn = actions[action]
@@ -141,7 +149,7 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keybinds])
+  }, [keybinds, busy, showPalette, showSettings, showWfModal])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
