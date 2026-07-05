@@ -1,6 +1,6 @@
 // The left rail — makes grasp a product, not a two-pane debug tool. Wordmark, new
 // session, sessions, the active project, and the theme scheme.
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ProjectSwitcher } from './ProjectSwitcher'
 
 export type Theme = 'graphite' | 'carbon' | 'daylight'
@@ -29,7 +29,7 @@ export function Sidebar(props: {
   workspace: string
   onWorkspace: (w: string) => void
   onNewSession: () => void
-  sessions: { id: string; title: string }[]
+  sessions: { id: string; title: string; workspace: string; updatedAt: number }[]
   activeSession: string
   onSelectSession: (id: string) => void
   onForkSession: (id: string) => void
@@ -47,6 +47,7 @@ export function Sidebar(props: {
 }): React.JSX.Element {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const commitRename = (id: string): void => {
     const t = draft.trim()
     setEditing(null)
@@ -75,68 +76,90 @@ export function Sidebar(props: {
         New workflow
       </button>
 
-      <div className="side-sec">Sessions</div>
-      <div className="side-list">
-        {props.sessions.length === 0 && <div className="side-item active">Current session</div>}
-        {props.sessions.map((s) => (
-          <div
-            key={s.id}
-            className={`side-item${s.id === props.activeSession ? ' active' : ''}`}
-            onClick={() => props.onSelectSession(s.id)}
-            title={s.title}
-          >
-            {editing === s.id ? (
-              <input
-                className="si-rename"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitRename(s.id)
-                  else if (e.key === 'Escape') setEditing(null)
-                }}
-                onBlur={() => commitRename(s.id)}
-                autoFocus
-              />
-            ) : (
-              <>
-                <span className="si-title">{s.title}</span>
-                <button
-                  className="si-fork"
-                  title="Rename"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditing(s.id)
-                    setDraft(s.title)
-                  }}
+      {/* Sessions grouped by project workspace (ZCode-style collapsible project headers) */}
+      {(() => {
+        const groups = new Map<string, typeof props.sessions>()
+        for (const s of props.sessions) {
+          const ws = s.workspace || 'Unknown'
+          const arr = groups.get(ws) ?? []
+          arr.push(s)
+          groups.set(ws, arr)
+        }
+        for (const arr of groups.values()) arr.sort((a, b) => b.updatedAt - a.updatedAt)
+        const ordered = [...groups.entries()].sort((a, b) => {
+          const ac = a[0] === props.workspace ? 0 : 1
+          const bc = b[0] === props.workspace ? 0 : 1
+          return ac - bc
+        })
+        if (ordered.length === 0) return <div className="side-item active">Current session</div>
+        return ordered.map(([ws, sess]) => {
+          const wsName = ws.split('/').filter(Boolean).pop() ?? ws
+          const collapsed = collapsedGroups.has(ws)
+          const toggle = (): void => setCollapsedGroups((prev) => {
+            const next = new Set(prev)
+            if (next.has(ws)) next.delete(ws)
+            else next.add(ws)
+            return next
+          })
+          return (
+            <div className="side-group" key={ws}>
+              <div className="side-group-head" onClick={toggle}>
+                <span className={`side-chevron${collapsed ? '' : ' open'}`}>▸</span>
+                <span className="side-group-name">{wsName}</span>
+                <span className="side-group-count">{sess.length}</span>
+              </div>
+              {!collapsed && sess.map((s) => (
+                <div
+                  key={s.id}
+                  className={`side-item${s.id === props.activeSession ? ' active' : ''}`}
+                  onClick={() => props.onSelectSession(s.id)}
+                  title={s.title}
                 >
-                  ✎
-                </button>
-                <button
-                  className="si-fork"
-                  title="Fork — branch this session"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    props.onForkSession(s.id)
-                  }}
-                >
-                  ⎇
-                </button>
-                <button
-                  className="si-del"
-                  title="Delete chat"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    props.onDeleteSession(s.id)
-                  }}
-                >
-                  ✕
-                </button>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+                  {editing === s.id ? (
+                    <input
+                      className="si-rename"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitRename(s.id)
+                        else if (e.key === 'Escape') setEditing(null)
+                      }}
+                      onBlur={() => commitRename(s.id)}
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <span className="si-title">{s.title}</span>
+                      <button
+                        className="si-fork"
+                        title="Rename"
+                        onClick={(e) => { e.stopPropagation(); setEditing(s.id); setDraft(s.title) }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="si-fork"
+                        title="Fork — branch this session"
+                        onClick={(e) => { e.stopPropagation(); props.onForkSession(s.id) }}
+                      >
+                        ⎇
+                      </button>
+                      <button
+                        className="si-del"
+                        title="Delete chat"
+                        onClick={(e) => { e.stopPropagation(); props.onDeleteSession(s.id) }}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        })
+      })()}
 
       {props.workflows.length > 0 && (
         <>

@@ -564,7 +564,7 @@ export function App(): React.JSX.Element {
           workspace={workspace}
           onWorkspace={switchProject}
           onNewSession={newSession}
-          sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
+          sessions={sessions.map((s) => ({ id: s.id, title: s.title, workspace: s.workspace, updatedAt: s.updatedAt }))}
           activeSession={sessionId}
           onSelectSession={loadSession}
           onForkSession={forkSessionById}
