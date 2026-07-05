@@ -530,7 +530,7 @@ export function App(): React.JSX.Element {
   }
 
   return (
-    <div className="app">
+    <div className="flex h-full overflow-hidden bg-background">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
       {showSettings && (
@@ -577,7 +577,7 @@ export function App(): React.JSX.Element {
       )}
 
       {sidebarOpen && (
-        <div className="sidebar-wrap" style={{ width: sidebarWidth }}>
+        <div className="flex shrink-0 flex-col h-full border-r border-border overflow-hidden" style={{ width: sidebarWidth }}>
           <Sidebar
             workspace={workspace}
           onWorkspace={switchProject}
