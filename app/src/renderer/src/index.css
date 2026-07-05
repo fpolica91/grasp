@@ -63,10 +63,10 @@ button:disabled { opacity: .5; cursor: default; }
 input, textarea { font-family: inherit; }
 
 /* ── app grid ─────────────────────────────────────────────── */
-.app { display: flex; height: 100%; overflow: hidden; }
-.workarea { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; }
+.app { display: flex; height: 100%; overflow: hidden; background: var(--ground); }
+.workarea { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; background: var(--ground); }
 .panels { flex: 1; min-height: 0; }
-.statusbar { flex: none; height: 26px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--surface); border-top: 1px solid var(--hair-soft); font-size: 11.5px; }
+.statusbar { flex: none; height: 28px; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: var(--ground); border-top: 1px solid var(--hair); font-size: 11.5px; }
 .sb-project { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-family: var(--mono); }
 .sb-project svg { color: var(--faint); }
 .sb-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; color: var(--muted); font-size: 11.5px; padding: 3px 9px; border-radius: 6px; }
@@ -77,8 +77,8 @@ input, textarea { font-family: inherit; }
 [data-panel] { min-height: 0; min-width: 0; }
 .col { display: flex; flex-direction: column; min-height: 0; height: 100%; overflow: hidden; }
 .chat-col > .conv { flex: 1; min-height: 0; height: auto; }
-.right-col { display: flex; flex-direction: column; min-height: 0; height: 100%; }
-.bottom-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; border-top: 1px solid var(--hair-soft); background: var(--surface); }
+.right-col { display: flex; flex-direction: column; min-height: 0; height: 100%; background: var(--surface); }
+.bottom-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; border-top: 1px solid var(--hair); background: var(--surface); }
 .pane-body { flex: 1; min-height: 0; position: relative; }
 .pane { position: absolute; inset: 0; display: none; }
 .pane.on { display: flex; flex-direction: column; }
@@ -162,7 +162,7 @@ input, textarea { font-family: inherit; }
 .btn.sm.primary { background: var(--accent); border-color: transparent; color: var(--on-accent); }
 
 /* ── tabbed pane bar (right pane + bottom dock) ────────────── */
-.panebar { flex: none; display: flex; align-items: center; gap: 2px; padding: 7px 12px 0; border-bottom: 1px solid var(--hair-soft); }
+.panebar { flex: none; display: flex; align-items: center; gap: 2px; padding: 7px 12px 0; border-bottom: 1px solid var(--hair); background: var(--surface); }
 .panebar button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--faint); font-size: 12.5px; font-weight: 500; padding: 6px 12px 8px; margin-bottom: -1px; }
 .panebar button:hover { color: var(--muted); }
 .panebar button.on { color: var(--ink); border-bottom-color: var(--accent); }
