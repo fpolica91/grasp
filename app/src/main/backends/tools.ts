@@ -9,6 +9,7 @@ import { validateTrace, diffTraces, buildFuzzDiff, type TraceDoc, type FuzzCase 
 import { listSkills, readSkill, skillsListing } from '../skills'
 import type { Emit } from './types'
 import { McpRegistry } from './mcp'
+import { sshExec } from '../ssh'
 
 function resolvePath(workspace: string, p: string): string {
   return p.startsWith('/') ? p : join(workspace || '.', p)
@@ -64,7 +65,7 @@ export const PLAN_SYSTEM =
 
 // ASK MODE: these tools change the workspace, so they pause for human approval. They are also
 // the set that triggers liveSurface (a code change should re-run the observed dataflow).
-export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash'])
+export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash', 'remote_bash'])
 
 // A subagent runner: run a focused sub-task and return its final text. Events it emits
 // are tagged with the parent task's id so the UI nests them.
@@ -308,6 +309,27 @@ export const TOOLS: Tool[] = [
         cp.on('error', (e) => res(`error: ${e.message}`))
         cp.on('close', (code) => res(cap(out) + `\n[exit ${code}]`))
       })
+    }
+  },
+  {
+    name: 'remote_bash',
+    description:
+      'Run a shell command on a REMOTE host over SSH. Uses your ~/.ssh/config aliases (or ' +
+      'user@host); key/agent auth only (no password prompt); the host key is verified against ' +
+      '~/.ssh/known_hosts and an unknown/changed host is REFUSED. Use for remote boxes you ' +
+      'already have SSH access to — never for an untrusted host.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        host: { type: 'string', description: '~/.ssh/config alias or user@host' },
+        command: { type: 'string' }
+      },
+      required: ['host', 'command']
+    },
+    async run(input) {
+      const res = await sshExec(String(input.host ?? ''), String(input.command ?? ''))
+      const out = (res.stdout || '') + (res.stderr ? `\n[stderr]\n${res.stderr}` : '')
+      return `ssh ${String(input.host)} — ${res.ok ? 'ok' : 'failed'} (exit ${res.exit})${res.error ? ` ${res.error}` : ''}\n${out.slice(0, 8000) || '(no output)'}`
     }
   },
   {
