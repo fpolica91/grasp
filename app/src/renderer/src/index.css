@@ -236,9 +236,12 @@ input, textarea { font-family: inherit; }
    have an automatic minimum size of 0, so an overfilled column CRUSHES them to their
    borders (the "2px hairline blocks" bug). */
 .conv-log > * { flex-shrink: 0; }
-.conv-empty { margin: auto; max-width: 420px; text-align: center; }
-.conv-empty h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 10px; }
-.conv-empty p { color: var(--muted); font-size: 13.5px; line-height: 1.65; margin: 0; }
+.conv-empty { margin: auto; max-width: 400px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 20px; }
+.conv-empty-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--faint); margin-bottom: 8px; }
+.conv-empty h2 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; margin: 0; color: var(--ink); }
+.conv-empty p { color: var(--muted); font-size: 13px; line-height: 1.55; margin: 0; }
+.conv-empty p code { font-family: var(--mono); font-size: 12px; background: var(--surface); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+.conv-empty .conv-empty-sub { color: var(--faint); font-size: 12px; }
 
 .msg { display: flex; flex-direction: column; gap: 8px; max-width: 92%; }
 .msg.user { align-self: flex-end; align-items: flex-end; }

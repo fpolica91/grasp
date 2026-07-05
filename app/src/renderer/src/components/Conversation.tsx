@@ -417,11 +417,12 @@ export function Conversation(props: {
       <div className="conv-log" ref={logRef} onScroll={onLogScroll}>
         {props.transcript.length === 0 && (
           <div className="conv-empty">
+            <div className="conv-empty-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
+            </div>
             <h2>What should we change?</h2>
-            <p>
-              Ask an agent to edit code in your project. As it works, the file, the diff, and the observed dataflow
-              show on the right — you adjudicate what the change did, never a &ldquo;does it work&rdquo;.
-            </p>
+            <p>Ask an agent to edit code. Type <code>/</code> for commands, <code>$</code> for skills.</p>
+            <p className="conv-empty-sub">The observed dataflow shows on the right — you adjudicate what the change did.</p>
           </div>
         )}
         {top.map((it, i) => renderItem(it, i, i === top.length - 1))}
