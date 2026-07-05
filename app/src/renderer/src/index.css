@@ -113,6 +113,10 @@ input, textarea { font-family: inherit; }
 .side-group-count { font-size: 10px; color: var(--faint); opacity: .6; }
 .skill-side-toggle { flex: none; font-size: 10px; color: var(--faint); }
 .skill-side-toggle.on { color: var(--accent); }
+.side-sortbar { display: flex; align-items: center; gap: 4px; margin-top: 14px; padding: 0 10px 6px; }
+.side-sortbar .side-sec { margin: 0; }
+.side-sort-btn { background: transparent; border: 0; color: var(--faint); font-size: 10.5px; cursor: pointer; padding: 2px 6px; border-radius: 5px; margin-left: auto; }
+.side-sort-btn:hover { color: var(--muted); background: var(--surface); }
 .si-del { flex: none; background: transparent; border: 0; color: var(--faint); font-size: 11px; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity .1s; }
 .side-item:hover .si-del { opacity: 1; }
 .si-del:hover { color: var(--question); background: var(--surface-3); }

@@ -50,6 +50,7 @@ export function Sidebar(props: {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const commitRename = (id: string): void => {
     const t = draft.trim()
     setEditing(null)
@@ -78,6 +79,20 @@ export function Sidebar(props: {
         New workflow
       </button>
 
+      {/* Sort toolbar */}
+      {props.sessions.length > 0 && (
+        <div className="side-sortbar">
+          <span className="side-sec" style={{ margin: 0 }}>Conversations</span>
+          <button
+            className="side-sort-btn"
+            title={sortOrder === 'newest' ? 'Newest first — click for oldest' : 'Oldest first — click for newest'}
+            onClick={() => setSortOrder((s) => (s === 'newest' ? 'oldest' : 'newest'))}
+          >
+            {sortOrder === 'newest' ? '↓ New' : '↑ Old'}
+          </button>
+        </div>
+      )}
+
       {/* Sessions grouped by project workspace (ZCode-style collapsible project headers) */}
       {(() => {
         const groups = new Map<string, typeof props.sessions>()
@@ -87,7 +102,7 @@ export function Sidebar(props: {
           arr.push(s)
           groups.set(ws, arr)
         }
-        for (const arr of groups.values()) arr.sort((a, b) => b.updatedAt - a.updatedAt)
+        for (const arr of groups.values()) arr.sort((a, b) => sortOrder === 'newest' ? b.updatedAt - a.updatedAt : a.updatedAt - b.updatedAt)
         const ordered = [...groups.entries()].sort((a, b) => {
           const ac = a[0] === props.workspace ? 0 : 1
           const bc = b[0] === props.workspace ? 0 : 1
