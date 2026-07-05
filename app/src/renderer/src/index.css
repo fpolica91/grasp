@@ -101,6 +101,8 @@ input, textarea { font-family: inherit; }
 /* delete chat */
 .side-item { display: flex; align-items: center; gap: 6px; }
 .si-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-stat { flex: none; font-size: 10px; color: var(--faint); padding: 1px 5px; border: 1px solid var(--hair); border-radius: 99px; }
+.wf-stat.done { color: var(--accent); border-color: var(--accent-hair); }
 .si-del { flex: none; background: transparent; border: 0; color: var(--faint); font-size: 11px; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity .1s; }
 .side-item:hover .si-del { opacity: 1; }
 .si-del:hover { color: var(--question); background: var(--surface-3); }

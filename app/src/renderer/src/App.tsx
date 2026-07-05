@@ -268,6 +268,16 @@ export function App(): React.JSX.Element {
     wfCancelRef.current = true
     void window.grasp.stopAgent()
   }
+  function openWorkflow(id: string): void {
+    const w = workflows.find((x) => x.id === id)
+    if (w) setActiveWf(w) // surfaces the panel; its Resume button runs/resumes
+  }
+  function deleteWorkflowById(id: string): void {
+    void window.grasp.deleteWorkflow(id).then(() => {
+      setWorkflows((ws) => ws.filter((w) => w.id !== id))
+      if (activeWf?.id === id) setActiveWf(null)
+    })
+  }
 
   function createWorkflow(title: string, steps: string[], budget?: number): void {
     setShowWfModal(false)
@@ -552,6 +562,16 @@ export function App(): React.JSX.Element {
           onSelectSession={loadSession}
           onForkSession={forkSessionById}
           onDeleteSession={deleteSessionById}
+          workflows={workflows.map((w) => ({
+            id: w.id,
+            title: w.title,
+            status: w.status,
+            done: w.steps.filter((s) => s.status === 'done').length,
+            total: w.steps.length
+          }))}
+          activeWorkflow={activeWf?.id ?? null}
+          onOpenWorkflow={openWorkflow}
+          onDeleteWorkflow={deleteWorkflowById}
           onSearch={() => setShowPalette(true)}
           onNewWorkflow={() => setShowWfModal(true)}
           onSettings={() => setShowSettings(true)}

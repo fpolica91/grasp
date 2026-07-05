@@ -33,6 +33,10 @@ export function Sidebar(props: {
   onSelectSession: (id: string) => void
   onForkSession: (id: string) => void
   onDeleteSession: (id: string) => void
+  workflows: { id: string; title: string; status: string; done: number; total: number }[]
+  activeWorkflow: string | null
+  onOpenWorkflow: (id: string) => void
+  onDeleteWorkflow: (id: string) => void
   onSearch: () => void
   onNewWorkflow: () => void
   onSettings: () => void
@@ -96,6 +100,35 @@ export function Sidebar(props: {
           </div>
         ))}
       </div>
+
+      {props.workflows.length > 0 && (
+        <>
+          <div className="side-sec">Workflows</div>
+          <div className="side-list">
+            {props.workflows.map((w) => (
+              <div
+                key={w.id}
+                className={`side-item${w.id === props.activeWorkflow ? ' active' : ''}`}
+                onClick={() => props.onOpenWorkflow(w.id)}
+                title={w.title}
+              >
+                <span className="si-title">{w.title}</span>
+                <span className={`wf-stat ${w.status}`}>{w.done}/{w.total}</span>
+                <button
+                  className="si-del"
+                  title="Delete workflow"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    props.onDeleteWorkflow(w.id)
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="side-foot">
         <div className="theme-row">
