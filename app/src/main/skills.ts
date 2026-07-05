@@ -58,6 +58,43 @@ export function readSkill(workspace: string, name: string): Skill | null {
 
 // Seed a couple of thesis-aligned example skills the first time (never overwrite).
 const EXAMPLES: Record<string, string> = {
+  'fuzz-diff.md': `---
+name: fuzz-diff
+description: Did my edit break something? Vary the input space, trace old vs new on each, surface every divergence.
+---
+A single input proves nothing about the inputs you did not try. A change that is catastrophic on an
+input you skipped reads as \"same flow\". So to answer \"did my edit break something\", do NOT trace one
+input — vary the input space and surface EVERY input where old and new diverge. You are the compiler;
+you generate the spread. grasp diffs the pairs and renders only the divergences, with a scope statement.
+
+## 1. Generate a spread of inputs (deterministic)
+From the entrypoint's schema / types / the shape of your change, build a representative matrix — seed
+it so it is reproducible (same code + same seed => same inputs):
+- a valid/typical input
+- each field at its BOUNDARY: min-1, min, max, max+1, empty string, 0, negative, huge
+- WRONG TYPE per field (string where number expected, null, array, object)
+- MISSING each required field; extra unexpected fields
+- known adversarial shapes for the domain (e.g. \"a@\", unicode, injection-looking strings)
+Aim for coverage of the branches your change touches, not volume.
+
+## 2. Trace old vs new on each input
+For every input, observe the SAME input on the OLD code and the NEW code (trace the new working tree,
+then git stash/checkout the old ref and trace again), exactly as in the trace-flow skill. For a sweep
+the traces can be LIGHT — you mainly need each run's outcome (root return / thrown) to detect
+divergence, so a shallow trace per input is fine; do not produce 300 frames x N.
+
+## 3. Submit
+Write a JSON array to a file, one element per input: { \"input\": <the input>, \"old\": <Trace v1 doc>,
+\"new\": <Trace v1 doc> }. Call grasp_fuzz_diff with entry and cases_file=<that path>. grasp diffs every
+pair, keeps only the inputs where behavior changed, and renders them with an honest scope line
+(N tried, K diverged).
+
+## 4. Honesty (non-negotiable)
+- grasp reports \"varied N inputs; K diverged\" — it NEVER says the change is safe. K=0 means \"no
+  divergence across the N you tried\", not \"correct\". Say so.
+- Every value is a real observation; never invent an input's result.
+- If you could not run a case, drop it (do not fabricate a pass); the count reflects only what ran.
+- The divergences are facts ending in neutral questions. The human adjudicates.`,
   'trace-flow.md': `---
 name: trace-flow
 description: Show a codebase's real behavior as the interactive Flow — you observe and submit nodes; grasp renders. Never assert "works".

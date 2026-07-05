@@ -4,7 +4,7 @@
 // behavior, a tooling failure is an honest separate state — never a fake node. Ends in
 // questions, never a verdict.
 import { useState } from 'react'
-import type { TraceDoc, TraceFrame, TraceValue, TraceDiff, FrameDelta } from '../../../shared/trace'
+import type { TraceDoc, TraceFrame, TraceValue, TraceDiff, FrameDelta, FuzzDiff } from '../../../shared/trace'
 
 function Val({ v }: { v: TraceValue }): React.JSX.Element {
   return (
@@ -242,6 +242,59 @@ export function FlowDiffView({ diff, onOpenSource }: { diff: TraceDiff; onOpenSo
         </>
       )}
       <div className="fl-foot">Old and new were each run for real under the same input; the deltas are measured, not inferred. grasp does not label the change correct or incorrect — that is yours to say.</div>
+    </div>
+  )
+}
+
+
+// ── Differential fuzz view: varied N inputs, surface the K where behavior diverged ──
+export function FuzzDiffView({ fuzz, onOpenSource }: { fuzz: FuzzDiff; onOpenSource?: (file: string, line: number | null) => void }): React.JSX.Element {
+  return (
+    <div className="flow2">
+      <div className="fl-head">
+        <span className="fl-entry">{fuzz.entry}</span>
+        <span className="fl-lang">fuzz A→B</span>
+        <span className="fl-meta">{fuzz.oldRef ?? 'old'} → {fuzz.newRef ?? 'new'} · {fuzz.tried} tried · {fuzz.diverged} diverged</span>
+      </div>
+      <div className={`fl-scope${fuzz.diverged ? ' hot' : ''}`}>{fuzz.scope}</div>
+      {fuzz.diverged === 0 ? null : (
+        <div className="fl-cases">
+          {fuzz.cases.map((c, i) => {
+            const changed = c.diff.frames.filter((f) => f.status !== 'unchanged')
+            const root = changed.find((f) => f.frame.depth === 0) ?? changed[0]
+            const ret = root?.changes.find((ch) => ch.name === '→return' || ch.name === 'return')
+            return (
+              <div className="fl-case" key={i}>
+                <div className="fl-case-input">
+                  <span className="fl-case-tag">input</span>
+                  <span className="fl-case-val">{JSON.stringify(c.input)}</span>
+                </div>
+                <div className="fl-case-outcome">
+                  {ret ? (
+                    <>
+                      <span className="fl-delta-old">{ret.old}</span>
+                      <span className="fl-arrow">→</span>
+                      <span className="fl-delta-new">{ret.new}</span>
+                    </>
+                  ) : (
+                    <span className="fl-none">{changed.length} frame(s) changed</span>
+                  )}
+                </div>
+                {changed.length > 1 && (
+                  <div className="fl-case-more">+{changed.length - 1} deeper frame(s) also changed</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {fuzz.questions.length > 0 && (
+        <div className="fl-qpanel">
+          <div className="fl-qpanel-t">You adjudicate</div>
+          {fuzz.questions.map((q, i) => <div className="fl-q" key={i}>? {q}</div>)}
+        </div>
+      )}
+      <div className="fl-foot">Every input above was run for real on both versions; the divergences are measured, not inferred. grasp surfaces where behavior changed and across how many inputs — it never certifies the change safe. That is yours to say.</div>
     </div>
   )
 }

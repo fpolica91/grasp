@@ -161,6 +161,58 @@ export function diffTraces(oldT: TraceDoc, newT: TraceDoc): TraceDiff {
   }
 }
 
+// ── Differential fuzz: the diff that means something ──────────────────────────
+// A single observed input proves nothing about the inputs you didn't try — a change
+// that's catastrophic on an input you skipped reads as "same flow". So the honest A→B
+// answer varies the input space and surfaces EVERY input where old and new diverge.
+// The agent (the compiler) generates the spread and traces old+new on each; grasp diffs
+// them here and renders only the divergences with a scope statement — never "safe".
+export interface FuzzCase {
+  input: unknown
+  old: TraceDoc
+  new: TraceDoc
+}
+export interface FuzzDivergence {
+  input: unknown
+  diff: TraceDiff
+}
+export interface FuzzDiff {
+  entry: string
+  oldRef: string | null
+  newRef: string | null
+  tried: number
+  diverged: number
+  cases: FuzzDivergence[]
+  scope: string
+  questions: string[]
+}
+
+// Diff each old/new pair; keep only the inputs where behavior actually changed. grasp
+// computes divergence from the real traces — it does not trust an agent's "diverged" claim.
+export function buildFuzzDiff(entry: string, cases: FuzzCase[]): FuzzDiff {
+  const divergences: FuzzDivergence[] = []
+  const questions = new Set<string>()
+  let oldRef: string | null = null
+  let newRef: string | null = null
+  for (const c of cases) {
+    if (!c.old || !c.new) continue
+    oldRef = oldRef ?? c.old.gitRef
+    newRef = newRef ?? c.new.gitRef
+    const diff = diffTraces(c.old, c.new)
+    if (!diff.empty) {
+      divergences.push({ input: c.input, diff })
+      for (const q of diff.questions) questions.add(q)
+    }
+  }
+  const tried = cases.length
+  const diverged = divergences.length
+  const scope =
+    diverged === 0
+      ? `Varied ${tried} input${tried === 1 ? '' : 's'}; no divergence observed. That is not proof of safety — it is ${tried} observed path${tried === 1 ? '' : 's'}, not every possible input.`
+      : `Varied ${tried} input${tried === 1 ? '' : 's'}; behavior diverged on ${diverged}. Each divergence below is an observed fact for you to adjudicate — grasp does not call it a bug.`
+  return { entry, oldRef, newRef, tried, diverged, cases: divergences, scope, questions: [...questions] }
+}
+
 // Validate an incoming trace: agent-produced JSON must conform or grasp rejects it
 // (honest error, not a mangled render). Returns null if valid, else the reason.
 export function validateTrace(t: unknown): string | null {

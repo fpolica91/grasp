@@ -1,4 +1,4 @@
-import type { TraceDoc, TraceDiff } from './trace'
+import type { TraceDoc, TraceDiff, FuzzDiff } from './trace'
 // Shared contracts between main and renderer.
 
 export type Provenance = 'observed' | 'declared' | 'unknown'
@@ -169,6 +169,7 @@ export type AgentEvent =
   | { type: 'fuzz'; report: FuzzReport }
   | { type: 'trace'; trace: TraceDoc }
   | { type: 'trace_diff'; diff: TraceDiff }
+  | { type: 'fuzz_diff'; fuzz: FuzzDiff }
   | { type: 'plan'; text: string }
   | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
   | { type: 'usage'; input: number; output: number }

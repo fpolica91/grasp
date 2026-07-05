@@ -5,8 +5,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
-import { fuzz } from '../engine'
-import { validateTrace, diffTraces, type TraceDoc } from '../../shared/trace'
+import { validateTrace, diffTraces, buildFuzzDiff, type TraceDoc, type FuzzCase } from '../../shared/trace'
 import { listSkills, readSkill } from '../skills'
 import type { Emit } from './types'
 
@@ -332,37 +331,39 @@ export const TOOLS: Tool[] = [
     }
   },
   {
-    name: 'grasp_fuzz',
+    name: 'grasp_fuzz_diff',
     description:
-      'Pressure-test an entrypoint across many inputs (the new stack trace): vary the input ' +
-      'per a JSON Schema you provide and get which operands BENT across inputs, which inputs ' +
-      'RAISED, and the gaps — each with a reproducing input. Use to expose edge cases a single ' +
-      'input misses. Python only; walled (network denied) by default. The full result is ' +
-      'RETURNED to you directly and rendered in grasp’s dataflow rail — it writes NO files; ' +
-      'do not look for output files afterward. Present the result and stop.',
+      'Differential fuzz — the diff that actually answers "did my edit break something". A single ' +
+      'input proves nothing about inputs you did not try; this varies the input space and surfaces ' +
+      'EVERY input where the OLD and NEW code diverge. YOU (the agent) generate a spread of inputs ' +
+      '(valid, boundary, malformed, wrong-type, missing — seed it deterministically), trace the SAME ' +
+      'input on old and new for each, and write a JSON array of {input, old, new} (each old/new a ' +
+      'Trace v1 doc) to a file; grasp diffs every pair and renders only the divergences with an honest ' +
+      'scope statement (N tried, K diverged). See the fuzz-diff skill. grasp never calls a change safe.',
     input_schema: {
       type: 'object',
       properties: {
-        entrypoint: { type: 'string' },
-        schema: { type: 'string', description: 'a JSON Schema (as a string) describing the entrypoint kwargs' },
-        variants: { type: 'number', description: 'number of inputs to try (default 16)' }
+        entry: { type: 'string', description: 'what was exercised (e.g. src/auth.ts:login)' },
+        cases_file: { type: 'string', description: 'path to a JSON array of {input, old, new} (old/new are Trace v1 docs)' }
       },
-      required: ['entrypoint', 'schema']
+      required: ['entry', 'cases_file']
     },
     async run(input, { workspace, emit }) {
-      const res = await fuzz({
-        repo: workspace,
-        entrypoint: String(input.entrypoint),
-        schema: String(input.schema),
-        variants: typeof input.variants === 'number' ? input.variants : undefined
-      })
-      if (res.ok && res.report) {
-        emit({ type: 'fuzz', report: res.report })
-        const nv = res.report.varied.length
-        const nr = res.report.raises.length
-        return `fuzzed ${input.entrypoint}: ${nv} operand(s) varied across inputs, ${nr} raise(s). Reproducing inputs attached.`
+      let arr: unknown
+      try { arr = JSON.parse(readFileSync(resolvePath(workspace, String(input.cases_file)), 'utf-8')) }
+      catch (e) { return `could not read/parse cases_file: ${(e as Error).message}` }
+      if (!Array.isArray(arr)) return 'cases_file must contain a JSON array of {input, old, new}'
+      const cases: FuzzCase[] = []
+      let rejected = 0
+      for (const c of arr as Record<string, unknown>[]) {
+        if (validateTrace(c.old) || validateTrace(c.new)) { rejected++; continue }
+        cases.push({ input: c.input, old: c.old as TraceDoc, new: c.new as TraceDoc })
       }
-      return `could not fuzz: ${res.error ?? 'unknown'}`
+      if (cases.length === 0) return `no valid cases (${rejected} rejected). Each case needs valid Trace v1 old & new (see the fuzz-diff skill).`
+      const fuzz = buildFuzzDiff(String(input.entry), cases)
+      emit({ type: 'fuzz_diff', fuzz })
+      const note = rejected ? ` (${rejected} case(s) rejected as invalid Trace v1)` : ''
+      return `${fuzz.scope}${note}` + (fuzz.diverged ? ` Questions: ${fuzz.questions.slice(0,4).join(' | ')}` : '')
     }
   },
   {

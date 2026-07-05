@@ -8,7 +8,7 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels'
 import { FuzzView } from './components/FuzzView'
-import { FlowView, FlowDiffView } from './components/FlowView'
+import { FlowView, FlowDiffView, FuzzDiffView } from './components/FlowView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { Settings } from './components/Settings'
@@ -17,7 +17,7 @@ import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
-import type { TraceDoc, TraceDiff } from '../../shared/trace'
+import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
 type Surface =
   | { kind: 'flow'; graph: GraphModel }
@@ -25,6 +25,7 @@ type Surface =
   | { kind: 'fuzz'; report: FuzzReport }
   | { kind: 'trace'; ix: number }
   | { kind: 'tracediff'; diff: TraceDiff }
+  | { kind: 'fuzzdiff'; fuzz: FuzzDiff }
 
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
@@ -333,6 +334,7 @@ export function App(): React.JSX.Element {
           return next
         })
       else if (e.type === 'trace_diff') setSurface({ kind: 'tracediff', diff: e.diff })
+      else if (e.type === 'fuzz_diff') setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz })
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
@@ -537,7 +539,15 @@ export function App(): React.JSX.Element {
                     </button>
                   </div>
                   {flowNote && <div className="flow-note">{flowNote}</div>}
-                  {surface?.kind === 'tracediff' ? (
+                  {surface?.kind === 'fuzzdiff' ? (
+                    <FuzzDiffView
+                      fuzz={surface.fuzz}
+                      onOpenSource={(file) => {
+                        setRightTab('editor')
+                        void window.grasp.readFile(workspace, file)
+                      }}
+                    />
+                  ) : surface?.kind === 'tracediff' ? (
                     <FlowDiffView
                       diff={surface.diff}
                       onOpenSource={(file) => {
