@@ -277,6 +277,7 @@ export interface GraspApi {
   installPlugin(url: string): Promise<{ ok: boolean; name?: string; error?: string }>
   uninstallPlugin(name: string): Promise<{ ok: boolean; error?: string }>
   openFolder(): Promise<string>
+  revealInFiles(key: string): Promise<void>
   newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void
   termWrite(id: string, data: string): void

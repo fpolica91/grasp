@@ -123,7 +123,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
 
             {section === 'skills' && (
               <div className="set-section">
-                <div className="eyebrow">Skills</div>
+                <div className="eyebrow">Skills <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('skills')}>reveal in files</button></div>
                 <p className="set-note">
                   Reusable instructions the agent loads via <code>use_skill</code>. Install one in <code>~/.grasp/skills</code> or{' '}
                   <code>.grasp/skills</code> — a directory with <code>SKILL.md</code> (may bundle <code>references/</code>,{' '}
@@ -156,7 +156,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
 
             {section === 'mcp' && (
               <div className="set-section">
-                <div className="eyebrow">MCP servers</div>
+                <div className="eyebrow">MCP servers <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('mcp')}>reveal in files</button></div>
                 <p className="set-note">
                   External stdio tool servers the agent can call. Saved to <code>~/.grasp/mcp.json</code>; their tools appear on the next turn.
                 </p>
@@ -199,7 +199,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
 
             {section === 'plugins' && (
               <div className="set-section">
-                <div className="eyebrow">Plugins</div>
+                <div className="eyebrow">Plugins <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('plugins')}>reveal in files</button></div>
                 <p className="set-note">
                   Distribution units that bundle skills (and optionally an MCP server). Install one from a git URL, or drop a dir in <code>~/.grasp/plugins/&lt;name&gt;/</code>.
                 </p>

@@ -30,6 +30,7 @@ const api: GraspApi = {
   setSkillEnabled: (name: string, enabled: boolean) => ipcRenderer.invoke('grasp:setSkillEnabled', name, enabled),
   commands: (workspace: string) => ipcRenderer.invoke('grasp:commands', workspace),
   keybindings: () => ipcRenderer.invoke('grasp:keybindings'),
+  revealInFiles: (key: string) => ipcRenderer.invoke('grasp:revealInFiles', key),
   mcpServers: (workspace: string) => ipcRenderer.invoke('grasp:mcpServers', workspace),
   plugins: (workspace: string) => ipcRenderer.invoke('grasp:plugins', workspace),
   installPlugin: (url: string) => ipcRenderer.invoke('grasp:installPlugin', url),

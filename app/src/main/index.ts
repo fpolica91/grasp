@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { existsSync, statSync } from 'node:fs'
 import { mkdirSync } from 'node:fs'
 
 // The default home for projects the agent builds — NEVER grasp's own source dir.
@@ -90,6 +91,20 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('grasp:projects', () => listProjects())
   ipcMain.handle('grasp:openFolder', () => openFolder())
+  // Reveal a ~/.grasp surface in the OS file manager. skills/plugins/commands open as dirs;
+  // mcp selects mcp.json; a missing path falls back to opening ~/.grasp so the user sees where
+  // to create it.
+  ipcMain.handle('grasp:revealInFiles', (_e, key: string) => {
+    const root = join(homedir(), '.grasp')
+    const p = join(root, key === 'mcp' ? 'mcp.json' : key)
+    try {
+      if (existsSync(p) && statSync(p).isDirectory()) void shell.openPath(p)
+      else if (existsSync(p)) void shell.showItemInFolder(p)
+      else void shell.openPath(root)
+    } catch {
+      /* ignore — best-effort reveal */
+    }
+  })
   ipcMain.handle('grasp:newProject', (_e, name: string) => newProject(name))
   ipcMain.handle('grasp:backends', () => listBackends())
   ipcMain.handle('grasp:sessions', () => listSessions())

@@ -547,6 +547,8 @@ input, textarea { font-family: inherit; }
 .side-item:hover .si-fork { opacity: 1; }
 .si-fork:hover { color: var(--ink); }
 .set-tag { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 99px; }
+.set-reveal { margin-left: 8px; background: transparent; border: 0; color: var(--faint); font-size: 11px; text-transform: none; letter-spacing: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.set-reveal:hover { color: var(--ink); }
 .wf-x { margin-left: auto; background: transparent; border: 0; color: var(--faint); font-size: 12px; padding: 2px 5px; }
 .wf-panel-head .wf-resume + .wf-x { margin-left: 6px; }
 .wf-x:hover { color: var(--ink); }
