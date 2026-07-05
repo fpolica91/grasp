@@ -19,12 +19,16 @@ import { chat } from './model'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent } from './agent'
 import { hasKey, setKey } from './vault'
-import { listSessions, saveSession, deleteSession } from './sessions'
+import { listSessions, saveSession, deleteSession, forkSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
-import { flowNow } from './backends/tools'
+import { flowNow, clearMcpCache } from './backends/tools'
+import { loadMcpConfig, saveMcpServer } from './backends/mcp'
+import { listPlugins } from './plugins'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
-import { listSkills, ensureDefaultSkills } from './skills'
+import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
+import { listCommands } from './commands'
+import { loadKeybindings } from './keybinds'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
 import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
@@ -64,6 +68,16 @@ app.whenReady().then(() => {
   })
   ensureDefaultSkills()
   ipcMain.handle('grasp:skills', (_e, workspace: string) => listSkills(workspace))
+  ipcMain.handle('grasp:setSkillEnabled', (_e, name: string, enabled: boolean) => setSkillEnabled(name, enabled))
+  ipcMain.handle('grasp:commands', (_e, workspace: string) => listCommands(workspace))
+  ipcMain.handle('grasp:keybindings', () => loadKeybindings())
+  ipcMain.handle('grasp:mcpServers', (_e, workspace: string) => loadMcpConfig(workspace))
+  ipcMain.handle('grasp:plugins', (_e, workspace: string) => listPlugins(workspace))
+  ipcMain.handle('grasp:saveMcpServer', (_e, name: string, command: string, args: string) => {
+    const cfg = { command, ...(args.trim() ? { args: args.trim().split(/\s+/) } : {}) }
+    saveMcpServer(name, cfg)
+    clearMcpCache()
+  })
   ipcMain.handle('grasp:projects', () => listProjects())
   ipcMain.handle('grasp:openFolder', () => openFolder())
   ipcMain.handle('grasp:newProject', (_e, name: string) => newProject(name))
@@ -71,6 +85,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:sessions', () => listSessions())
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
   ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
+  ipcMain.handle('grasp:forkSession', (_e, id: string) => forkSession(id))
   ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   ipcMain.handle('grasp:stopAgent', () => stopAgent())
   ipcMain.handle('grasp:flowNow', (e, workspace: string) =>

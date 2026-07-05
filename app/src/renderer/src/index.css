@@ -538,6 +538,14 @@ input, textarea { font-family: inherit; }
 .wf-panel-head .wf-progress { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
 .wf-badge.done { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-hair); border-radius: 20px; padding: 1px 8px; }
 .wf-resume { margin-left: auto; padding: 5px 13px; font-size: 12px; }
+.wf-cancel { margin-left: auto; padding: 5px 13px; font-size: 12px; }
+.wf-budget { flex: 0 0 220px; padding: 6px 10px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12px; margin-right: auto; }
+.wf-retry { margin-left: auto; background: transparent; border: 1px solid var(--hair); color: var(--faint); font-size: 10.5px; padding: 2px 8px; border-radius: 99px; cursor: pointer; }
+.wf-retry:hover { color: var(--ink); border-color: var(--muted); }
+.si-fork { background: transparent; border: 0; color: var(--faint); font-size: 13px; padding: 2px 4px; opacity: 0; transition: opacity .12s; cursor: pointer; }
+.side-item:hover .si-fork { opacity: 1; }
+.si-fork:hover { color: var(--ink); }
+.set-tag { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 99px; }
 .wf-x { margin-left: auto; background: transparent; border: 0; color: var(--faint); font-size: 12px; padding: 2px 5px; }
 .wf-panel-head .wf-resume + .wf-x { margin-left: 6px; }
 .wf-x:hover { color: var(--ink); }
@@ -593,6 +601,20 @@ input, textarea { font-family: inherit; }
 .set-theme:hover { color: var(--ink); }
 .set-theme.on { border-color: var(--accent); color: var(--ink); }
 .set-theme .theme-dot { width: 14px; height: 14px; }
+.set-skills { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.set-skill { padding: 8px 11px; border: 1px solid var(--hair); border-radius: 9px; background: var(--surface-2); }
+.set-skill-head { display: flex; align-items: center; gap: 8px; }
+.set-skill-name { font-weight: 600; font-size: 13px; color: var(--ink); }
+.set-skill-src { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding: 1px 6px; border: 1px solid var(--hair); border-radius: 99px; }
+.set-skill-desc { margin-top: 3px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.set-skill.off { opacity: .5; }
+.set-skill-toggle { margin-left: auto; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding: 2px 8px; border: 1px solid var(--hair); border-radius: 99px; background: transparent; cursor: pointer; }
+.set-skill-toggle.on { color: var(--accent); border-color: var(--accent); }
+.set-mcp-add { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.set-mcp-add input { flex: 1 1 0; min-width: 80px; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12.5px; }
+.set-mcp-add .mcp-name { flex: 0 0 110px; }
+.set-empty { font-size: 13px; color: var(--muted); padding: 6px 2px; }
+.set-note code, .set-skill-desc code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-3, transparent); padding: 0 3px; border-radius: 3px; }
 .theme-row .tlabel { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-right: auto; font-weight: 600; }
 .theme-dot { width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid var(--hair); padding: 0; position: relative; transition: transform .1s, border-color .12s; }
 .theme-dot:hover { transform: scale(1.12); }

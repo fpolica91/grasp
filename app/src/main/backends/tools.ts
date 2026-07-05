@@ -6,8 +6,9 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { validateTrace, diffTraces, buildFuzzDiff, type TraceDoc, type FuzzCase } from '../../shared/trace'
-import { listSkills, readSkill } from '../skills'
+import { listSkills, readSkill, skillsListing } from '../skills'
 import type { Emit } from './types'
+import { McpRegistry } from './mcp'
 
 function resolvePath(workspace: string, p: string): string {
   return p.startsWith('/') ? p : join(workspace || '.', p)
@@ -119,7 +120,50 @@ export function projectContext(workspace: string): string {
 }
 export function withProjectContext(workspace: string, base: string): string {
   const ctx = projectContext(workspace)
-  return ctx ? `${base}\n\n# Project instructions (from ${PROJECT_FILES.join(' / ')} at the workspace root)\n\n${ctx}` : base
+  const listing = skillsListing(workspace)
+  let out = base
+  if (ctx) out += `\n\n# Project instructions (from ${PROJECT_FILES.join(' / ')} at the workspace root)\n\n${ctx}`
+  if (listing) out += listing // skills metadata, always in context (progressive disclosure)
+  return out
+}
+
+// MCP — lazily start the workspace's configured MCP servers (once; reused across turns) and
+// surface their tools as ordinary Tool entries whose run dispatches to the owning server. The
+// servers are long-lived child processes; the cache key is the workspace path.
+const mcpCache = new Map<string, McpRegistry>()
+async function mcpRegistry(workspace: string): Promise<McpRegistry> {
+  let reg = mcpCache.get(workspace)
+  if (reg) return reg
+  reg = new McpRegistry()
+  await reg.start(workspace) // a server that fails to start lands in start().errors; it just exposes fewer tools
+  mcpCache.set(workspace, reg)
+  return reg
+}
+
+// The built-in tools PLUS this workspace's MCP tools (each MCP tool wrapped as a Tool whose run
+// routes to the registry). Pass the result to callModel AND look tool_use up in it.
+export async function mcpAugmentedTools(workspace: string): Promise<Tool[]> {
+  try {
+    const reg = await mcpRegistry(workspace)
+    return [
+      ...TOOLS,
+      ...reg.tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.input_schema,
+        run: async (input: Record<string, unknown>): Promise<string> => reg.call(t.name, input)
+      }))
+    ]
+  } catch {
+    return TOOLS
+  }
+}
+
+// Drop cached MCP registries (stop their child processes) so the next turn re-reads the config
+// and restarts servers — call after editing ~/.grasp/mcp.json.
+export function clearMcpCache(): void {
+  for (const reg of mcpCache.values()) reg.stop()
+  mcpCache.clear()
 }
 
 export const TOOLS: Tool[] = [
@@ -374,7 +418,9 @@ export const TOOLS: Tool[] = [
       'Load a reusable SKILL — a packaged set of instructions for a task (e.g. "observe-change", ' +
       '"harden-input"). Call with NO name to LIST the available skills; call with a name to load ' +
       "that skill's instructions and then follow them. Skills orchestrate grasp's observe/diff/fuzz " +
-      'loop; they guide, they never judge. Prefer a matching skill before improvising a workflow.',
+      'loop; they guide, they never judge. Prefer a matching skill before improvising a workflow. A ' +
+      'directory skill may bundle reference files (references/, scripts/) — when you load it, the base ' +
+      'directory is included; read those files with read_file at the relative paths named in the body.',
     input_schema: {
       type: 'object',
       properties: { name: { type: 'string', description: 'the skill name, or omit to list all skills' } }
@@ -382,12 +428,22 @@ export const TOOLS: Tool[] = [
     async run(input, { workspace }) {
       const name = String(input.name ?? '').trim()
       if (!name) {
-        const list = listSkills(workspace)
-        if (!list.length) return 'No skills installed. Skills are .md files in ~/.grasp/skills or <project>/.grasp/skills.'
-        return 'Available skills (call use_skill with a name to load one):\n' + list.map((s) => `- ${s.name}: ${s.description}`).join('\n')
+        const list = listSkills(workspace).filter((s) => s.enabled)
+        if (!list.length) return 'No skills installed. A skill is a directory with SKILL.md (preferred — may bundle references/, scripts/) or a flat .md, in ~/.grasp/skills or <project>/.grasp/skills.'
+        return 'Available skills (call use_skill with a name to load one):\n' + list.map((s) => {
+          const desc = s.description.slice(0, 250)
+          return `- ${s.name}: ${desc}${s.warning ? ` [note: ${s.warning}]` : ''}`
+        }).join('\n')
       }
       const s = readSkill(workspace, name)
-      return s ? `Skill "${s.name}" — follow these instructions:\n\n${s.body}` : `No skill named "${name}". Call use_skill with no name to list available skills.`
+      if (!s) return `No skill named "${name}". Call use_skill with no name to list available skills.`
+      // The base-directory annotation is the linchpin of progressive disclosure: it lets a body
+      // instruction like "read references/foo.md" resolve to an unambiguous absolute path.
+      const base = s.baseDir
+        ? `\n\n---\nBase directory for this skill: ${s.baseDir}\nRelative paths in this skill (e.g. 'read references/foo.md') are relative to this base directory.`
+        : ''
+      const warn = s.warning ? `\n\n[note: ${s.warning}]` : ''
+      return `Skill "${s.name}" — follow these instructions:\n\n${s.body}${base}${warn}`
     }
   },
   {

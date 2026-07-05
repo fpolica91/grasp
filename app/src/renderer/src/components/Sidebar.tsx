@@ -31,6 +31,7 @@ export function Sidebar(props: {
   sessions: { id: string; title: string }[]
   activeSession: string
   onSelectSession: (id: string) => void
+  onForkSession: (id: string) => void
   onDeleteSession: (id: string) => void
   onSearch: () => void
   onNewWorkflow: () => void
@@ -72,6 +73,16 @@ export function Sidebar(props: {
             title={s.title}
           >
             <span className="si-title">{s.title}</span>
+            <button
+              className="si-fork"
+              title="Fork — branch this session"
+              onClick={(e) => {
+                e.stopPropagation()
+                props.onForkSession(s.id)
+              }}
+            >
+              ⎇
+            </button>
             <button
               className="si-del"
               title="Delete chat"

@@ -28,60 +28,93 @@ These are not style preferences. They are the product, and several are pinned by
 3. **The line: skills orchestrate, code observes.** The agent decides *when/what* to trace; it never drives the
    observation itself.
 4. **No phantom change.** A diff against a side that could not be observed is refused (`ok:false`), never surfaced as fake behavior (`engine/dreplay/skill.py:diff`).
-5. **Visual discipline (the graph/`app/` trap).** Unexercised paths are *visibly ghosted*, never omitted. `observed`
+5. **Visual discipline (the graph trap).** Unexercised paths are *visibly ghosted*, never omitted. `observed`
    operands are visually distinct from `declared`/`unknown`. Nothing is ever green/red/✓/⚠ — the terminal state
-   is a **question node**. When you touch the renderer, enforce the moat in the visual language.
+   is a **question node**. When you touch any renderer (Flow/Dataflow), enforce the moat in the visual language.
 
-## Architecture — two halves, one seam
+## Architecture — organ, surface, and the agent seam
 
 ```
 engine/   the ORGAN (Python). Real execution tracer → observed dataflow graph + A→B diff + fuzz.
           The one thing the agent cannot fake. The `dreplay` package.
-app/      the SURFACE + shell (Electron + React + TS). Drives a real tool-use agent (GLM via
-          Anthropic Messages wire) with first-class grasp_observe / grasp_diff tools. Built
-          from scratch as owned source.
-graph/    standalone rendered graph examples (HTML/JSON) — what the engine's --html emits and the app shows.
-skills/   grasp packaged as a ZCode skill (`observe-flow/`) — an alternate distribution to the app.
+app/      the SURFACE + shell (Electron + React + TS). Drives a real tool-use agent over a pluggable
+          backend seam, with first-class observe/diff/fuzz/trace tools. Owned source.
+graph/    standalone rendered graph examples (HTML/JSON) — what the engine's --html emits.
+skills/   grasp packaged as a skill (`observe-flow/`) — an alternate distribution.
 docs/     thesis.md (the north star).
 ```
 
-**The seam:** `app/src/main/engine.ts` shells the Python skill
-(`python -m dreplay.skill observe|diff`) and parses its JSON graph contract. The shared
-contract on both sides is `app/src/shared/types.ts` (`GraphModel` / `GraphDiffModel`), which
-mirrors `engine/dreplay/flow_graph.py`. If you change one side's shape, change the other.
+**The seams to keep in sync:**
+- `app/src/main/engine.ts` shells `python -m dreplay.skill observe|diff` and parses its JSON graph contract.
+- `app/src/shared/types.ts` (`GraphModel`/`GraphDiffModel`/`FuzzReport`/`AgentEvent`/`GraspApi`) mirrors
+  `engine/dreplay/flow_graph.py`. **Change one side's shape, change the other.**
 
-> ⚠️ **`README.md` and `docs/thesis.md` are partially stale.** They describe a `shell/`
-> (the reverse-engineered ZCode chassis) and state "grasp is not an app." The actual current
-> direction on this branch is **`app/`** — a from-scratch Electron app, *not* ZCode. Trust
-> the code; the docs describe the original plan.
+> ⚠️ **`README.md` and `docs/thesis.md` are partially stale.** They describe a `shell/` (ZCode chassis)
+> and state "grasp is not an app." The actual direction is **`app/`** — a from-scratch Electron app.
+> Trust the code; the docs describe the original plan.
 
 ### engine/ — `dreplay` package
 - `flow.py` — the flow **model** + the provenance guard (principle #1). `observe_flow(...)` is the entry.
 - `instrument.py` — the `sys.settrace` tracer (the irreducible core, Python).
-- `flow_diff.py` — behavioral A→B diff (= the new diff). `skill.diff` calls `align_and_diff`.
-- `flow_fuzz.py` — input variation (= the new stack trace). Python only, walled by default.
+- `flow_diff.py` — behavioral A→B diff. `skill.diff` calls `align_and_diff`.
+- `flow_fuzz.py` — input variation. Python only, walled by default.
 - `flow_graph.py` — the graph data contract + HTML render consumed by `app/` and `graph/`.
-- `vocabulary.py` / `ast_vocab.py` / `canonical.py` — legible-by-default collapsing + hostile-repr-safe capture.
-- `recipe.py` — provision a runnable env for a repo (`--recipe auto|synth`).
-- `skill.py` — the **agent-callable shim**. Three capabilities: `observe`, `diff`, `fuzz`. Emits the graph contract as JSON (or `--html`).
-- `adapter/` — language adapters: Go / C++ / C# / Java / JS / TS. Toolchain tests self-skip when the compiler is absent.
-- `_seccomp.py` / `containment.py` / `egress.py` — the fuzz egress wall.
+- `skill.py` — the **agent-callable shim** (`python -m dreplay.skill observe|diff|fuzz`).
+- `adapter/` — Go / C++ / C# / Java / JS / TS adapters (toolchain tests self-skip when the compiler is absent).
 - Console scripts (`pyproject.toml`): `dreplay` (old differ CLI), `dreplay-flow` (`flow_cli:main`).
 
-### app/ — electron-vite, three build targets
-- `src/main/` — Electron main process (Node). `index.ts` wires IPC; `agent.ts` is the agentic loop;
-  `engine.ts` is the Python seam; `model.ts` the LLM client; `vault.ts` the encrypted credential store.
-- `src/preload/` — contextBridge. Exposes the typed `window.grasp` API (`GraspApi` in `shared/types.ts`).
-- `src/renderer/` — React 19. `App.tsx` is the shell (Sidebar · Conversation · live dataflow instrument).
-  `DataflowGraph` / `DataflowDiff` render the contract; `KeyGate` gates on a model key.
-- **The agent loop** (`agent.ts:runAgent`): up to `MAX_STEPS` (16) turns. Tools: `read_file`, `write_file`,
-  `list_dir`, `run_bash`, `grasp_observe`, `grasp_diff`. **Live surfacing:** when a `watch` entrypoint is set
-  and the agent runs `write_file`/`run_bash`, it auto re-diffs (OLD=HEAD vs NEW=working tree) and streams the
-  evolving dataflow — the graph moves as the agent works, without it having to ask.
-- IPC: main handles `grasp:chat|observe|agent|keyStatus|setKey`; agent progress streams over `agent:event`
-  (`text|tool_use|tool_result|dataflow|dataflow_diff|done|error` — see `AgentEvent`).
-- **Credentials:** model key stored via Electron `safeStorage` (OS keychain), never plaintext, never shipped
-  (`vault.ts`). `GRASP_API_KEY` is an in-memory dev/CI override that is honored but never persisted.
+### app/ — Electron + React + TS, three build targets (main / preload / renderer)
+
+**The agent seam (the big picture):** grasp is agent-agnostic. `AgentBackend`
+(`app/src/main/backends/types.ts`) is a tiny contract — `run(turn, emit)` streams `AgentEvent`s
+and returns the conversation state — implemented three ways:
+- `backends/glm.ts` — GLM on the Anthropic Messages wire (the default; `GRASP_MODEL` default `glm-5.2`).
+- `backends/openai.ts` — any OpenAI-compatible chat-completions endpoint (`GRASP_OPENAI_BASE`).
+- `backends/claude.ts` — the Claude Code CLI (brings its own tools; shares `liveSurface` only).
+
+`main/agent.ts` is now a **thin dispatcher**: picks the backend, runs pre/post-turn git checkpoints
+(`checkpoint.ts` — keeps HEAD = "state before this turn" so the A→B diff always has a baseline),
+and owns the user stop signal (`stopAgent()`). `MAX_STEPS = 40`.
+
+**The tool registry** (`backends/tools.ts`, shared by glm + openai): file/shell (`read_file`,
+`write_file`, `edit_file` [targeted edit with a stale-guard], `notebook_edit`, `list_dir`, `run_bash`),
+the **organ** (`grasp_observe` / `grasp_diff` / `grasp_fuzz` — shell the Python engine and surface
+observed dataflow), `use_skill`, `task` (depth-1 subagent), and `TodoWrite`/`TodoRead`. The `SYSTEM`
+prompt enforces the moat (the agent must verify via observe/diff, never an ad-hoc bash harness).
+`MUTATING_TOOLS` drives both ask-mode approval (`approvals.ts`) **and** the live re-observe trigger
+— every code mutation re-runs the observed dataflow rail. `withProjectContext(workspace, base)`
+appends the workspace's `CLAUDE.md`/`AGENTS.md` to the system prompt (kept separate from the moat
+SYSTEM so project text can never override it).
+
+**SSE streaming:** `backends/sse.ts` is a shared SSE parser; `glm.ts` + `openai.ts` send `stream:true`
+and reassemble the events (Anthropic 7-event / OpenAI delta) back into the same content/usage shape,
+forwarding `text_delta` to the UI as it's written. **GLM quirk:** the real `input_tokens` arrive in
+`message_delta.usage` (the `message_start` usage is a zero placeholder) — captured there.
+
+**Flow rebuild — IN PROGRESS (parts 1–2 of 4).** A new trace-native Flow is being built alongside the
+engine-based one:
+- `shared/trace.ts` — **Trace protocol v1** (`TraceDoc`: a real call tree of frames with args/ret/threw/durMs;
+  honesty via `validateTrace`; a tooling failure is the `unobservable` field, never a fake frame).
+- `main/tracer.ts` — shells a native tracer (`resources/tracers/py_trace.py`, Python via `settrace`;
+  JS/TS via the V8 inspector is step 4). ⚠️ **`resources/tracers/py_trace.py` is NOT yet committed** —
+  until it is, `grasp_trace` on Python returns `unobservable: tracer not found`.
+- `grasp_trace` tool + `{type:'trace'}` event + `components/FlowView.tsx` (interactive call-tree) + a
+  `traces[]` run history.
+- The A→B `TraceDiff` type exists but is "computed in the app" — **not yet wired**.
+This coexists with the engine-based `DataflowGraph` / `DataflowDiff` / `FuzzView`. Don't assume the
+old flow is the only flow.
+
+**IPC + renderer:** `preload/index.ts` exposes the typed `GraspApi` (`shared/types.ts`) — chat,
+observe, fuzz, agent, onAgentEvent, keyStatus/setKey (per-provider), defaultWorkspace, backends,
+sessions (save/delete/load), approve (ask-mode), flowNow, stopAgent, workflows, projects, skills,
+term* (node-pty), listTree, readFile/writeFile/fileDiff. Agent progress streams over the `agent:event`
+channel (`text` · `text_delta` · `text_end` · `tool_use` · `tool_result` · `dataflow` · `dataflow_diff`
+· `fuzz` · `trace` · `plan` · `approval_request` · `usage` · `done` · `error`).
+`renderer/App.tsx` is the shell: Sidebar · Conversation · resizable Editor/Flow/Browser panes ·
+docked Terminal · activity rail.
+
+**Credentials:** model keys per-provider via Electron `safeStorage` (`vault.ts`), never plaintext,
+never shipped. `GRASP_API_KEY` is an in-memory dev/CI override, honored but never persisted.
 
 ## Commands
 
@@ -94,7 +127,7 @@ cd engine && make test        # = .venv/bin/pytest — flow canaries (FC1–FC8)
 cd engine && .venv/bin/pytest tests/test_flow_diff.py -q
 cd engine && .venv/bin/pytest flow_canaries/test_flow_canaries.py -k fc3
 
-# The skill the app actually shells (prints the JSON graph contract; add --html for the rendered graph):
+# The skill the app shells (prints the JSON graph contract; add --html for the rendered graph):
 cd engine && .venv/bin/python -m dreplay.skill observe \
   --repo engine --entrypoint flow_canaries.scenarios.create_organization --input '{"name":"Acme"}'
 ```
@@ -114,11 +147,13 @@ cd app && npm run typecheck   # tsc --noEmit for both tsconfig.node.json and tsc
 | Var | Default | Purpose |
 |---|---|---|
 | `GRASP_ENGINE` | `../engine` (from `app/out/main`) | path to the Python engine |
-| `GRASP_PY` | `<engine>/.venv/bin/python` | engine interpreter (`engine.ts` requires it to exist) |
-| `GRASP_MODEL_BASE` | `https://api.z.ai/api/anthropic` | model endpoint (Anthropic Messages format) |
-| `GRASP_MODEL` | `glm-4.6` | model id (used by both `model.ts` and `agent.ts`) |
+| `GRASP_PY` | `<engine>/.venv/bin/python` | engine **and** native-tracer interpreter (`engine.ts`, `tracer.ts`) |
+| `GRASP_MODEL_BASE` | `https://api.z.ai/api/anthropic` | GLM endpoint (Anthropic Messages format) |
+| `GRASP_MODEL` | `glm-5.2` | GLM model id |
+| `GRASP_OPENAI_BASE` | `https://api.openai.com/v1` | OpenAI-compatible endpoint |
+| `GRASP_OPENAI_MODELS` | `gpt-5.2,gpt-5.1,gpt-4.1` | OpenAI model list |
 | `GRASP_API_KEY` | — | model key for dev/CI; honored in-memory, never persisted |
 | `GRASP_WORKSPACE` | `process.cwd()` | default agent workspace |
 
-The app shells `python -m dreplay.skill`, so the engine venv (`make venv`) must exist before the app's
-observe/diff tools will work — otherwise they return the honest "engine python not found" error.
+The app shells `python -m dreplay.skill`, so the engine venv (`make venv`) must exist before the
+observe/diff/fuzz tools will work — otherwise they return the honest "engine python not found" error.

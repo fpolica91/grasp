@@ -1,41 +1,83 @@
-// Skills — reusable, packaged instructions the agent can load and follow. A skill is a
-// markdown file (frontmatter: name, description; body: the instructions) in
-// ~/.grasp/skills (user) or <project>/.grasp/skills (project). Thesis-aligned: skills
-// orchestrate grasp's observe/diff/fuzz loop — they don't judge, they guide.
+// Skills — reusable, packaged instructions the agent can load and follow. Thesis-aligned:
+// skills orchestrate grasp's observe/diff/fuzz loop — they don't judge, they guide.
+//
+// A skill is EITHER:
+//   • a directory  <root>/<name>/SKILL.md   (preferred — may bundle references/, scripts/)
+//   • a flat file  <root>/<name>.md         (legacy/simple skills)
+// discovered in ~/.grasp/skills (user) or <project>/.grasp/skills (project). Project skills
+// override same-named user skills. Directory skills carry a `baseDir` so a body instruction
+// like "read references/foo.md" resolves to an unambiguous absolute path (progressive
+// disclosure: metadata is always in context; the body loads on use_skill; bundled files
+// load only on explicit read_file).
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, cpSync } from 'node:fs'
 import { resolve as pathResolve } from 'node:path'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { pluginSkillRoots } from './plugins'
 
 export interface Skill {
   name: string
-  description: string
+  description: string // full description; the first ~250 chars are the model's trigger surface
+  whenToUse?: string
   body: string
   source: 'user' | 'project'
+  baseDir?: string // the skill's own directory (directory skills) — enables 'read references/x.md'
+  warning?: string // surfaced in the listing (e.g. description too long); never blocks loading
+  enabled: boolean // false = the user disabled it in Settings -> hidden from the agent
 }
+
+const MAX_DESCRIPTION = 1024 // over this the trigger surface overflows the context budget
 
 const userDir = (): string => join(homedir(), '.grasp', 'skills')
 const projectDir = (workspace: string): string => join(workspace || '.', '.grasp', 'skills')
 
-function parse(md: string): { name: string; description: string; body: string } {
+function parse(md: string): { name: string; description: string; whenToUse?: string; body: string } {
   const m = /^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/.exec(md)
   if (!m) return { name: '', description: '', body: md.trim() }
   const fm = m[1]
+  const field = (k: string): string | undefined => {
+    const v = new RegExp(`^${k}:\\s*(.+)$`, 'm').exec(fm)?.[1]?.trim()
+    return v || undefined
+  }
   return {
-    name: /^name:\s*(.+)$/m.exec(fm)?.[1]?.trim() ?? '',
-    description: /^description:\s*(.+)$/m.exec(fm)?.[1]?.trim() ?? '',
+    name: field('name') ?? '',
+    description: field('description') ?? '',
+    whenToUse: field('when_to_use'),
     body: m[2].trim()
   }
 }
 
+function makeSkill(
+  name: string,
+  parsed: { description: string; whenToUse?: string; body: string },
+  source: 'user' | 'project',
+  baseDir?: string
+): Skill {
+  const skill: Skill = { name, description: parsed.description, whenToUse: parsed.whenToUse, body: parsed.body, source, enabled: true }
+  if (baseDir) skill.baseDir = baseDir
+  if (parsed.description.length > MAX_DESCRIPTION)
+    skill.warning = `description is ${parsed.description.length} chars (> ${MAX_DESCRIPTION}); trim it so the trigger fits the context budget`
+  return skill
+}
+
+// Scan one skills root: directory skills (<name>/SKILL.md) win over a same-named flat file.
 function readDir(dir: string, source: 'user' | 'project'): Skill[] {
   if (!existsSync(dir)) return []
   const out: Skill[] = []
   try {
-    for (const f of readdirSync(dir)) {
-      if (!f.endsWith('.md')) continue
-      const p = parse(readFileSync(join(dir, f), 'utf-8'))
-      out.push({ name: p.name || f.replace(/\.md$/, ''), description: p.description, body: p.body, source })
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        const skillMd = join(dir, e.name, 'SKILL.md')
+        if (existsSync(skillMd)) {
+          const p = parse(readFileSync(skillMd, 'utf-8'))
+          out.push(makeSkill(p.name || e.name, p, source, join(dir, e.name)))
+        }
+        continue
+      }
+      if (e.isFile() && e.name.endsWith('.md')) {
+        const p = parse(readFileSync(join(dir, e.name), 'utf-8'))
+        out.push(makeSkill(p.name || e.name.replace(/\.md$/, ''), p, source))
+      }
     }
   } catch {
     /* unreadable dir -> skip */
@@ -44,16 +86,62 @@ function readDir(dir: string, source: 'user' | 'project'): Skill[] {
 }
 
 export function listSkills(workspace: string): Skill[] {
-  // project skills override user skills of the same name
+  // project skills override same-named user skills; plugin-bundled skills are also discovered
+  // (a plugin's skills/ dir is just another skills root).
+  const disabled = readDisabled()
   const user = readDir(userDir(), 'user')
   const project = readDir(projectDir(workspace), 'project')
+  const fromPlugins = pluginSkillRoots(workspace).flatMap((root) => readDir(root, 'user'))
   const byName = new Map<string, Skill>()
-  for (const s of [...user, ...project]) byName.set(s.name, s)
-  return [...byName.values()]
+  for (const s of [...user, ...project, ...fromPlugins]) byName.set(s.name, s)
+  return [...byName.values()].map((s) => (disabled.has(s.name) ? { ...s, enabled: false } : s))
 }
 
 export function readSkill(workspace: string, name: string): Skill | null {
-  return listSkills(workspace).find((s) => s.name === name) ?? null
+  const s = listSkills(workspace).find((x) => x.name === name) ?? null
+  return s && s.enabled ? s : null // a disabled skill is not loadable by the agent
+}
+
+// Persisted disabled set (~/.grasp/skills-disabled.json) — the user toggles it in Settings.
+const disabledFile = (): string => join(homedir(), '.grasp', 'skills-disabled.json')
+function readDisabled(): Set<string> {
+  try {
+    const arr = JSON.parse(readFileSync(disabledFile(), 'utf-8'))
+    return new Set(Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+export function setSkillEnabled(name: string, enabled: boolean): void {
+  const set = readDisabled()
+  if (enabled) set.delete(name)
+  else set.add(name)
+  try {
+    writeFileSync(disabledFile(), JSON.stringify([...set], null, 2))
+  } catch {
+    /* unreadable / unwritable -> ignore (the in-memory list still reflects this session) */
+  }
+}
+
+// Progressive-disclosure layer 1: skill metadata (name + first ~250 chars of description) is
+// always in the system prompt under an 8 KB cap, so the model can decide to invoke one. The
+// body loads only on use_skill; bundled reference files load only on explicit read_file.
+const SKILLS_BUDGET = 8000
+export function skillsListing(workspace: string): string {
+  const list = listSkills(workspace).filter((s) => s.enabled) // disabled skills stay out of the system prompt
+  if (!list.length) return ''
+  const lines: string[] = []
+  let used = 0
+  for (const s of list) {
+    const desc = (s.description || '').slice(0, 250)
+    const line = `- ${s.name}: ${desc}`
+    if (used + line.length + 1 > SKILLS_BUDGET) break
+    lines.push(line)
+    used += line.length + 1
+  }
+  return lines.length
+    ? `\n\n# Available skills (call use_skill by name to load a skill's full instructions)\n${lines.join('\n')}`
+    : ''
 }
 
 // Seed a couple of thesis-aligned example skills the first time (never overwrite).
@@ -157,14 +245,45 @@ To surface edge cases the current input misses:
 1. Write a JSON Schema describing the entrypoint's arguments.
 2. Call grasp_fuzz on the entrypoint with that schema (walled by default).
 3. Report which operands BENT across inputs and which inputs RAISED, each with its reproducing input.
-Surface the facts; ask whether the varied behavior is intended. Never label it pass/fail.`
+Surface the facts; ask whether the varied behavior is intended. Never label it pass/fail.`,
+  'skill-creator.md': `---
+name: skill-creator
+description: Author a new reusable skill (a directory with SKILL.md + references). Use when the user wants to package a repeatable workflow as a skill.
+---
+A skill guides the agent through a reusable workflow. It never judges — it orchestrates grasp's
+observe/diff/fuzz loop and ends in the neutral question.
+
+## 1. Frontmatter (the trigger surface)
+- name: lowercase kebab-case, 1-64 chars (must match the directory or file name).
+- description: one plain sentence; the FIRST ~250 chars are what the model matches on — front-load
+  the trigger words. Keep the whole description under 1024 chars or it overflows the budget.
+- when_to_use: (optional) extra guidance on when to fire.
+
+## 2. Body (the instructions)
+Imperative steps. Reference bundled files by relative path ('read references/foo.md') — grasp
+appends a "Base directory" so they resolve absolutely. Target < 500 lines; the body loads only on
+use_skill, so keep it cheap.
+
+## 3. Bundle reference files (optional, progressive disclosure)
+Supporting docs/scripts go under references/ or scripts/ in the skill directory. They load ONLY on
+explicit read_file — do not inline long references into the body.
+
+## 4. Create it
+write_file the SKILL.md (and any references/) to ~/.grasp/skills/<name>/ (a directory) or
+~/.grasp/skills/<name>.md (flat). It appears in Settings -> Skills and via use_skill immediately.
+
+## 5. Honesty (non-negotiable)
+Never render a verdict. End any check with the neutral question; the human adjudicates.`
 }
 
 export function ensureDefaultSkills(): void {
   const dir = userDir()
   try {
     mkdirSync(dir, { recursive: true })
-    const hasAny = readdirSync(dir).some((f) => f.endsWith('.md'))
+    const entries = readdirSync(dir, { withFileTypes: true })
+    const hasAny =
+      entries.some((e) => e.isFile() && e.name.endsWith('.md')) ||
+      entries.some((e) => e.isDirectory() && existsSync(join(dir, e.name, 'SKILL.md')))
     if (!hasAny) for (const [f, body] of Object.entries(EXAMPLES)) writeFileSync(join(dir, f), body)
     // Seed the reference tracers as ADAPTABLE assets the agent can copy (grasp never runs them).
     const dest = join(dir, 'tracers')

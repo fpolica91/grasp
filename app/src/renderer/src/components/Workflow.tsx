@@ -5,11 +5,12 @@ import { useState } from 'react'
 import type { WorkflowRecord } from '../../../shared/types'
 
 export function WorkflowModal(props: {
-  onCreate: (title: string, steps: string[]) => void
+  onCreate: (title: string, steps: string[], budget?: number) => void
   onClose: () => void
 }): React.JSX.Element {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [budgetStr, setBudgetStr] = useState('')
   const steps = body.split('\n').map((s) => s.trim()).filter(Boolean)
   return (
     <div className="gate-overlay" onClick={props.onClose}>
@@ -28,10 +29,24 @@ export function WorkflowModal(props: {
         />
         <div className="wf-modal-foot">
           <span className="plan-hint">{steps.length} step{steps.length === 1 ? '' : 's'}</span>
+          <input
+            className="wf-budget"
+            value={budgetStr}
+            onChange={(e) => setBudgetStr(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="token budget / step (optional)"
+            spellCheck={false}
+          />
           <button className="btn" onClick={props.onClose}>
             Cancel
           </button>
-          <button className="btn primary" disabled={steps.length === 0} onClick={() => props.onCreate(title.trim() || 'Workflow', steps)}>
+          <button
+            className="btn primary"
+            disabled={steps.length === 0}
+            onClick={() => {
+              const b = parseInt(budgetStr, 10)
+              props.onCreate(title.trim() || 'Workflow', steps, Number.isFinite(b) && b > 0 ? b : undefined)
+            }}
+          >
             Create &amp; run
           </button>
         </div>
@@ -44,11 +59,14 @@ export function WorkflowPanel(props: {
   wf: WorkflowRecord
   busy: boolean
   onResume: () => void
+  onCancel: () => void
+  onRetry: (stepIndex: number) => void
   onDismiss: () => void
 }): React.JSX.Element {
   const { wf } = props
   const done = wf.steps.filter((s) => s.status === 'done').length
   const interrupted = wf.status === 'running' && !props.busy // persisted running but not live = resumable
+  const live = props.busy && wf.status === 'running'
   return (
     <div className="wf-panel">
       <div className="wf-panel-head">
@@ -58,6 +76,12 @@ export function WorkflowPanel(props: {
           {done}/{wf.steps.length}
         </span>
         {wf.status === 'done' && <span className="wf-badge done">done</span>}
+        {wf.status === 'paused' && <span className="wf-badge">paused</span>}
+        {live && (
+          <button className="btn wf-cancel" onClick={props.onCancel} title="Stop after the current step">
+            Cancel
+          </button>
+        )}
         {interrupted && (
           <button className="btn primary wf-resume" onClick={props.onResume}>
             Resume
@@ -72,6 +96,11 @@ export function WorkflowPanel(props: {
           <li key={i} className={`wf-step ${s.status}`}>
             <span className="wf-dot" />
             <span className="wf-step-text">{s.prompt}</span>
+            {s.status !== 'running' && !live && (
+              <button className="wf-retry" onClick={() => props.onRetry(i)} title="Re-run from this step (keeps prior history)">
+                ↻ retry
+              </button>
+            )}
           </li>
         ))}
       </ol>

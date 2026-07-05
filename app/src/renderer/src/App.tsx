@@ -16,7 +16,7 @@ import { CommandPalette, type Command } from './components/CommandPalette'
 import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, WorkflowRecord } from '../../shared/types'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, SlashCommand, WorkflowRecord } from '../../shared/types'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
 type Surface =
@@ -94,28 +94,50 @@ export function App(): React.JSX.Element {
     if (surface) setRightTab('flow')
   }, [surface])
 
-  // Keyboard shortcuts (Cmd/Ctrl): N new session · ` or ~ toggle terminal · B sidebar
-  // (left) · L side pane (right). Registered in the CAPTURE phase so they win even when
-  // xterm (which swallows keys) has focus.
+  // Keybindings — driven by ~/.grasp/keybindings.json (loaded from the main process). Chord
+  // grammar: mod+<key> (Cmd on mac, Ctrl elsewhere), or ctrl+/cmd+/shift+/alt+ combos.
+  const [keybinds, setKeybinds] = useState<Record<string, string>>({})
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (!(e.metaKey || e.ctrlKey)) return
-      const k = e.key.toLowerCase()
-      const fire = (fn: () => void): void => {
-        e.preventDefault()
-        e.stopPropagation()
-        fn()
+    void window.grasp.keybindings().then(setKeybinds)
+  }, [])
+  useEffect(() => {
+    const chordOf = (e: KeyboardEvent): string =>
+      [e.metaKey && 'cmd', e.ctrlKey && 'ctrl', e.shiftKey && 'shift', e.altKey && 'alt', e.key.toLowerCase()]
+        .filter(Boolean)
+        .join('+')
+    const matches = (cfg: string, e: KeyboardEvent): boolean => {
+      if (!(e.metaKey || e.ctrlKey)) return false // never hijack un-modified typing
+      const c = cfg.toLowerCase()
+      if (c.startsWith('mod+')) {
+        const rest = c.slice(4)
+        return chordOf(e) === 'cmd+' + rest || chordOf(e) === 'ctrl+' + rest
       }
-      if (k === 'n') fire(newSession)
-      else if (k === 'k') fire(() => setShowPalette((p) => !p))
-      else if (e.key === '`' || e.key === '~' || k === 'j') fire(toggleBottom)
-      else if (k === 'b') fire(() => setSidebarOpen((s) => !s))
-      else if (k === 'l') fire(toggleRight)
+      return chordOf(e) === c
+    }
+    const actions: Record<string, () => void> = {
+      'new-session': newSession,
+      'command-palette': () => setShowPalette((p) => !p),
+      'toggle-terminal': toggleBottom,
+      'toggle-sidebar': () => setSidebarOpen((s) => !s),
+      'toggle-side-pane': toggleRight
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      for (const [action, chord] of Object.entries(keybinds)) {
+        if (matches(chord, e)) {
+          const fn = actions[action]
+          if (fn) {
+            e.preventDefault()
+            e.stopPropagation()
+            fn()
+            return
+          }
+        }
+      }
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [keybinds])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -131,13 +153,28 @@ export function App(): React.JSX.Element {
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
-  const [skills, setSkills] = useState<{ name: string; description: string }[]>([])
+  const [skills, setSkills] = useState<{ name: string; description: string; source: string; enabled: boolean }[]>([])
+  const [mcpServers, setMcpServers] = useState<Record<string, { command: string; args?: string[] }>>({})
+  const [plugins, setPlugins] = useState<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>([])
+  const [commands, setCommands] = useState<SlashCommand[]>([])
   const history = useRef<unknown[]>([])
+  const wfCancelRef = useRef(false)
   useEffect(() => {
-    if (workspace) void window.grasp.skills(workspace).then(setSkills)
+    if (workspace) {
+      void window.grasp.skills(workspace).then(setSkills)
+      void window.grasp.commands(workspace).then(setCommands)
+      void window.grasp.mcpServers(workspace).then(setMcpServers)
+      void window.grasp.plugins(workspace).then(setPlugins)
+    }
   }, [workspace])
   const refreshBackends = (): void => {
     void window.grasp.backends().then(setBackends)
+  }
+  const refreshSkills = (): void => {
+    if (workspace) void window.grasp.skills(workspace).then(setSkills)
+  }
+  const refreshMcpServers = (): void => {
+    if (workspace) void window.grasp.mcpServers(workspace).then(setMcpServers)
   }
 
   // Load persisted workflows; surface the most recent unfinished one so it can resume.
@@ -151,10 +188,17 @@ export function App(): React.JSX.Element {
 
   // The durable runner: run each pending step as an agent turn against the carried
   // history, persisting after every state change so a restart resumes from here.
-  async function runWorkflow(base: WorkflowRecord): Promise<void> {
+  async function runWorkflow(base: WorkflowRecord, fromStep?: number): Promise<void> {
     if (busy) return
+    wfCancelRef.current = false
     const w: WorkflowRecord = { ...base, status: 'running' }
+    if (fromStep !== undefined) {
+      // retry from a specific step: rewind to it and mark it pending (keeps prior history)
+      w.currentStep = fromStep
+      w.steps = w.steps.map((s, idx) => (idx === fromStep ? { ...s, status: 'pending' } : s))
+    }
     for (let i = w.currentStep; i < w.steps.length; i++) {
+      if (wfCancelRef.current) break
       w.currentStep = i
       w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'running' } : s))
       w.updatedAt = Date.now()
@@ -169,24 +213,42 @@ export function App(): React.JSX.Element {
         history: w.history,
         backend: w.backend,
         model: w.model,
+        budget: w.budget,
         flowAuto
       })
       setBusy(false)
-      w.history = res.messages
-      w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'done' } : s))
-      w.currentStep = i + 1
+      if (wfCancelRef.current) {
+        // cancelled mid-step: leave it pending (re-runnable), then pause
+        w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'pending' } : s))
+      } else {
+        w.history = res.messages
+        w.steps = w.steps.map((s, idx) => (idx === i ? { ...s, status: 'done' } : s))
+        w.currentStep = i + 1
+      }
       w.updatedAt = Date.now()
       await window.grasp.saveWorkflow(w)
       setActiveWf({ ...w })
+      if (wfCancelRef.current) {
+        w.status = 'paused'
+        w.updatedAt = Date.now()
+        await window.grasp.saveWorkflow(w)
+        setActiveWf({ ...w })
+        return
+      }
     }
-    w.status = 'done'
+    w.status = wfCancelRef.current ? 'paused' : 'done'
     w.updatedAt = Date.now()
     await window.grasp.saveWorkflow(w)
     setActiveWf({ ...w })
     void window.grasp.workflows().then(setWorkflows)
   }
 
-  function createWorkflow(title: string, steps: string[]): void {
+  function cancelWorkflow(): void {
+    wfCancelRef.current = true
+    void window.grasp.stopAgent()
+  }
+
+  function createWorkflow(title: string, steps: string[], budget?: number): void {
     setShowWfModal(false)
     const wf: WorkflowRecord = {
       id: crypto.randomUUID(),
@@ -194,6 +256,7 @@ export function App(): React.JSX.Element {
       workspace,
       backend,
       model,
+      budget,
       steps: steps.map((prompt) => ({ prompt, status: 'pending' })),
       currentStep: 0,
       status: 'idle',
@@ -229,9 +292,7 @@ export function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy, transcript])
 
-  function loadSession(id: string): void {
-    const rec = sessions.find((s) => s.id === id)
-    if (!rec || busy) return
+  function applySession(rec: SessionRecord): void {
     setSessionId(rec.id)
     setTranscript(rec.transcript as TranscriptItem[])
     history.current = rec.history
@@ -240,6 +301,22 @@ export function App(): React.JSX.Element {
     if (rec.workspace) setWorkspace(rec.workspace)
     setSurface(null)
     setError(null)
+  }
+  function loadSession(id: string): void {
+    const rec = sessions.find((s) => s.id === id)
+    if (!rec || busy) return
+    applySession(rec)
+  }
+  function forkSessionById(id: string): void {
+    if (busy) return
+    void window.grasp.forkSession(id).then((newId) => {
+      if (!newId) return
+      void window.grasp.sessions().then((ss) => {
+        setSessions(ss)
+        const fork = ss.find((x) => x.id === newId)
+        if (fork) applySession(fork) // switch straight into the fork
+      })
+    })
   }
 
   // Discover the agent backends (GLM / Claude Code / …) and default the model.
@@ -402,7 +479,7 @@ export function App(): React.JSX.Element {
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
       {showSettings && (
-        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} onClose={() => setShowSettings(false)} />
+        <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onClose={() => setShowSettings(false)} />
       )}
       {showPalette && (
         <CommandPalette
@@ -415,13 +492,26 @@ export function App(): React.JSX.Element {
             { id: 'view-terminal', group: 'View', label: 'Toggle terminal', hint: '⌃`', run: toggleBottom },
             { id: 'view-sidebar', group: 'View', label: 'Toggle sidebar', hint: '⌘B', run: () => setSidebarOpen((s) => !s) },
             { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
-            ...skills.map(
+            ...skills.filter((s) => s.enabled).map(
               (s): Command => ({
                 id: 'skill-' + s.name,
                 group: 'Skill',
                 label: s.name,
                 hint: s.description.slice(0, 44),
                 run: () => void send(`Use the "${s.name}" skill.`)
+              })
+            ),
+            ...commands.map(
+              (c): Command => ({
+                id: 'cmd-' + c.name,
+                group: 'Command',
+                label: '/' + c.name,
+                hint: c.description.slice(0, 44) || (c.skills ? `skill: ${c.skills}` : ''),
+                run: () => {
+                  // $ARGUMENTS/$N aren't reachable from the palette yet — strip them.
+                  const body = c.body.replace(/\$ARGUMENTS/g, '').replace(/\$\d+/g, '').trim()
+                  void send(c.skills ? `Use the "${c.skills}" skill, then follow these instructions:\n\n${body}` : body)
+                }
               })
             ),
             ...sessions.map(
@@ -439,6 +529,7 @@ export function App(): React.JSX.Element {
           sessions={sessions.map((s) => ({ id: s.id, title: s.title }))}
           activeSession={sessionId}
           onSelectSession={loadSession}
+          onForkSession={forkSessionById}
           onDeleteSession={deleteSessionById}
           onSearch={() => setShowPalette(true)}
           onNewWorkflow={() => setShowWfModal(true)}
@@ -476,7 +567,14 @@ export function App(): React.JSX.Element {
                 onToggleSidebar={() => setSidebarOpen((s) => !s)}
                 banner={
                   activeWf ? (
-                    <WorkflowPanel wf={activeWf} busy={busy} onResume={() => void runWorkflow(activeWf)} onDismiss={() => setActiveWf(null)} />
+                    <WorkflowPanel
+                      wf={activeWf}
+                      busy={busy}
+                      onResume={() => void runWorkflow(activeWf)}
+                      onCancel={cancelWorkflow}
+                      onRetry={(i) => void runWorkflow(activeWf, i)}
+                      onDismiss={() => setActiveWf(null)}
+                    />
                   ) : null
                 }
               />

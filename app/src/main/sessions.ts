@@ -4,6 +4,7 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import type { SessionRecord } from '../shared/types'
 
 const file = (): string => join(app.getPath('userData'), 'grasp-sessions.json')
@@ -34,4 +35,20 @@ export function saveSession(rec: SessionRecord): void {
 
 export function deleteSession(id: string): void {
   writeAll(readAll().filter((s) => s.id !== id))
+}
+
+// Fork a session: copy its transcript + backend-opaque history to a NEW session (new id),
+// linked back to the original via parentId (provenance). The fork continues independently.
+export function forkSession(id: string): string {
+  const src = readAll().find((s) => s.id === id)
+  if (!src) return ''
+  const fork: SessionRecord = {
+    ...src,
+    id: randomUUID(),
+    title: src.title + ' (fork)',
+    parentId: src.id,
+    updatedAt: Date.now()
+  }
+  saveSession(fork)
+  return fork.id
 }

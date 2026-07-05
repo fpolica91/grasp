@@ -11,6 +11,7 @@ import {
   SYSTEM,
   TOOLS,
   liveSurface,
+  mcpAugmentedTools,
   withProjectContext
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
@@ -148,11 +149,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
+    const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : await mcpAugmentedTools(workspace)
     const r = await callModel(
       model,
       messages,
       withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
-      plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS,
+      tools,
       turn.signal,
       // Stream text live (non-plan only — plan mode renders the final proposal as a card, so
       // its text is not streamed to avoid showing it twice).
@@ -203,11 +205,13 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 
     const results: unknown[] = []
     for (const tu of toolUses) {
-      const tool = TOOLS.find((t) => t.name === tu.name)
+      const tool = tools.find((t) => t.name === tu.name)
       emit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
       let output = ''
-      // ASK MODE: pause for approval before a tool that changes the workspace.
-      if (turn.mode === 'ask' && tu.name && MUTATING_TOOLS.has(tu.name)) {
+      // ASK MODE: pause for approval before a workspace mutation OR an untrusted MCP tool
+      // (external servers configured in .grasp/mcp.json — not built-ins).
+      const isMcpTool = !TOOLS.find((t) => t.name === tu.name) && !!tools.find((t) => t.name === tu.name)
+      if (turn.mode === 'ask' && tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool)) {
         const ok = await requestApproval(emit, tu.name, tu.input ?? {})
         if (!ok) {
           output = 'skipped — you denied this action.'

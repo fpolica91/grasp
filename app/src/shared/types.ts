@@ -216,6 +216,7 @@ export interface WorkflowRecord {
   workspace: string
   backend: string
   model: string
+  budget?: number // optional per-step token ceiling applied to each step's turn
   steps: WorkflowStep[]
   currentStep: number // index of the step in progress / next to run
   status: 'idle' | 'running' | 'paused' | 'done'
@@ -234,6 +235,15 @@ export interface SessionRecord {
   workspace: string
   transcript: unknown[]
   history: unknown[]
+  parentId?: string // provenance: the session this was forked from
+}
+
+export interface SlashCommand {
+  name: string
+  description: string
+  body: string
+  skills?: string // if set, the run prepends a use_skill nudge (commands <-> skills unified)
+  source: 'user' | 'project'
 }
 
 export interface GraspApi {
@@ -249,6 +259,7 @@ export interface GraspApi {
   sessions(): Promise<SessionRecord[]>
   saveSession(rec: SessionRecord): Promise<void>
   deleteSession(id: string): Promise<void>
+  forkSession(id: string): Promise<string> // returns the new session id, or '' if not found
   approve(id: string, ok: boolean): Promise<void>
   flowNow(workspace: string): Promise<{ ok: boolean; error?: string }>
   stopAgent(): Promise<void>
@@ -256,7 +267,13 @@ export interface GraspApi {
   saveWorkflow(rec: WorkflowRecord): Promise<void>
   deleteWorkflow(id: string): Promise<void>
   projects(): Promise<{ path: string; name: string }[]>
-  skills(workspace: string): Promise<{ name: string; description: string; source: string }[]>
+  skills(workspace: string): Promise<{ name: string; description: string; source: string; enabled: boolean }[]>
+  commands(workspace: string): Promise<SlashCommand[]>
+  keybindings(): Promise<Record<string, string>>
+  setSkillEnabled(name: string, enabled: boolean): Promise<void>
+  mcpServers(workspace: string): Promise<Record<string, { command: string; args?: string[] }>>
+  saveMcpServer(name: string, command: string, args: string): Promise<void>
+  plugins(workspace: string): Promise<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>
   openFolder(): Promise<string>
   newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void

@@ -12,6 +12,7 @@ import {
   SYSTEM,
   TOOLS,
   liveSurface,
+  mcpAugmentedTools,
   withProjectContext
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
@@ -149,11 +150,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
+    const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : await mcpAugmentedTools(workspace)
     const r = await callModel(
       model,
       messages,
       withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
-      plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : TOOLS,
+      tools,
       turn.signal,
       plan ? undefined : (d) => emit({ type: 'text_delta', text: d })
     )
@@ -203,14 +205,16 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       } catch {
         /* malformed arguments -> run the tool with {} and let it report */
       }
-      const tool = TOOLS.find((t) => t.name === name)
+      const tool = tools.find((t) => t.name === name)
       emit({ type: 'tool_use', id: tc.id, name, input })
       let output = ''
       if (plan) {
         // read-only tools only; a mutating call in plan mode is refused honestly
         if (MUTATING_TOOLS.has(name)) output = 'plan mode: cannot edit; propose it in the plan.'
       }
-      if (!output && turn.mode === 'ask' && MUTATING_TOOLS.has(name)) {
+      // Ask mode also gates untrusted MCP tools (external servers — not built-ins).
+      const isMcpTool = !TOOLS.find((t) => t.name === name) && !!tools.find((t) => t.name === name)
+      if (!output && turn.mode === 'ask' && (MUTATING_TOOLS.has(name) || isMcpTool)) {
         const ok = await requestApproval(emit, name, input)
         if (!ok) output = 'skipped — you denied this action.'
       }
