@@ -584,7 +584,14 @@ input, textarea { font-family: inherit; }
 .set-head { display: flex; align-items: center; margin-bottom: 6px; }
 .set-head h2 { margin: 0; font-size: 18px; }
 .set-head .head-icon { margin-left: auto; }
-.set-section { margin-top: 20px; }
+.set-body { display: flex; gap: 18px; min-height: 360px; }
+.set-nav { display: flex; flex-direction: column; gap: 2px; width: 132px; flex: 0 0 132px; border-right: 1px solid var(--hair); padding-right: 14px; }
+.set-nav-item { text-align: left; background: transparent; border: 0; color: var(--muted); font-size: 13px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.set-nav-item:hover { color: var(--ink); background: var(--surface-2); }
+.set-nav-item.on { color: var(--ink); background: var(--surface-2); font-weight: 600; }
+.set-content { flex: 1 1 auto; min-width: 0; overflow-y: auto; max-height: 60vh; padding-right: 4px; }
+.set-section { margin-top: 4px; }
+.set-section:first-child { margin-top: 0; }
 .set-note { margin: 6px 0 12px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 .set-key { margin-bottom: 14px; }
 .set-key-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
