@@ -1,6 +1,4 @@
-// Settings — a sectioned modal (left-rail nav + content). API keys per provider (stored in the
-// safeStorage vault, namespaced), appearance, skills, MCP servers, and plugins. The rail is the
-// fix for the UX gap where MCP/Plugins were buried at the bottom of one long scroll.
+// Settings — a sectioned modal (left-rail nav + content). Fully migrated to Tailwind v4.
 import { useEffect, useState } from 'react'
 import type { Theme } from './Sidebar'
 
@@ -9,26 +7,23 @@ const PROVIDERS: { id: string; label: string; hint: string }[] = [
   { id: 'openai', label: 'OpenAI', hint: 'sk-… (or any OpenAI-compatible key)' }
 ]
 
-const THEMES: { id: Theme; label: string }[] = [
-  { id: 'graphite', label: 'Graphite' },
-  { id: 'carbon', label: 'Carbon' },
-  { id: 'daylight', label: 'Daylight' }
+const THEME_DOTS: Record<Theme, string> = {
+  graphite: 'linear-gradient(135deg,#161616 50%,#fff 50%)',
+  carbon: 'linear-gradient(135deg,#121212 50%,#e8e8e8 50%)',
+  daylight: 'linear-gradient(135deg,#fff 50%,#000 50%)'
+}
+const THEME_LABELS: { id: Theme; label: string }[] = [
+  { id: 'graphite', label: 'Graphite' }, { id: 'carbon', label: 'Carbon' }, { id: 'daylight', label: 'Daylight' }
 ]
 
 const SECTIONS = [
-  { id: 'marketplace', label: 'Marketplace' },
-  { id: 'keys', label: 'API keys' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'skills', label: 'Skills' },
-  { id: 'mcp', label: 'MCP servers' },
-  { id: 'plugins', label: 'Plugins' },
-  { id: 'commands', label: 'Commands' },
-  { id: 'keybindings', label: 'Keybindings' }
+  { id: 'marketplace', label: 'Marketplace' }, { id: 'keys', label: 'API keys' },
+  { id: 'appearance', label: 'Appearance' }, { id: 'skills', label: 'Skills' },
+  { id: 'mcp', label: 'MCP servers' }, { id: 'plugins', label: 'Plugins' },
+  { id: 'commands', label: 'Commands' }, { id: 'keybindings', label: 'Keybindings' }
 ] as const
 type Section = (typeof SECTIONS)[number]['id']
 
-// Curated MCP server catalog — one-click install (npx -y). Ships with the app; no network
-// marketplace needed. Servers marked envHint need an API key (edit ~/.grasp/mcp.json after install).
 const MCP_CATALOG = [
   { name: 'filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Read & write files on disk', args: '.' },
   { name: 'github', pkg: '@modelcontextprotocol/server-github', desc: 'Repos, issues, PRs, search', envHint: 'GITHUB_PERSONAL_ACCESS_TOKEN' },
@@ -42,356 +37,239 @@ const MCP_CATALOG = [
   { name: 'time', pkg: '@modelcontextprotocol/server-time', desc: 'Time & timezone conversion' }
 ]
 
+const inputCls = 'rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover'
+const btnPrimary = 'rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50'
+const btnSm = 'rounded-lg border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110'
+
 function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: string; hint: string; onSaved: () => void }): React.JSX.Element {
   const [has, setHas] = useState(false)
   const [val, setVal] = useState('')
   const [msg, setMsg] = useState('')
-  useEffect(() => {
-    void window.grasp.keyStatus(provider).then(setHas)
-  }, [provider])
+  useEffect(() => { void window.grasp.keyStatus(provider).then(setHas) }, [provider])
   const save = async (): Promise<void> => {
     const r = await window.grasp.setKey(val.trim(), provider)
-    if (r.ok) {
-      setHas(true)
-      setVal('')
-      setMsg(r.warning ?? 'saved')
-      onSaved()
-    } else {
-      setMsg(r.error ?? 'failed')
-    }
+    if (r.ok) { setHas(true); setVal(''); setMsg(r.warning ?? 'saved'); onSaved() }
+    else setMsg(r.error ?? 'failed')
     setTimeout(() => setMsg(''), 2500)
   }
   return (
-    <div className="set-key">
-      <div className="set-key-head">
-        <span className="set-key-label">{label}</span>
-        <span className={`set-key-dot${has ? ' on' : ''}`}>{has ? 'key set' : 'no key'}</span>
+    <div className="flex flex-col gap-1.5 py-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-medium text-foreground">{label}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] ${has ? 'bg-tag text-foreground' : 'border border-border text-foreground-subtlest'}`}>{has ? 'key set' : 'no key'}</span>
       </div>
-      <div className="set-key-row">
-        <input
-          type="password"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && val.trim()) void save()
-          }}
-          placeholder={has ? 'replace key…' : 'paste key…'}
-          spellCheck={false}
-        />
-        <button className="btn sm primary" disabled={!val.trim()} onClick={() => void save()}>
-          Save
-        </button>
+      <div className="flex gap-2">
+        <input type="password" value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && val.trim()) void save() }} placeholder={has ? 'replace key…' : 'paste key…'} spellCheck={false} className={`${inputCls} flex-1`} />
+        <button className={btnPrimary} disabled={!val.trim()} onClick={() => void save()}>Save</button>
       </div>
-      <div className="set-key-hint">
-        {hint}
-        {msg && <span className="set-key-msg"> · {msg}</span>}
-      </div>
+      <div className="text-[12px] text-foreground-subtlest">{hint}{msg && <span> · {msg}</span>}</div>
     </div>
   )
 }
 
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }): React.JSX.Element {
+  return <div className={`flex flex-col gap-1 rounded-lg border border-border bg-surface p-3 ${className}`}>{children}</div>
+}
+
 export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
   const [section, setSection] = useState<Section>('marketplace')
-  const [mcpName, setMcpName] = useState('')
-  const [mcpCmd, setMcpCmd] = useState('')
-  const [mcpArgs, setMcpArgs] = useState('')
-  const [mcpEnv, setMcpEnv] = useState('')
+  const [mcpName, setMcpName] = useState(''); const [mcpCmd, setMcpCmd] = useState(''); const [mcpArgs, setMcpArgs] = useState(''); const [mcpEnv, setMcpEnv] = useState('')
   const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])
-  const [pluginUrl, setPluginUrl] = useState('')
-  const [pluginMsg, setPluginMsg] = useState('')
-  useEffect(() => {
-    if (section === 'mcp' && props.workspace) void window.grasp.mcpStatus(props.workspace).then(setMcpStatusList)
-  }, [section, props.workspace, props.mcpServers])
+  const [pluginUrl, setPluginUrl] = useState(''); const [pluginMsg, setPluginMsg] = useState('')
+  useEffect(() => { if (section === 'mcp' && props.workspace) void window.grasp.mcpStatus(props.workspace).then(setMcpStatusList) }, [section, props.workspace, props.mcpServers])
+
+  const revealBtn = (key: string): React.JSX.Element => (
+    <button className="ml-2 border-0 bg-transparent text-[11px] text-foreground-subtlest underline underline-offset-2 transition-colors hover:text-foreground" onClick={() => void window.grasp.revealInFiles(key)}>reveal in files</button>
+  )
+  const note = (children: React.ReactNode): React.JSX.Element => (
+    <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground-subtle">{children}</p>
+  )
+  const codeCls = 'rounded bg-tag px-1 py-0.5 font-mono text-[11px] text-foreground-subtle'
+
   return (
-    <div className="gate-overlay" onClick={props.onClose}>
-      <div className="gate settings" onClick={(e) => e.stopPropagation()}>
-        <div className="set-head">
-          <h2>Settings</h2>
-          <button className="head-icon" onClick={props.onClose} title="Close">
-            ✕
-          </button>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-[3px]" onClick={props.onClose}>
+      <div className="flex h-[90vh] w-[960px] max-w-[95vw] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex shrink-0 items-center px-6 py-4">
+          <h2 className="text-[18px] font-semibold tracking-tight text-foreground">Settings</h2>
+          <button className="ml-auto border-0 bg-transparent text-[16px] text-foreground-subtlest transition-colors hover:text-foreground" onClick={props.onClose} title="Close">✕</button>
         </div>
-        <div className="set-body">
-          <nav className="set-nav">
+        {/* Body */}
+        <div className="flex min-h-0 flex-1 gap-4 px-6 pb-6">
+          {/* Nav */}
+          <nav className="flex w-[130px] shrink-0 flex-col gap-0.5 border-r border-border pr-3.5">
             {SECTIONS.map((s) => (
-              <button key={s.id} className={`set-nav-item${section === s.id ? ' on' : ''}`} onClick={() => setSection(s.id)}>
-                {s.label}
-              </button>
+              <button key={s.id} className={`rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${section === s.id ? 'bg-surface font-semibold text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => setSection(s.id)}>{s.label}</button>
             ))}
           </nav>
-          <div className="set-content">
+          {/* Content */}
+          <div className="min-w-0 flex-1 overflow-y-auto pr-1">
+            {/* Marketplace */}
             {section === 'marketplace' && (
-              <div className="set-section">
-                <div className="eyebrow">MCP Marketplace</div>
-                <p className="set-note">One-click install popular MCP tool servers. They run via <code>npx</code> and appear as agent tools on the next turn. Servers marked “needs key” require an API key — edit <code>~/.grasp/mcp.json</code> after install.</p>
-                <div className="mcp-grid">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP Marketplace</div>
+                {note(<>One-click install popular MCP tool servers. They run via <code className={codeCls}>npx</code> and appear as agent tools on the next turn.</>)}
+                <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2.5">
                   {MCP_CATALOG.map((item) => {
                     const installed = item.name in props.mcpServers
                     return (
-                      <div className={`mcp-card${installed ? ' installed' : ''}`} key={item.name}>
-                        <div className="mcp-card-head">
-                          <span className="mcp-card-name">{item.name}</span>
-                          {item.envHint && <span className="set-tag">needs key</span>}
+                      <Card key={item.name} className={installed ? 'border-foreground/20' : ''}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[14px] font-semibold text-foreground">{item.name}</span>
+                          {item.envHint && <span className="rounded-full border border-border px-1.5 py-0 text-[10px] text-foreground-subtlest">needs key</span>}
                         </div>
-                        <div className="mcp-card-desc">{item.desc}</div>
-                        <code className="mcp-card-pkg">{item.pkg}</code>
-                        <button
-                          className={`btn sm ${installed ? '' : 'primary'}`}
-                          disabled={installed}
-                          onClick={() =>
-                            void window.grasp
-                              .saveMcpServer(
-                                item.name,
-                                'npx',
-                                `-y ${item.pkg}${item.args ? ' ' + item.args : ''}`,
-                                item.envHint ? `${item.envHint}=` : ''
-                              )
-                              .then(props.onMcpChanged)
-                          }
-                        >
+                        <div className="text-[12.5px] text-foreground-subtle">{item.desc}</div>
+                        <code className="break-all font-mono text-[11px] text-foreground-subtlest">{item.pkg}</code>
+                        <button className={`${installed ? btnSm : btnPrimary} mt-1.5 self-start`} disabled={installed} onClick={() => void window.grasp.saveMcpServer(item.name, 'npx', `-y ${item.pkg}${item.args ? ' ' + item.args : ''}`, item.envHint ? `${item.envHint}=` : '').then(props.onMcpChanged)}>
                           {installed ? '✓ Installed' : 'Install'}
                         </button>
-                      </div>
+                      </Card>
                     )
                   })}
                 </div>
               </div>
             )}
-
+            {/* Keys */}
             {section === 'keys' && (
-              <div className="set-section">
-                <div className="eyebrow">API keys</div>
-                <p className="set-note">Stored encrypted in your OS keychain (safeStorage) — never written in plaintext.</p>
-                {PROVIDERS.map((p) => (
-                  <KeyRow key={p.id} provider={p.id} label={p.label} hint={p.hint} onSaved={props.onKeysChanged} />
-                ))}
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">API keys</div>
+                {note(<>Stored encrypted in your OS keychain (safeStorage) — never written in plaintext.</>)}
+                {PROVIDERS.map((p) => (<KeyRow key={p.id} provider={p.id} label={p.label} hint={p.hint} onSaved={props.onKeysChanged} />))}
               </div>
             )}
-
+            {/* Appearance */}
             {section === 'appearance' && (
-              <div className="set-section">
-                <div className="eyebrow">Appearance</div>
-                <div className="set-themes">
-                  {THEMES.map((t) => (
-                    <button key={t.id} className={`set-theme${props.theme === t.id ? ' on' : ''}`} onClick={() => props.onTheme(t.id)}>
-                      <span className={`theme-dot ${t.id}`} />
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Appearance</div>
+                <div className="mt-3 flex gap-2">
+                  {THEME_LABELS.map((t) => (
+                    <button key={t.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition-colors ${props.theme === t.id ? 'border-foreground text-foreground' : 'border-border text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => props.onTheme(t.id)}>
+                      <span className="size-4 rounded-full" style={{ background: THEME_DOTS[t.id] }} />
                       {t.label}
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
+            {/* Skills */}
             {section === 'skills' && (
-              <div className="set-section">
-                <div className="eyebrow">Skills <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('skills')}>reveal in files</button></div>
-                <p className="set-note">
-                  Reusable instructions the agent loads via <code>use_skill</code>. Install one in <code>~/.grasp/skills</code> or{' '}
-                  <code>.grasp/skills</code> — a directory with <code>SKILL.md</code> (may bundle <code>references/</code>,{' '}
-                  <code>scripts/</code>) or a flat <code>.md</code>.
-                </p>
-                {props.skills.length === 0 ? (
-                  <div className="set-empty">
-                    No skills yet. grasp auto-seeds a few the first time it runs (<code>fuzz-diff</code>, <code>trace-flow</code>,
-                    <code>observe-change</code>, <code>skill-creator</code>) — the agent loads them via <code>use_skill</code>.
-                    Add your own as a directory with a <code>SKILL.md</code>.
-                  </div>
-                ) : (
-                  <div className="set-skills">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills {revealBtn('skills')}</div>
+                {note(<>Reusable instructions the agent loads via <code className={codeCls}>use_skill</code>. Install in <code className={codeCls}>~/.grasp/skills</code>.</>)}
+                {props.skills.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No skills yet.</div> : (
+                  <div className="mt-2 flex flex-col gap-1.5">
                     {props.skills.map((s) => (
-                      <div className={`set-skill${s.enabled ? '' : ' off'}`} key={s.name + '|' + s.source}>
-                        <div className="set-skill-head">
-                          <span className="set-skill-name">{s.name}</span>
-                          <span className={`set-skill-src ${s.source}`}>{s.source}</span>
-                          <button
-                            className={`set-skill-toggle${s.enabled ? ' on' : ''}`}
-                            title={s.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
-                            onClick={() => void window.grasp.setSkillEnabled(s.name, !s.enabled).then(props.onSkillsChanged)}
-                          >
-                            {s.enabled ? 'on' : 'off'}
-                          </button>
+                      <Card key={s.name + '|' + s.source} className={s.enabled ? '' : 'opacity-50'}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground">{s.name}</span>
+                          <span className="rounded-full border border-border px-1.5 text-[10px] uppercase text-foreground-subtlest">{s.source}</span>
+                          <button className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] transition-colors ${s.enabled ? 'border-foreground text-foreground' : 'border-border text-foreground-subtlest'}`} title={s.enabled ? 'Disable' : 'Enable'} onClick={() => void window.grasp.setSkillEnabled(s.name, !s.enabled).then(props.onSkillsChanged)}>{s.enabled ? 'on' : 'off'}</button>
                         </div>
-                        <div className="set-skill-desc">{(s.description || '(no description)').slice(0, 180)}</div>
-                      </div>
+                        <div className="text-[12.5px] text-foreground-subtle">{(s.description || '(no description)').slice(0, 180)}</div>
+                      </Card>
                     ))}
                   </div>
                 )}
               </div>
             )}
-
+            {/* MCP */}
             {section === 'mcp' && (
-              <div className="set-section">
-                <div className="eyebrow">MCP servers <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('mcp')}>reveal in files</button></div>
-                <p className="set-note">
-                  External stdio tool servers the agent can call. Saved to <code>~/.grasp/mcp.json</code>; their tools appear on the next turn.
-                </p>
-                {Object.keys(props.mcpServers).length === 0 ? (
-                  <div className="set-empty">
-                    No MCP servers configured. Add one above — e.g. command <code>npx</code>, args{' '}
-                    <code>-y @modelcontextprotocol/server-filesystem .</code> — or edit <code>~/.grasp/mcp.json</code>{' '}
-                    (use “reveal in files”).
-                  </div>
-                ) : (
-                  <div className="set-skills">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP servers {revealBtn('mcp')}</div>
+                {note(<>External stdio tool servers. Saved to <code className={codeCls}>~/.grasp/mcp.json</code>.</>)}
+                {Object.keys(props.mcpServers).length > 0 && (
+                  <div className="mt-2 flex flex-col gap-1.5">
                     {Object.entries(props.mcpServers).map(([name, s]) => {
                       const st = mcpStatusList.find((x) => x.name === name)
                       return (
-                        <div className="set-skill" key={name}>
-                          <div className="set-skill-head">
-                            <span className="set-skill-name">{name}</span>
-                            <span className={`set-skill-src user${st?.ok === false ? ' err' : ''}`}>
-                              {st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}
-                            </span>
-                            <button
-                              className="si-del"
-                              title="Remove"
-                              onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}
-                            >
-                              ✕
-                            </button>
+                        <Card key={name}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-foreground">{name}</span>
+                            <span className={`rounded-full border px-1.5 text-[10px] ${st?.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}</span>
+                            <button className="ml-auto border-0 bg-transparent text-[12px] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
                           </div>
-                          <div className="set-skill-desc">
-                            <code>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
-                            {s.env && <span className="set-tag">{Object.keys(s.env).length} env</span>}
-                            {st?.error && <div className="set-mcp-err">{st.error}</div>}
+                          <div className="text-[12.5px] text-foreground-subtle">
+                            <code className={codeCls}>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
+                            {s.env && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{Object.keys(s.env).length} env</span>}
+                            {st?.error && <div className="mt-1 font-mono text-[11.5px] text-destructive">{st.error}</div>}
                           </div>
-                        </div>
+                        </Card>
                       )
                     })}
                   </div>
                 )}
-                <div className="set-mcp-add">
-                  <input className="mcp-name" placeholder="name" value={mcpName} onChange={(e) => setMcpName(e.target.value)} spellCheck={false} />
-                  <input className="mcp-cmd" placeholder="command (e.g. npx)" value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} spellCheck={false} />
-                  <input className="mcp-args" placeholder={'args (quote to keep spaces: "foo bar")'} value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
-                  <textarea
-                    className="mcp-env"
-                    placeholder="env: KEY=VALUE per line (optional)"
-                    value={mcpEnv}
-                    onChange={(e) => setMcpEnv(e.target.value)}
-                    rows={1}
-                    spellCheck={false}
-                  />
-                  <button
-                    className="btn sm primary"
-                    disabled={!mcpName.trim() || !mcpCmd.trim()}
-                    onClick={() => {
-                      void window.grasp.saveMcpServer(mcpName.trim(), mcpCmd.trim(), mcpArgs, mcpEnv).then(props.onMcpChanged)
-                      setMcpName('')
-                      setMcpCmd('')
-                      setMcpArgs('')
-                      setMcpEnv('')
-                    }}
-                  >
-                    Add
-                  </button>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <input className={`${inputCls} w-[110px]`} placeholder="name" value={mcpName} onChange={(e) => setMcpName(e.target.value)} spellCheck={false} />
+                  <input className={`${inputCls} flex-1`} placeholder="command (e.g. npx)" value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} spellCheck={false} />
+                  <input className={`${inputCls} flex-1`} placeholder={'args (quote spaces: "foo bar")'} value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
+                  <textarea className={`${inputCls} w-full font-mono`} placeholder="env: KEY=VALUE per line (optional)" value={mcpEnv} onChange={(e) => setMcpEnv(e.target.value)} rows={1} spellCheck={false} />
+                  <button className={btnPrimary} disabled={!mcpName.trim() || !mcpCmd.trim()} onClick={() => { void window.grasp.saveMcpServer(mcpName.trim(), mcpCmd.trim(), mcpArgs, mcpEnv).then(props.onMcpChanged); setMcpName(''); setMcpCmd(''); setMcpArgs(''); setMcpEnv('') }}>Add</button>
                 </div>
               </div>
             )}
-
+            {/* Plugins */}
             {section === 'plugins' && (
-              <div className="set-section">
-                <div className="eyebrow">Plugins <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('plugins')}>reveal in files</button></div>
-                <p className="set-note">
-                  Distribution units that bundle skills (and optionally an MCP server). Install one from a git URL, or drop a dir in <code>~/.grasp/plugins/&lt;name&gt;/</code>.
-                </p>
-                {props.plugins.length === 0 ? (
-                  <div className="set-empty">
-                    No plugins installed. Install one from a git URL above, or drop a directory in{' '}
-                    <code>~/.grasp/plugins/&lt;name&gt;/</code> with a <code>plugin.json</code> and a <code>skills/</code>{' '}
-                    folder. A plugin bundles skills (and optionally an MCP server).
-                  </div>
-                ) : (
-                  <div className="set-skills">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Plugins {revealBtn('plugins')}</div>
+                {note(<>Distribution units that bundle skills + optionally MCP. Install from a git URL.</>)}
+                {props.plugins.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-1.5">
                     {props.plugins.map((p) => (
-                      <div className="set-skill" key={p.name + '|' + p.source}>
-                        <div className="set-skill-head">
-                          <span className="set-skill-name">{p.name}</span>
-                          <span className={`set-skill-src ${p.source}`}>{p.source}</span>
-                          {p.source === 'user' && (
-                            <button
-                              className="si-del"
-                              title="Uninstall"
-                              onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}
-                            >
-                              ✕
-                            </button>
-                          )}
+                      <Card key={p.name + '|' + p.source}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground">{p.name}</span>
+                          <span className="rounded-full border border-border px-1.5 text-[10px] uppercase text-foreground-subtlest">{p.source}</span>
+                          {p.source === 'user' && <button className="ml-auto border-0 bg-transparent text-[12px] text-foreground-subtlest transition-colors hover:text-destructive" title="Uninstall" onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}>✕</button>}
                         </div>
-                        <div className="set-skill-desc">
+                        <div className="text-[12.5px] text-foreground-subtle">
                           {p.description || '(no description)'}
-                          {p.hasSkills && <span className="set-tag">skills</span>}
-                          {p.mcpCount > 0 && <span className="set-tag">{p.mcpCount} mcp</span>}
+                          {p.hasSkills && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">skills</span>}
+                          {p.mcpCount > 0 && <span className="ml-1 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{p.mcpCount} mcp</span>}
                         </div>
-                      </div>
+                      </Card>
                     ))}
                   </div>
                 )}
-                <div className="set-mcp-add">
-                  <input
-                    className="mcp-cmd"
-                    placeholder="git URL (https://…/plugin.git)"
-                    value={pluginUrl}
-                    onChange={(e) => setPluginUrl(e.target.value)}
-                    spellCheck={false}
-                  />
-                  <button
-                    className="btn sm primary"
-                    disabled={!pluginUrl.trim()}
-                    onClick={() => {
-                      void window.grasp.installPlugin(pluginUrl.trim()).then((r) => {
-                        if (r.ok) {
-                          setPluginUrl('')
-                          setPluginMsg(`installed ${r.name}`)
-                        } else setPluginMsg(r.error ?? 'install failed')
-                        props.onPluginsChanged()
-                        setTimeout(() => setPluginMsg(''), 3000)
-                      })
-                    }}
-                  >
-                    Install
-                  </button>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <input className={`${inputCls} flex-1`} placeholder="git URL (https://…/plugin.git)" value={pluginUrl} onChange={(e) => setPluginUrl(e.target.value)} spellCheck={false} />
+                  <button className={btnPrimary} disabled={!pluginUrl.trim()} onClick={() => { void window.grasp.installPlugin(pluginUrl.trim()).then((r) => { if (r.ok) { setPluginUrl(''); setPluginMsg(`installed ${r.name}`) } else setPluginMsg(r.error ?? 'install failed'); props.onPluginsChanged(); setTimeout(() => setPluginMsg(''), 3000) }) }}>Install</button>
                 </div>
-                {pluginMsg && <div className="set-key-hint">{pluginMsg}</div>}
+                {pluginMsg && <div className="mt-1.5 text-[12px] text-foreground-subtlest">{pluginMsg}</div>}
               </div>
             )}
-
+            {/* Commands */}
             {section === 'commands' && (
-              <div className="set-section">
-                <div className="eyebrow">Commands <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('commands')}>reveal in files</button></div>
-                <p className="set-note">Slash commands the composer shows when you type <code>/</code>. A <code>commands/*.md</code> with a <code>skills:</code> key auto-loads a skill.</p>
-                {props.commands.length === 0 ? (
-                  <div className="set-empty">No commands. Drop a <code>.md</code> in <code>~/.grasp/commands/</code>.</div>
-                ) : (
-                  <div className="set-skills">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Commands {revealBtn('commands')}</div>
+                {note(<>Slash commands the composer shows when you type <code className={codeCls}>/</code>.</>)}
+                {props.commands.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No commands.</div> : (
+                  <div className="mt-2 flex flex-col gap-1.5">
                     {props.commands.map((c) => (
-                      <div className="set-skill" key={c.name}>
-                        <div className="set-skill-head">
-                          <span className="set-skill-name">/{c.name}</span>
-                          {c.skills && <span className="set-tag">skill: {c.skills}</span>}
+                      <Card key={c.name}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground">/{c.name}</span>
+                          {c.skills && <span className="rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">skill: {c.skills}</span>}
                         </div>
-                        <div className="set-skill-desc">{(c.description || '(no description)').slice(0, 180)}</div>
-                      </div>
+                        <div className="text-[12.5px] text-foreground-subtle">{(c.description || '(no description)').slice(0, 180)}</div>
+                      </Card>
                     ))}
                   </div>
                 )}
               </div>
             )}
-
+            {/* Keybindings */}
             {section === 'keybindings' && (
-              <div className="set-section">
-                <div className="eyebrow">Keybindings <button className="set-reveal" onClick={() => void window.grasp.revealInFiles('keybindings')}>reveal in files</button></div>
-                <p className="set-note">Rebindable chords — edit <code>~/.grasp/keybindings.json</code> (e.g. <code>{`{"new-session":"mod+shift+n"}`}</code>). <code>mod+</code> = Cmd on mac, Ctrl elsewhere.</p>
-                <div className="set-skills">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Keybindings {revealBtn('keybindings')}</div>
+                {note(<>Edit <code className={codeCls}>~/.grasp/keybindings.json</code>. <code className={codeCls}>mod+</code> = Cmd/Ctrl.</>)}
+                <div className="mt-2 flex flex-col gap-1.5">
                   {Object.entries(props.keybinds).map(([action, chord]) => (
-                    <div className="set-skill" key={action}>
-                      <div className="set-skill-head">
-                        <span className="set-skill-name">{action}</span>
-                        <span className="set-skill-src user">
-                          <kbd>{chord}</kbd>
-                        </span>
+                    <Card key={action}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-semibold text-foreground">{action}</span>
+                        <span className="ml-auto rounded-full border border-border bg-tag px-2 py-0.5 font-mono text-[12px] text-foreground-subtle">{chord}</span>
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </div>
