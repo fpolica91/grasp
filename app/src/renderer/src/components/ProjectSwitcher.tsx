@@ -1,6 +1,7 @@
 // The project switcher — a pill in the sidebar foot showing the active project, opening a
 // popover of recent projects + Open folder (native dialog) + New project (under
 // ~/GraspProjects). Switching sets the agent's workspace.
+// Migrated to Tailwind v4 utilities matching ZCode's aesthetic.
 import { useEffect, useRef, useState } from 'react'
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -44,24 +45,37 @@ export function ProjectSwitcher({ workspace, onSwitch }: { workspace: string; on
   }
 
   return (
-    <div className="proj" ref={ref}>
-      <button className="proj-pill" onClick={() => setOpen((o) => !o)} title={workspace}>
+    <div className="relative" ref={ref}>
+      <button
+        className="flex w-full items-center gap-2 rounded-lg border border-border bg-input px-2.5 py-2 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover"
+        onClick={() => setOpen((o) => !o)}
+        title={workspace}
+      >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
-        <span className="proj-name">{base(workspace) || 'no project'}</span>
-        <span className="proj-caret">▾</span>
+        <span className="flex-1 truncate text-left">{base(workspace) || 'no project'}</span>
+        <span className="text-[10px] text-foreground-subtlest">▾</span>
       </button>
       {open && (
-        <div className="proj-pop">
-          {recent.length > 0 && <div className="proj-sec">Recent</div>}
+        <div className="absolute bottom-full left-0 z-50 mb-2 flex w-full min-w-[200px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-xl">
+          {recent.length > 0 && (
+            <div className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Recent</div>
+          )}
           {recent.map((p) => (
-            <button key={p.path} className={`proj-item${p.path === workspace ? ' on' : ''}`} onClick={() => pick(p.path)} title={p.path}>
-              <span className="proj-item-name">{p.name}</span>
-              {p.path === workspace && <span className="proj-check">✓</span>}
+            <button
+              key={p.path}
+              className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
+                p.path === workspace ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
+              }`}
+              onClick={() => pick(p.path)}
+              title={p.path}
+            >
+              <span className="flex-1 truncate text-left">{p.name}</span>
+              {p.path === workspace && <span className="text-foreground-subtlest">✓</span>}
             </button>
           ))}
-          <div className="proj-div" />
+          <div className="my-1 h-px bg-border" />
           {creating ? (
-            <div className="proj-new">
+            <div className="flex items-center gap-1.5 p-1">
               <input
                 autoFocus
                 value={name}
@@ -72,17 +86,28 @@ export function ProjectSwitcher({ workspace, onSwitch }: { workspace: string; on
                 }}
                 placeholder="new-project-name"
                 spellCheck={false}
+                className="flex-1 rounded-md border border-border bg-input px-2.5 py-1.5 text-[13px] text-foreground outline-none placeholder:text-foreground-subtlest focus:border-border-hover"
               />
-              <button className="btn sm primary" onClick={() => void create()} disabled={!name.trim()}>
+              <button
+                className="rounded-md bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground disabled:opacity-50"
+                onClick={() => void create()}
+                disabled={!name.trim()}
+              >
                 Create
               </button>
             </div>
           ) : (
-            <button className="proj-item action" onClick={() => setCreating(true)}>
+            <button
+              className="flex items-center rounded-md px-2.5 py-1.5 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover"
+              onClick={() => setCreating(true)}
+            >
               ＋ New project
             </button>
           )}
-          <button className="proj-item action" onClick={() => void openFolder()}>
+          <button
+            className="flex items-center rounded-md px-2.5 py-1.5 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover"
+            onClick={() => void openFolder()}
+          >
             ⊞ Open folder…
           </button>
         </div>
