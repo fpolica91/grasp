@@ -12,6 +12,7 @@ import { FlowView, FlowDiffView, FuzzDiffView } from './components/FlowView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { Settings } from './components/Settings'
+import { RemoteConnect } from './components/RemoteConnect'
 import { CommandPalette, type Command } from './components/CommandPalette'
 import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
@@ -173,13 +174,14 @@ export function App(): React.JSX.Element {
   const [activeWf, setActiveWf] = useState<WorkflowRecord | null>(null)
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showRemote, setShowRemote] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
   // Esc stops a running agent (the standard escape hatch) — only when no overlay is open, so
   // it never fights the palette/settings/workflow modal. Separate from the keybinds effect so
   // it can reference these overlay states (declared just above) cleanly.
   useEffect(() => {
     const onEsc = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal) {
+      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal && !showRemote) {
         e.preventDefault()
         e.stopPropagation()
         void window.grasp.stopAgent()
@@ -533,6 +535,7 @@ export function App(): React.JSX.Element {
     <div className="flex h-full overflow-hidden bg-background">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
+      {showRemote && <RemoteConnect onClose={() => setShowRemote(false)} />}
       {showSettings && (
         <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onPluginsChanged={refreshPlugins} commands={commands} keybinds={keybinds} workspace={workspace} onClose={() => setShowSettings(false)} />
       )}
@@ -542,6 +545,7 @@ export function App(): React.JSX.Element {
           items={[
             { id: 'new-session', group: 'Command', label: 'New session', hint: '⌘N', run: newSession },
             { id: 'new-workflow', group: 'Command', label: 'New workflow', run: () => setShowWfModal(true) },
+            { id: 'connect-remote', group: 'Command', label: 'Connect remote…', run: () => setShowRemote(true) },
             { id: 'open-folder', group: 'Command', label: 'Open folder…', run: () => void window.grasp.openFolder().then((p) => p && switchProject(p)) },
             { id: 'settings', group: 'Command', label: 'Settings', run: () => setShowSettings(true) },
             { id: 'view-terminal', group: 'View', label: 'Toggle terminal', hint: '⌃`', run: toggleBottom },
@@ -806,6 +810,13 @@ export function App(): React.JSX.Element {
         ))}
         <button
           className="mt-auto flex size-[34px] items-center justify-center rounded-lg border-0 bg-transparent text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+          onClick={() => setShowRemote(true)}
+          title="Connect to a remote environment"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.7" /><path d="M7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+        </button>
+        <button
+          className="flex size-[34px] items-center justify-center rounded-lg border-0 bg-transparent text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
           onClick={() => setShowSettings(true)}
           title="Settings — MCP, plugins, skills, keybindings, commands"
         >
