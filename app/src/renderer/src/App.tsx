@@ -580,6 +580,8 @@ export function App(): React.JSX.Element {
           activeWorkflow={activeWf?.id ?? null}
           onOpenWorkflow={openWorkflow}
           onDeleteWorkflow={deleteWorkflowById}
+          skills={skills}
+          onToggleSkill={(name, enabled) => void window.grasp.setSkillEnabled(name, enabled).then(refreshSkills)}
           onSearch={() => setShowPalette(true)}
           onNewWorkflow={() => setShowWfModal(true)}
           onSettings={() => setShowSettings(true)}

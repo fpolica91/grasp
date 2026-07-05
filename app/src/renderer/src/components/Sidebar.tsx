@@ -39,6 +39,8 @@ export function Sidebar(props: {
   activeWorkflow: string | null
   onOpenWorkflow: (id: string) => void
   onDeleteWorkflow: (id: string) => void
+  skills: { name: string; description: string; enabled: boolean }[]
+  onToggleSkill: (name: string, enabled: boolean) => void
   onSearch: () => void
   onNewWorkflow: () => void
   onSettings: () => void
@@ -184,6 +186,26 @@ export function Sidebar(props: {
                 >
                   ✕
                 </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {props.skills.length > 0 && (
+        <>
+          <div className="side-sec">Skills</div>
+          <div className="side-list" style={{ flex: '0 1 auto', maxHeight: '200px' }}>
+            {props.skills.map((s) => (
+              <div
+                key={s.name}
+                className="side-item"
+                onClick={() => props.onToggleSkill(s.name, !s.enabled)}
+                title={s.description}
+                style={{ '-webkit-app-region': 'no-drag' } as React.CSSProperties}
+              >
+                <span className="si-title" style={{ opacity: s.enabled ? 1 : .4 }}>{s.name}</span>
+                <span className={`skill-side-toggle${s.enabled ? ' on' : ''}`}>{s.enabled ? '●' : '○'}</span>
               </div>
             ))}
           </div>

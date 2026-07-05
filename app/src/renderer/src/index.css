@@ -111,6 +111,8 @@ input, textarea { font-family: inherit; }
 .side-chevron.open { transform: rotate(90deg); }
 .side-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-group-count { font-size: 10px; color: var(--faint); opacity: .6; }
+.skill-side-toggle { flex: none; font-size: 10px; color: var(--faint); }
+.skill-side-toggle.on { color: var(--accent); }
 .si-del { flex: none; background: transparent; border: 0; color: var(--faint); font-size: 11px; padding: 2px 4px; border-radius: 4px; opacity: 0; transition: opacity .1s; }
 .side-item:hover .si-del { opacity: 1; }
 .si-del:hover { color: var(--question); background: var(--surface-3); }
@@ -122,7 +124,7 @@ input, textarea { font-family: inherit; }
 .rh:hover, .rh[data-resize-handle-state='drag'], .rh[data-resize-handle-state='hover'] { background: var(--accent-hair); }
 
 /* ── sidebar ──────────────────────────────────────────────── */
-.sidebar { width: 218px; flex: none; background: var(--surface); border-right: 1px solid var(--hair-soft); display: flex; flex-direction: column; padding: 14px 12px; gap: 4px; -webkit-app-region: drag; }
+.sidebar { width: 260px; flex: none; background: var(--ground); border-right: 1px solid var(--hair); display: flex; flex-direction: column; padding: 14px 12px; gap: 4px; -webkit-app-region: drag; }
 .brand { display: flex; align-items: center; gap: 9px; padding: 6px 8px 14px; }
 .brand .mark { width: 22px; height: 22px; flex: none; }
 .brand .name { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
