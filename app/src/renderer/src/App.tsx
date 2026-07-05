@@ -612,6 +612,8 @@ export function App(): React.JSX.Element {
                 onDecideApproval={decideApproval}
                 onSend={send}
                 onStop={() => void window.grasp.stopAgent()}
+                commands={commands}
+                skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
                 onToggleTerminal={toggleBottom}
                 onToggleSidebar={() => setSidebarOpen((s) => !s)}
                 banner={

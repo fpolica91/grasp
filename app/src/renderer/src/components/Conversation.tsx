@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js/lib/common'
-import type { BackendInfo } from '../../../shared/types'
+import type { BackendInfo, SlashCommand } from '../../../shared/types'
 
 export interface TranscriptItem {
   id?: string
@@ -278,8 +278,11 @@ export function Conversation(props: {
   onToggleTerminal?: () => void
   onToggleSidebar?: () => void
   banner?: React.ReactNode
+  commands: SlashCommand[]
+  skills: { name: string; description: string }[]
 }): React.JSX.Element {
   const [input, setInput] = useState('')
+  const [slashIx, setSlashIx] = useState(0)
   const logRef = useRef<HTMLDivElement>(null)
   // Stick-to-bottom ONLY when the reader is already at the bottom. Streaming events used
   // to yank the scroll down on every update, which made scrolling up and expanding tool
@@ -303,6 +306,42 @@ export function Conversation(props: {
     stickBottom.current = true // sending re-engages follow-the-stream
     props.onSend(t)
     setInput('')
+  }
+
+  // Slash menu: while the input is "/<query>" (no space yet), filter commands + enabled skills.
+  const slashQuery = input.startsWith('/') && !input.slice(1).includes(' ') ? input.slice(1).toLowerCase() : null
+  const slashItems = slashQuery === null ? [] : [
+    ...props.commands
+      .filter((c) => c.name.toLowerCase().includes(slashQuery))
+      .map((c) => ({
+        kind: 'command' as const,
+        name: c.name,
+        desc: c.description || (c.skills ? `skill: ${c.skills}` : ''),
+        body: c.body,
+        hasArgs: /\$ARGUMENTS|\$\d/.test(c.body),
+        skill: c.skills
+      })),
+    ...props.skills
+      .filter((s) => s.name.toLowerCase().includes(slashQuery))
+      .map((s) => ({ kind: 'skill' as const, name: s.name, desc: s.description }))
+  ].slice(0, 8)
+  const slashCur = slashItems.length ? Math.min(slashIx, slashItems.length - 1) : -1
+
+  function sendBody(b: string): void {
+    if (props.busy) return
+    stickBottom.current = true
+    props.onSend(b)
+    setInput('')
+    setSlashIx(0)
+  }
+  function pickSlash(item: (typeof slashItems)[number]): void {
+    if (item.kind === 'skill') {
+      sendBody(`Use the "${item.name}" skill.`)
+      return
+    }
+    const prefix = item.skill ? `Use the "${item.skill}" skill, then follow these instructions:\n\n` : ''
+    if (item.hasArgs) setInput(prefix + item.body) // let the user fill $ARGUMENTS/$N, then send
+    else sendBody(prefix + item.body.replace(/\$ARGUMENTS/g, '').replace(/\$\d+/g, '').replace(/ {2,}/g, ' ').trim())
   }
 
   const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
@@ -402,16 +441,49 @@ export function Conversation(props: {
 
       <div className="composer">
         <div className="box">
+          {slashItems.length > 0 && (
+            <div className="slash-menu">
+              {slashItems.map((it, i) => (
+                <button
+                  key={it.kind + '|' + it.name}
+                  className={`slash-item${i === slashCur ? ' on' : ''}`}
+                  onMouseEnter={() => setSlashIx(i)}
+                  onClick={() => pickSlash(it)}
+                >
+                  <span className="slash-name">{it.kind === 'command' ? '/' + it.name : it.name}</span>
+                  <span className="slash-desc">{it.desc.slice(0, 56)}</span>
+                  <span className={`slash-kind ${it.kind}`}>{it.kind}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
+              if (slashItems.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setSlashIx((i) => (i + 1) % slashItems.length)
+                  return
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setSlashIx((i) => (i - 1 + slashItems.length) % slashItems.length)
+                  return
+                }
+                if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+                  e.preventDefault()
+                  pickSlash(slashItems[slashCur])
+                  return
+                }
+              }
               if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
                 e.preventDefault()
                 submit()
               }
             }}
-            placeholder="Ask an agent to change code…"
+            placeholder="Ask an agent to change code…  (type / for commands)"
             rows={2}
             autoFocus
           />
