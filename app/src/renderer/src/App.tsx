@@ -799,6 +799,13 @@ export function App(): React.JSX.Element {
             )}
           </button>
         ))}
+        <button
+          className="act-btn act-settings"
+          onClick={() => setShowSettings(true)}
+          title="Settings — MCP, plugins, skills, keybindings, commands"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+        </button>
       </div>
     </div>
   )
