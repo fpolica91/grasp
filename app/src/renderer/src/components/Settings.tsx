@@ -130,7 +130,11 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   <code>scripts/</code>) or a flat <code>.md</code>.
                 </p>
                 {props.skills.length === 0 ? (
-                  <div className="set-empty">No skills found in this project.</div>
+                  <div className="set-empty">
+                    No skills yet. grasp auto-seeds a few the first time it runs (<code>fuzz-diff</code>, <code>trace-flow</code>,
+                    <code>observe-change</code>, <code>skill-creator</code>) — the agent loads them via <code>use_skill</code>.
+                    Add your own as a directory with a <code>SKILL.md</code>.
+                  </div>
                 ) : (
                   <div className="set-skills">
                     {props.skills.map((s) => (
@@ -161,7 +165,11 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   External stdio tool servers the agent can call. Saved to <code>~/.grasp/mcp.json</code>; their tools appear on the next turn.
                 </p>
                 {Object.keys(props.mcpServers).length === 0 ? (
-                  <div className="set-empty">No MCP servers configured.</div>
+                  <div className="set-empty">
+                    No MCP servers configured. Add one above — e.g. command <code>npx</code>, args{' '}
+                    <code>-y @modelcontextprotocol/server-filesystem .</code> — or edit <code>~/.grasp/mcp.json</code>{' '}
+                    (use “reveal in files”).
+                  </div>
                 ) : (
                   <div className="set-skills">
                     {Object.entries(props.mcpServers).map(([name, s]) => (
@@ -204,7 +212,11 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   Distribution units that bundle skills (and optionally an MCP server). Install one from a git URL, or drop a dir in <code>~/.grasp/plugins/&lt;name&gt;/</code>.
                 </p>
                 {props.plugins.length === 0 ? (
-                  <div className="set-empty">No plugins installed.</div>
+                  <div className="set-empty">
+                    No plugins installed. Install one from a git URL above, or drop a directory in{' '}
+                    <code>~/.grasp/plugins/&lt;name&gt;/</code> with a <code>plugin.json</code> and a <code>skills/</code>{' '}
+                    folder. A plugin bundles skills (and optionally an MCP server).
+                  </div>
                 ) : (
                   <div className="set-skills">
                     {props.plugins.map((p) => (
