@@ -1,15 +1,13 @@
 // The integrated terminal pane. A real pty in the workspace, drawn with xterm — run
 // tests, dev servers, or `claude` here and read errors without leaving grasp. Mounted
 // once and kept alive (shown/hidden by the pane switch), so long-running processes
-// survive tab changes.
+// survive tab changes. Migrated to Tailwind v4.
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 
-// A dock of one or more terminals, split side-by-side (VSCode: "split terminal" adds one
-// to the right). "+" adds a split; each split closes independently; last one stays.
 export function TerminalDock({
   workspace,
   active,
@@ -24,17 +22,25 @@ export function TerminalDock({
   const split = (): void => setTerms((t) => [...t, `term-${nextId.current++}`])
   const closeTerm = (id: string): void => setTerms((t) => (t.length > 1 ? t.filter((x) => x !== id) : t))
   return (
-    <div className="term-dock">
-      <div className="panebar">
-        <button className="on">Terminal</button>
-        <button className="term-split" onClick={split} title="Split terminal">
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center gap-0.5 border-b border-border bg-panel px-3 pt-1.5">
+        <button className="border-b-2 border-foreground px-3 pb-1.5 text-[13px] font-medium text-foreground">Terminal</button>
+        <button
+          className="flex size-6 items-center justify-center rounded-md text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+          onClick={split}
+          title="Split terminal"
+        >
           ＋
         </button>
-        <button className="dock-toggle" onClick={onCloseDock} title="Hide terminal (⌃`)">
+        <button
+          className="ml-auto flex size-6 items-center justify-center rounded-md text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+          onClick={onCloseDock}
+          title="Hide terminal (⌃`)"
+        >
           ✕
         </button>
       </div>
-      <div className="term-splits">
+      <div className="min-h-0 flex-1">
         <PanelGroup direction="horizontal" autoSaveId="grasp-terms">
           {terms.map((id, i) => (
             <PanelFragment key={id} id={id} first={i === 0} multi={terms.length > 1}>
@@ -48,10 +54,7 @@ export function TerminalDock({
 }
 
 function PanelFragment({
-  id,
-  first,
-  multi,
-  children
+  id, first, multi, children
 }: {
   id: string
   first: boolean
@@ -60,8 +63,8 @@ function PanelFragment({
 }): React.JSX.Element {
   return (
     <>
-      {!first && <PanelResizeHandle className="rh rh-v" />}
-      <Panel minSize={15} className={`term-split-panel${multi ? ' multi' : ''}`} id={id} order={first ? 0 : 1}>
+      {!first && <PanelResizeHandle className="w-px shrink-0 bg-border" />}
+      <Panel minSize={15} className="relative h-full" id={id} order={first ? 0 : 1}>
         {children}
       </Panel>
     </>
@@ -69,10 +72,7 @@ function PanelFragment({
 }
 
 export function TerminalPane({
-  id,
-  workspace,
-  active,
-  onClose
+  id, workspace, active, onClose
 }: {
   id: string
   workspace: string
@@ -85,21 +85,19 @@ export function TerminalPane({
 
   useEffect(() => {
     const host = hostRef.current
-    // Wait for the resolved workspace so we don't spawn a throwaway pty in the app dir
-    // first (which would leave a stale "[process exited]" prompt).
     if (!host || !workspace) return
     const term = new XTerm({
-      fontFamily: "'Geist Mono', ui-monospace, monospace",
+      fontFamily: 'ui-monospace, monospace',
       fontSize: 12.5,
       cursorBlink: true,
       allowProposedApi: true,
       theme: {
-        background: '#0e1116',
-        foreground: '#e9edf4',
-        cursor: '#5b93ff',
-        selectionBackground: '#2c477a',
-        black: '#151922', red: '#e6738a', green: '#7fb98a', yellow: '#e8b160',
-        blue: '#5b93ff', magenta: '#b48ce6', cyan: '#5bb4c4', white: '#a2adbf'
+        background: '#161616',
+        foreground: '#d4d4d4',
+        cursor: '#ffffff',
+        selectionBackground: '#ffffff26',
+        black: '#161616', red: '#ff5c5c', green: '#7fb98a', yellow: '#e8b160',
+        blue: '#cca46a', magenta: '#b48ce6', cyan: '#5bb4c4', white: '#d4d4d4'
       }
     })
     const fit = new FitAddon()
@@ -107,27 +105,14 @@ export function TerminalPane({
     term.open(host)
     termRef.current = term
     fitRef.current = fit
-    try {
-      fit.fit()
-    } catch {
-      /* container not sized yet */
-    }
+    try { fit.fit() } catch { /* */ }
     window.grasp.termCreate(id, workspace || '.', term.cols, term.rows)
-    const offData = window.grasp.onTermData((tid, data) => {
-      if (tid === id) term.write(data)
-    })
-    const offExit = window.grasp.onTermExit((tid) => {
-      if (tid === id) term.write('\r\n\x1b[2m[process exited]\x1b[0m\r\n')
-    })
+    const offData = window.grasp.onTermData((tid, data) => { if (tid === id) term.write(data) })
+    const offExit = window.grasp.onTermExit((tid) => { if (tid === id) term.write('\r\n\x1b[2m[process exited]\x1b[0m\r\n') })
     term.onData((d) => window.grasp.termWrite(id, d))
 
     const ro = new ResizeObserver(() => {
-      try {
-        fit.fit()
-        window.grasp.termResize(id, term.cols, term.rows)
-      } catch {
-        /* ignore transient sizing */
-      }
+      try { fit.fit(); window.grasp.termResize(id, term.cols, term.rows) } catch { /* */ }
     })
     ro.observe(host)
 
@@ -140,7 +125,6 @@ export function TerminalPane({
     }
   }, [id, workspace])
 
-  // Re-fit and focus when the pane becomes visible (xterm can't measure while hidden).
   useEffect(() => {
     if (!active) return
     const t = setTimeout(() => {
@@ -148,21 +132,23 @@ export function TerminalPane({
         fitRef.current?.fit()
         if (termRef.current) window.grasp.termResize(id, termRef.current.cols, termRef.current.rows)
         termRef.current?.focus()
-      } catch {
-        /* ignore */
-      }
+      } catch { /* */ }
     }, 30)
     return () => clearTimeout(t)
   }, [active, id])
 
   return (
-    <div className="term-wrap">
+    <div className="relative h-full p-1">
       {onClose && (
-        <button className="term-close" onClick={onClose} title="Close this terminal">
+        <button
+          className="absolute right-1 top-1 z-10 flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive [.term-wrap:hover_&]:opacity-100"
+          onClick={onClose}
+          title="Close this terminal"
+        >
           ✕
         </button>
       )}
-      <div className="term-host" ref={hostRef} />
+      <div className="h-full w-full" ref={hostRef} />
     </div>
   )
 }
