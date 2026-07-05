@@ -89,9 +89,13 @@ export function App(): React.JSX.Element {
     if (!p) return
     p.isCollapsed() ? p.expand() : p.collapse()
   }
-  // When the agent surfaces dataflow, flip the right pane to Flow so it's seen.
+  // When the agent surfaces a Flow/trace, flip the right pane to Flow AND expand it if the
+  // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
   useEffect(() => {
-    if (surface) setRightTab('flow')
+    if (!surface) return
+    setRightTab('flow')
+    const p = rightRef.current
+    if (p?.isCollapsed()) p.expand()
   }, [surface])
 
   // Keybindings — driven by ~/.grasp/keybindings.json (loaded from the main process). Chord
@@ -742,7 +746,10 @@ export function App(): React.JSX.Element {
             {t === 'editor' ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 3v18M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
             ) : t === 'flow' ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
+                {surface && rightCollapsed && <span className="act-badge" title="new Flow — click to view" />}
+              </>
             ) : (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" strokeWidth="1.5" /></svg>
             )}
