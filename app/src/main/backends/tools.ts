@@ -167,6 +167,15 @@ export function clearMcpCache(): void {
   mcpCache.clear()
 }
 
+// Per-server health: did each configured MCP server start, and how many tools did it expose?
+// Forces a start if none has happened yet this session.
+export async function mcpStatus(
+  workspace: string
+): Promise<{ name: string; ok: boolean; error?: string; toolCount: number }[]> {
+  const reg = await mcpRegistry(workspace)
+  return reg.status
+}
+
 export const TOOLS: Tool[] = [
   {
     name: 'read_file',

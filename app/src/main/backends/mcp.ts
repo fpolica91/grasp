@@ -56,6 +56,26 @@ export function saveMcpServer(name: string, cfg: McpServerConfig): void {
   }
 }
 
+// Remove a server from the USER config (~/.grasp/mcp.json). Returns false if it wasn't there.
+export function deleteMcpServer(name: string): boolean {
+  const p = userConfigPath()
+  if (!existsSync(p)) return false
+  let doc: { mcpServers?: Record<string, McpServerConfig> }
+  try {
+    doc = JSON.parse(readFileSync(p, 'utf-8'))
+  } catch {
+    return false
+  }
+  if (!doc.mcpServers || !(name in doc.mcpServers)) return false
+  delete doc.mcpServers[name]
+  try {
+    writeFileSync(p, JSON.stringify(doc, null, 2))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function loadMcpConfig(workspace: string): McpConfig {
   const merged: McpConfig = {}
   for (const p of [userConfigPath(), projectConfigPath(workspace)]) {
@@ -208,10 +228,18 @@ class McpConnection {
 
 // All configured MCP servers for a workspace. Start once, merge `.tools` into the agent's
 // tool registry, and route calls by tool name to the owning connection.
+export interface McpServerStatus {
+  name: string
+  ok: boolean
+  error?: string
+  toolCount: number
+}
+
 export class McpRegistry {
   private conns: McpConnection[] = []
   private route = new Map<string, McpConnection>()
   readonly tools: McpTool[] = []
+  readonly status: McpServerStatus[] = []
 
   async start(workspace: string): Promise<{ ok: boolean; errors: string[] }> {
     const cfg = loadMcpConfig(workspace)
@@ -223,12 +251,17 @@ export class McpRegistry {
       try {
         const tools = await c.start()
         this.conns.push(c)
+        let count = 0
         for (const t of tools) {
           this.tools.push(t)
           this.route.set(t.name, c)
+          count++
         }
+        this.status.push({ name, ok: true, toolCount: count })
       } catch (e) {
-        errors.push(`${name}: ${e instanceof Error ? e.message : String(e)}`)
+        const msg = e instanceof Error ? e.message : String(e)
+        errors.push(`${name}: ${msg}`)
+        this.status.push({ name, ok: false, error: msg, toolCount: 0 })
       }
     }
     return { ok: errors.length === 0, errors }
@@ -253,5 +286,6 @@ export class McpRegistry {
     this.conns = []
     this.route.clear()
     ;(this.tools as McpTool[]).length = 0
+    ;(this.status as McpServerStatus[]).length = 0
   }
 }

@@ -23,8 +23,8 @@ import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession, forkSession, renameSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
-import { flowNow, clearMcpCache } from './backends/tools'
-import { loadMcpConfig, saveMcpServer } from './backends/mcp'
+import { flowNow, clearMcpCache, mcpStatus } from './backends/tools'
+import { loadMcpConfig, saveMcpServer, deleteMcpServer } from './backends/mcp'
 import { listPlugins, installPlugin, uninstallPlugin } from './plugins'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
 import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
@@ -84,11 +84,32 @@ app.whenReady().then(() => {
     clearMcpCache()
     return r
   })
-  ipcMain.handle('grasp:saveMcpServer', (_e, name: string, command: string, args: string) => {
-    const cfg = { command, ...(args.trim() ? { args: args.trim().split(/\s+/) } : {}) }
+  ipcMain.handle('grasp:saveMcpServer', (_e, name: string, command: string, args: string, env: string) => {
+    // quoted-aware tokenizer so an arg with spaces survives: -y "foo bar" -> ['-y','foo bar']
+    const toks = (s: string): string[] => {
+      const out: string[] = []
+      for (const m of s.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)) out.push((m[1] ?? m[2] ?? m[3] ?? '').trim())
+      return out.filter(Boolean)
+    }
+    const envObj: Record<string, string> = {}
+    for (const line of (env || '').split('\n')) {
+      const i = line.indexOf('=')
+      if (i > 0) envObj[line.slice(0, i).trim()] = line.slice(i + 1)
+    }
+    const cfg = {
+      command,
+      ...(toks(args).length ? { args: toks(args) } : {}),
+      ...(Object.keys(envObj).length ? { env: envObj } : {})
+    }
     saveMcpServer(name, cfg)
     clearMcpCache()
   })
+  ipcMain.handle('grasp:deleteMcpServer', (_e, name: string) => {
+    const r = deleteMcpServer(name)
+    clearMcpCache()
+    return r
+  })
+  ipcMain.handle('grasp:mcpStatus', (_e, workspace: string) => mcpStatus(workspace))
   ipcMain.handle('grasp:projects', () => listProjects())
   ipcMain.handle('grasp:openFolder', () => openFolder())
   // Reveal a ~/.grasp surface in the OS file manager. skills/plugins/commands open as dirs;

@@ -74,13 +74,18 @@ function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: s
   )
 }
 
-export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; onClose: () => void }): React.JSX.Element {
+export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
   const [section, setSection] = useState<Section>('keys')
   const [mcpName, setMcpName] = useState('')
   const [mcpCmd, setMcpCmd] = useState('')
   const [mcpArgs, setMcpArgs] = useState('')
+  const [mcpEnv, setMcpEnv] = useState('')
+  const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])
   const [pluginUrl, setPluginUrl] = useState('')
   const [pluginMsg, setPluginMsg] = useState('')
+  useEffect(() => {
+    if (section === 'mcp' && props.workspace) void window.grasp.mcpStatus(props.workspace).then(setMcpStatusList)
+  }, [section, props.workspace, props.mcpServers])
   return (
     <div className="gate-overlay" onClick={props.onClose}>
       <div className="gate settings" onClick={(e) => e.stopPropagation()}>
@@ -174,31 +179,54 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   </div>
                 ) : (
                   <div className="set-skills">
-                    {Object.entries(props.mcpServers).map(([name, s]) => (
-                      <div className="set-skill" key={name}>
-                        <div className="set-skill-head">
-                          <span className="set-skill-name">{name}</span>
-                          <span className="set-skill-src user">mcp</span>
+                    {Object.entries(props.mcpServers).map(([name, s]) => {
+                      const st = mcpStatusList.find((x) => x.name === name)
+                      return (
+                        <div className="set-skill" key={name}>
+                          <div className="set-skill-head">
+                            <span className="set-skill-name">{name}</span>
+                            <span className={`set-skill-src user${st?.ok === false ? ' err' : ''}`}>
+                              {st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}
+                            </span>
+                            <button
+                              className="si-del"
+                              title="Remove"
+                              onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="set-skill-desc">
+                            <code>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
+                            {s.env && <span className="set-tag">{Object.keys(s.env).length} env</span>}
+                            {st?.error && <div className="set-mcp-err">{st.error}</div>}
+                          </div>
                         </div>
-                        <div className="set-skill-desc">
-                          <code>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
                 <div className="set-mcp-add">
                   <input className="mcp-name" placeholder="name" value={mcpName} onChange={(e) => setMcpName(e.target.value)} spellCheck={false} />
                   <input className="mcp-cmd" placeholder="command (e.g. npx)" value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} spellCheck={false} />
-                  <input className="mcp-args" placeholder="args" value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
+                  <input className="mcp-args" placeholder={'args (quote to keep spaces: "foo bar")'} value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
+                  <textarea
+                    className="mcp-env"
+                    placeholder="env: KEY=VALUE per line (optional)"
+                    value={mcpEnv}
+                    onChange={(e) => setMcpEnv(e.target.value)}
+                    rows={1}
+                    spellCheck={false}
+                  />
                   <button
                     className="btn sm primary"
                     disabled={!mcpName.trim() || !mcpCmd.trim()}
                     onClick={() => {
-                      void window.grasp.saveMcpServer(mcpName.trim(), mcpCmd.trim(), mcpArgs).then(props.onMcpChanged)
+                      void window.grasp.saveMcpServer(mcpName.trim(), mcpCmd.trim(), mcpArgs, mcpEnv).then(props.onMcpChanged)
                       setMcpName('')
                       setMcpCmd('')
                       setMcpArgs('')
+                      setMcpEnv('')
                     }}
                   >
                     Add

@@ -632,6 +632,9 @@ input, textarea { font-family: inherit; }
 .set-mcp-add { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .set-mcp-add input { flex: 1 1 0; min-width: 80px; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12.5px; }
 .set-mcp-add .mcp-name { flex: 0 0 110px; }
+.set-mcp-add .mcp-env { flex: 1 1 100%; min-width: 0; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface-2); color: var(--ink); font-size: 12px; font-family: var(--mono); resize: none; }
+.set-skill-src.err { color: #e06c75; border-color: #e06c75; }
+.set-mcp-err { margin-top: 4px; font-size: 11.5px; color: #e06c75; font-family: var(--mono); line-height: 1.4; }
 .set-empty { font-size: 13px; color: var(--muted); padding: 6px 2px; }
 .set-note code, .set-skill-desc code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-3, transparent); padding: 0 3px; border-radius: 3px; }
 .theme-row .tlabel { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-right: auto; font-weight: 600; }
