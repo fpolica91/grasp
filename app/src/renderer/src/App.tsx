@@ -308,9 +308,11 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     if (busy || transcript.length === 0) return
     const firstUser = transcript.find((t) => t.role === 'user')
+    const existing = sessions.find((s) => s.id === sessionId)
     const rec: SessionRecord = {
       id: sessionId,
-      title: (firstUser?.text ?? 'Session').slice(0, 44),
+      title: existing?.titleUserSet ? existing.title : (firstUser?.text ?? 'Session').slice(0, 44),
+      titleUserSet: existing?.titleUserSet ?? false,
       updatedAt: Date.now(),
       backend,
       model,
@@ -347,6 +349,11 @@ export function App(): React.JSX.Element {
         const fork = ss.find((x) => x.id === newId)
         if (fork) applySession(fork) // switch straight into the fork
       })
+    })
+  }
+  function renameSessionById(id: string, title: string): void {
+    void window.grasp.renameSession(id, title).then(() => {
+      setSessions((ss) => ss.map((s) => (s.id === id ? { ...s, title, titleUserSet: true } : s)))
     })
   }
 
@@ -561,6 +568,7 @@ export function App(): React.JSX.Element {
           activeSession={sessionId}
           onSelectSession={loadSession}
           onForkSession={forkSessionById}
+          onRenameSession={renameSessionById}
           onDeleteSession={deleteSessionById}
           workflows={workflows.map((w) => ({
             id: w.id,

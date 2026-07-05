@@ -236,6 +236,7 @@ export interface SessionRecord {
   transcript: unknown[]
   history: unknown[]
   parentId?: string // provenance: the session this was forked from
+  titleUserSet?: boolean // true once the user renamed it -> autosave keeps the title
 }
 
 export interface SlashCommand {
@@ -260,6 +261,7 @@ export interface GraspApi {
   saveSession(rec: SessionRecord): Promise<void>
   deleteSession(id: string): Promise<void>
   forkSession(id: string): Promise<string> // returns the new session id, or '' if not found
+  renameSession(id: string, title: string): Promise<void>
   approve(id: string, ok: boolean): Promise<void>
   flowNow(workspace: string): Promise<{ ok: boolean; error?: string }>
   stopAgent(): Promise<void>

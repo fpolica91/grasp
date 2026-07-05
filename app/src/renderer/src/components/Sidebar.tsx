@@ -1,5 +1,6 @@
 // The left rail — makes grasp a product, not a two-pane debug tool. Wordmark, new
 // session, sessions, the active project, and the theme scheme.
+import { useState } from 'react'
 import { ProjectSwitcher } from './ProjectSwitcher'
 
 export type Theme = 'graphite' | 'carbon' | 'daylight'
@@ -32,6 +33,7 @@ export function Sidebar(props: {
   activeSession: string
   onSelectSession: (id: string) => void
   onForkSession: (id: string) => void
+  onRenameSession: (id: string, title: string) => void
   onDeleteSession: (id: string) => void
   workflows: { id: string; title: string; status: string; done: number; total: number }[]
   activeWorkflow: string | null
@@ -43,6 +45,13 @@ export function Sidebar(props: {
   theme: Theme
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const commitRename = (id: string): void => {
+    const t = draft.trim()
+    setEditing(null)
+    if (t) props.onRenameSession(id, t)
+  }
   return (
     <nav className="sidebar">
       <div className="brand">
@@ -76,27 +85,55 @@ export function Sidebar(props: {
             onClick={() => props.onSelectSession(s.id)}
             title={s.title}
           >
-            <span className="si-title">{s.title}</span>
-            <button
-              className="si-fork"
-              title="Fork — branch this session"
-              onClick={(e) => {
-                e.stopPropagation()
-                props.onForkSession(s.id)
-              }}
-            >
-              ⎇
-            </button>
-            <button
-              className="si-del"
-              title="Delete chat"
-              onClick={(e) => {
-                e.stopPropagation()
-                props.onDeleteSession(s.id)
-              }}
-            >
-              ✕
-            </button>
+            {editing === s.id ? (
+              <input
+                className="si-rename"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename(s.id)
+                  else if (e.key === 'Escape') setEditing(null)
+                }}
+                onBlur={() => commitRename(s.id)}
+                autoFocus
+              />
+            ) : (
+              <>
+                <span className="si-title">{s.title}</span>
+                <button
+                  className="si-fork"
+                  title="Rename"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditing(s.id)
+                    setDraft(s.title)
+                  }}
+                >
+                  ✎
+                </button>
+                <button
+                  className="si-fork"
+                  title="Fork — branch this session"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    props.onForkSession(s.id)
+                  }}
+                >
+                  ⎇
+                </button>
+                <button
+                  className="si-del"
+                  title="Delete chat"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    props.onDeleteSession(s.id)
+                  }}
+                >
+                  ✕
+                </button>
+              </>
+            )}
           </div>
         ))}
       </div>

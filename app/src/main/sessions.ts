@@ -52,3 +52,15 @@ export function forkSession(id: string): string {
   saveSession(fork)
   return fork.id
 }
+
+// Rename a session; marks titleUserSet so the autosave keeps the user's title instead of
+// re-deriving it from the first message.
+export function renameSession(id: string, title: string): void {
+  const all = readAll()
+  const s = all.find((x) => x.id === id)
+  if (!s) return
+  s.title = title.trim().slice(0, 120) || s.title
+  s.titleUserSet = true
+  s.updatedAt = Date.now()
+  writeAll(all)
+}

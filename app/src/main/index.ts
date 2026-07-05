@@ -20,7 +20,7 @@ import { chat } from './model'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent } from './agent'
 import { hasKey, setKey } from './vault'
-import { listSessions, saveSession, deleteSession, forkSession } from './sessions'
+import { listSessions, saveSession, deleteSession, forkSession, renameSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval } from './approvals'
 import { flowNow, clearMcpCache } from './backends/tools'
@@ -111,6 +111,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:saveSession', (_e, rec: SessionRecord) => saveSession(rec))
   ipcMain.handle('grasp:deleteSession', (_e, id: string) => deleteSession(id))
   ipcMain.handle('grasp:forkSession', (_e, id: string) => forkSession(id))
+  ipcMain.handle('grasp:renameSession', (_e, id: string, title: string) => renameSession(id, title))
   ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
   ipcMain.handle('grasp:stopAgent', () => stopAgent())
   ipcMain.handle('grasp:flowNow', (e, workspace: string) =>
