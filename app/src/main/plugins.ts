@@ -23,6 +23,21 @@ export interface Plugin {
 const userPluginsDir = (): string => join(homedir(), '.grasp', 'plugins')
 const projectPluginsDir = (workspace: string): string => join(workspace || '.', '.grasp', 'plugins')
 
+type PluginMcpServer = { command: string; args?: string[]; env?: Record<string, string> }
+
+// Read a plugin's bundled MCP servers (.mcp.json: {mcpServers:{...}} or flat). null if none/invalid.
+function readPluginMcpServers(pdir: string): Record<string, PluginMcpServer> | null {
+  const mcpFile = join(pdir, '.mcp.json')
+  if (!existsSync(mcpFile)) return null
+  try {
+    const c = JSON.parse(readFileSync(mcpFile, 'utf-8'))
+    const servers = c?.mcpServers ?? c
+    return servers && typeof servers === 'object' ? (servers as Record<string, PluginMcpServer>) : null
+  } catch {
+    return null
+  }
+}
+
 function readPluginsDir(dir: string, source: 'user' | 'project'): Plugin[] {
   if (!existsSync(dir)) return []
   const out: Plugin[] = []
@@ -41,18 +56,15 @@ function readPluginsDir(dir: string, source: 'user' | 'project'): Plugin[] {
         /* malformed manifest -> fall back to dir name */
       }
     }
-    let mcpCount = 0
-    const mcpFile = join(pdir, '.mcp.json')
-    if (existsSync(mcpFile)) {
-      try {
-        const c = JSON.parse(readFileSync(mcpFile, 'utf-8'))
-        const servers = c?.mcpServers ?? c
-        mcpCount = servers && typeof servers === 'object' ? Object.keys(servers).length : 0
-      } catch {
-        /* malformed -> 0 */
-      }
-    }
-    out.push({ name, description, source, hasSkills: existsSync(join(pdir, 'skills')), mcpCount, dir: pdir })
+    const mcpServers = readPluginMcpServers(pdir)
+    out.push({
+      name,
+      description,
+      source,
+      hasSkills: existsSync(join(pdir, 'skills')),
+      mcpCount: mcpServers ? Object.keys(mcpServers).length : 0,
+      dir: pdir
+    })
   }
   return out
 }
@@ -72,4 +84,14 @@ export function pluginSkillRoots(workspace: string): string[] {
   return listPlugins(workspace)
     .filter((p) => p.hasSkills)
     .map((p) => join(p.dir, 'skills'))
+}
+
+// Each plugin's bundled MCP servers (for mcp.ts to merge into the MCP config). The consumer
+// namespaces keys as `<plugin>__<server>` to avoid collisions across plugins and user config.
+export function pluginMcpConfigs(workspace: string): { name: string; dir: string; servers: Record<string, PluginMcpServer> }[] {
+  return listPlugins(workspace)
+    .map((p) => ({ name: p.name, dir: p.dir, servers: readPluginMcpServers(p.dir) }))
+    .filter(
+      (p): p is { name: string; dir: string; servers: Record<string, PluginMcpServer> } => p.servers !== null
+    )
 }

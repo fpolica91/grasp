@@ -4,156 +4,140 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What grasp is
 
-grasp is **the post-editor**: a review surface for a world where an agent writes the code
-and the human owns what it *means*. Instead of showing a text diff (which tokens moved),
-grasp **runs the change for real**, renders the **observed dataflow** — how data enters,
-what happens now, and what happened before (the A→B) — and ends in a neutral question
-(*"is this what you expected?"*), never a verdict.
+grasp is **the post-editor**: a desktop review surface for a world where an agent writes the code
+and the human owns what it *means*. Instead of a text diff (which tokens moved), grasp shows the
+**observed dataflow** — the real call tree, the actual values, and the A→B behavioral change of an
+edit — and ends in a neutral question (*"— intended?"*), **never a verdict**.
 
-**Read [`docs/thesis.md`](docs/thesis.md) before touching anything.** It is the anti-drift
-north star. The whole codebase is built around its rules; violating them silently breaks
-the product's reason to exist.
+**Read [`docs/thesis.md`](docs/thesis.md) before any non-trivial change.** It is the anti-drift
+north star; the moat below is its operational form.
 
-## The moat — non-negotiable (enforced in code + tests)
+## The one architectural idea (read this first)
 
-These are not style preferences. They are the product, and several are pinned by failing tests:
+> **grasp executes nothing. grasp = UI + nodes + skill. The agent is the compiler.**
 
-1. **Observed, never guessed.** Every value shown is measured from a real execution or labelled
-   `declared`/`unknown` (human-supplied). `Operand(provenance="guessed")` **raises** (`engine/dreplay/flow.py`).
-   **The engine must never be an LLM in a trenchcoat** — if the agent generates the flow, the flow is a guess
-   and the thesis is dead.
-2. **Facts, not verdicts.** Output ends in a neutral open question, never bug/risk/safe/pass/broken/wrong/fail/danger/insecure.
-   Pinned by `engine/tests/test_flow_conformance.py` over both the JSON contract and the HTML render — a beautiful
-   UI must not become a better liar.
-3. **The line: skills orchestrate, code observes.** The agent decides *when/what* to trace; it never drives the
-   observation itself.
-4. **No phantom change.** A diff against a side that could not be observed is refused (`ok:false`), never surfaced as fake behavior (`engine/dreplay/skill.py:diff`).
-5. **Visual discipline (the graph trap).** Unexercised paths are *visibly ghosted*, never omitted. `observed`
-   operands are visually distinct from `declared`/`unknown`. Nothing is ever green/red/✓/⚠ — the terminal state
-   is a **question node**. When you touch any renderer (Flow/Dataflow), enforce the moat in the visual language.
+This is the load-bearing decision, and it was reached the hard way (see git history: an earlier
+design shipped per-language tracers *inside the app* and it did not scale — one new library needed
+three tracer patches and still produced noise). So grasp core supplies exactly three things:
 
-## Architecture — organ, surface, and the agent seam
+1. **The nodes** — the **Trace protocol** (`app/src/shared/trace.ts`): a `TraceDoc` is a real call
+   tree of frames (args → calls → return/threw + source line + timing). `validateTrace` rejects
+   malformed submissions; a tooling failure is the `unobservable` field, **never a fabricated frame**.
+2. **The UI** — `app/src/renderer/src/components/FlowView.tsx` renders a `TraceDoc` as an interactive
+   call tree, an A→B `TraceDiff`, and a differential `FuzzDiff`. It collapses frames the agent marks
+   `meaningful:false` — **grasp hardcodes no classifier; the agent supplies the meaning.**
+3. **The skill** — `trace-flow` / `fuzz-diff` (seeded from `app/src/main/skills.ts`): the agent's
+   playbook. It reads the repo (README/AGENTS.md/CLAUDE.md), installs deps, runs the real entrypoint,
+   captures the flow, and **submits nodes**. grasp validates and renders.
 
-```
-engine/   the ORGAN (Python). Real execution tracer → observed dataflow graph + A→B diff + fuzz.
-          The one thing the agent cannot fake. The `dreplay` package.
-app/      the SURFACE + shell (Electron + React + TS). Drives a real tool-use agent over a pluggable
-          backend seam, with first-class observe/diff/fuzz/trace tools. Owned source.
-graph/    standalone rendered graph examples (HTML/JSON) — what the engine's --html emits.
-skills/   grasp packaged as a skill (`observe-flow/`) — an alternate distribution.
-docs/     thesis.md (the north star).
-```
+The agent surfaces a flow through three pure, no-execution tools (`app/src/main/backends/tools.ts`):
+`grasp_flow` (submit one `TraceDoc`), `grasp_flow_diff` (submit old+new for the A→B change), and
+`grasp_fuzz_diff` (submit a `cases_file` of `{input, old, new}` — grasp diffs each pair and surfaces
+only the inputs where behavior diverged). Large traces are passed by **file path**, not inline.
 
-**The seams to keep in sync:**
-- `app/src/main/engine.ts` shells `python -m dreplay.skill observe|diff` and parses its JSON graph contract.
-- `app/src/shared/types.ts` (`GraphModel`/`GraphDiffModel`/`FuzzReport`/`AgentEvent`/`GraspApi`) mirrors
-  `engine/dreplay/flow_graph.py`. **Change one side's shape, change the other.**
+**Consequence to protect:** a new codebase must cost **zero** grasp changes. If you find yourself
+editing a tracer to make a repo work, that is the smell that the architecture broke — the agent
+absorbs that variation. Reference tracers (`app/resources/tracers/{py_trace.py,js_trace,go_trace}`)
+are **skill assets** seeded to `~/.grasp/skills/tracers` for the agent to run and *adapt* — grasp
+never spawns them.
 
-> ⚠️ **`README.md` and `docs/thesis.md` are partially stale.** They describe a `shell/` (ZCode chassis)
-> and state "grasp is not an app." The actual direction is **`app/`** — a from-scratch Electron app.
-> Trust the code; the docs describe the original plan.
+### Legacy that still exists on disk (do not be misled)
 
-### engine/ — `dreplay` package
-- `flow.py` — the flow **model** + the provenance guard (principle #1). `observe_flow(...)` is the entry.
-- `instrument.py` — the `sys.settrace` tracer (the irreducible core, Python).
-- `flow_diff.py` — behavioral A→B diff. `skill.diff` calls `align_and_diff`.
-- `flow_fuzz.py` — input variation. Python only, walled by default.
-- `flow_graph.py` — the graph data contract + HTML render consumed by `app/` and `graph/`.
-- `skill.py` — the **agent-callable shim** (`python -m dreplay.skill observe|diff|fuzz`).
-- `adapter/` — Go / C++ / C# / Java / JS / TS adapters (toolchain tests self-skip when the compiler is absent).
-- Console scripts (`pyproject.toml`): `dreplay` (old differ CLI), `dreplay-flow` (`flow_cli:main`).
+- **`engine/`** — the retired Python `dreplay` flow engine. It is **off the app path**; grasp no
+  longer shells it. Only `app/src/main/engine.ts` (imported by `index.ts` for two vestigial IPC
+  handlers behind the old `DataflowGraph.tsx`/`DataflowDiff.tsx`/`FuzzView.tsx` components and the
+  `dataflow`/`dataflow_diff`/`fuzz` events) still references it. The **live** path is Trace-based
+  (`FlowView`, `trace`/`trace_diff`/`fuzz_diff` events). When in doubt, follow the Trace path.
 
-### app/ — Electron + React + TS, three build targets (main / preload / renderer)
+## The moat — non-negotiable (the product, not style)
 
-**The agent seam (the big picture):** grasp is agent-agnostic. `AgentBackend`
-(`app/src/main/backends/types.ts`) is a tiny contract — `run(turn, emit)` streams `AgentEvent`s
-and returns the conversation state — implemented three ways:
-- `backends/glm.ts` — GLM on the Anthropic Messages wire (the default; `GRASP_MODEL` default `glm-5.2`).
-- `backends/openai.ts` — any OpenAI-compatible chat-completions endpoint (`GRASP_OPENAI_BASE`).
-- `backends/claude.ts` — the Claude Code CLI (brings its own tools; shares `liveSurface` only).
+1. **Observed, never guessed.** Every value is measured from a real run the agent captured, or
+   absent. `validateTrace` refuses malformed traces; `status:"unobservable"` (with a reason) is the
+   *only* place a tooling failure appears. Never let the agent's prose become the flow — the nodes
+   are ground truth, the chat is not.
+2. **Facts, not verdicts.** Output ends in a neutral question. Never bug/risk/safe/pass/broken/fail.
+   A behavior-preserving edit reads *"same flow — not a pass"*; a fuzz sweep reads *"K diverged out
+   of N"*, **never "safe"**. A prettier UI must not become a better liar.
+3. **Legible by default.** A 400-frame library dump is a failure. The agent marks plumbing
+   `meaningful:false`; `FlowView` collapses it with a "show N plumbing frames" toggle. The reader
+   must see *their* logic first.
+4. **A single input proves nothing.** This is why `grasp_fuzz_diff` exists: a bug that only breaks
+   inputs you didn't try reads as "same flow" on the one input you picked. The honest A→B answer
+   varies the input space (`buildFuzzDiff` computes divergence from the real traces — it does not
+   trust an agent's "diverged" claim).
+5. **No phantom change.** A diff/fuzz against a side that could not be observed is dropped, never
+   surfaced as fake behavior.
 
-`main/agent.ts` is now a **thin dispatcher**: picks the backend, runs pre/post-turn git checkpoints
-(`checkpoint.ts` — keeps HEAD = "state before this turn" so the A→B diff always has a baseline),
-and owns the user stop signal (`stopAgent()`). `MAX_STEPS = 40`.
+When you touch any renderer or tool, enforce these in the code — several are structural (the
+`unobservable` field, the `meaningful` flag, the scope string), not just prose.
 
-**The tool registry** (`backends/tools.ts`, shared by glm + openai): file/shell (`read_file`,
-`write_file`, `edit_file` [targeted edit with a stale-guard], `notebook_edit`, `list_dir`, `run_bash`),
-the **organ** (`grasp_observe` / `grasp_diff` / `grasp_fuzz` — shell the Python engine and surface
-observed dataflow), `use_skill`, `task` (depth-1 subagent), and `TodoWrite`/`TodoRead`. The `SYSTEM`
-prompt enforces the moat (the agent must verify via observe/diff, never an ad-hoc bash harness).
-`MUTATING_TOOLS` drives both ask-mode approval (`approvals.ts`) **and** the live re-observe trigger
-— every code mutation re-runs the observed dataflow rail. `withProjectContext(workspace, base)`
-appends the workspace's `CLAUDE.md`/`AGENTS.md` to the system prompt (kept separate from the moat
-SYSTEM so project text can never override it).
+## The agent seam (`app/src/main/`)
 
-**SSE streaming:** `backends/sse.ts` is a shared SSE parser; `glm.ts` + `openai.ts` send `stream:true`
-and reassemble the events (Anthropic 7-event / OpenAI delta) back into the same content/usage shape,
-forwarding `text_delta` to the UI as it's written. **GLM quirk:** the real `input_tokens` arrive in
-`message_delta.usage` (the `message_start` usage is a zero placeholder) — captured there.
+grasp is agent-agnostic. `AgentBackend` (`backends/types.ts`) is a tiny contract — `run(turn, emit)`
+streams `AgentEvent`s — implemented three ways:
+- `backends/glm.ts` — GLM on the Anthropic Messages wire (default; `GRASP_MODEL` default `glm-5.2`).
+- `backends/openai.ts` — any OpenAI-compatible chat-completions endpoint.
+- `backends/claude.ts` — the Claude Code CLI (brings its own tools).
 
-**Flow rebuild — IN PROGRESS (parts 1–2 of 4).** A new trace-native Flow is being built alongside the
-engine-based one:
-- `shared/trace.ts` — **Trace protocol v1** (`TraceDoc`: a real call tree of frames with args/ret/threw/durMs;
-  honesty via `validateTrace`; a tooling failure is the `unobservable` field, never a fake frame).
-- `main/tracer.ts` — shells a native tracer (`resources/tracers/py_trace.py`, Python via `settrace`;
-  JS/TS via the V8 inspector is step 4). ⚠️ **`resources/tracers/py_trace.py` is NOT yet committed** —
-  until it is, `grasp_trace` on Python returns `unobservable: tracer not found`.
-- `grasp_trace` tool + `{type:'trace'}` event + `components/FlowView.tsx` (interactive call-tree) + a
-  `traces[]` run history.
-- The A→B `TraceDiff` type exists but is "computed in the app" — **not yet wired**.
-This coexists with the engine-based `DataflowGraph` / `DataflowDiff` / `FuzzView`. Don't assume the
-old flow is the only flow.
+`agent.ts` is a thin dispatcher: picks the backend, runs pre/post-turn git checkpoints
+(`checkpoint.ts` — commits the workspace as a normal, visibly-labeled `grasp:` commit so HEAD =
+"state before this turn" and an A→B diff always has a baseline; these commits are real, so they show
+in the user's log), owns the stop signal (`stopAgent()`), `MAX_STEPS = 40`. `tools.ts` holds the shared registry (file/shell tools + the three `grasp_*` submit
+tools + `task` subagent + `TodoWrite`); its `SYSTEM` prompt encodes the moat (verify via
+`grasp_flow*`, never an ad-hoc `run_bash` harness). **After a mutating edit, glm.ts/openai.ts inject
+a one-time `<system-reminder>` nudging the agent to `grasp_fuzz_diff` before concluding** — that is
+how the differential fuzz "auto-surfaces" without grasp executing anything. `withProjectContext`
+appends the workspace's own `CLAUDE.md`/`AGENTS.md` to the prompt, kept separate from the moat SYSTEM
+so project text can never override it.
 
-**IPC + renderer:** `preload/index.ts` exposes the typed `GraspApi` (`shared/types.ts`) — chat,
-observe, fuzz, agent, onAgentEvent, keyStatus/setKey (per-provider), defaultWorkspace, backends,
-sessions (save/delete/load), approve (ask-mode), flowNow, stopAgent, workflows, projects, skills,
-term* (node-pty), listTree, readFile/writeFile/fileDiff. Agent progress streams over the `agent:event`
-channel (`text` · `text_delta` · `text_end` · `tool_use` · `tool_result` · `dataflow` · `dataflow_diff`
-· `fuzz` · `trace` · `plan` · `approval_request` · `usage` · `done` · `error`).
-`renderer/App.tsx` is the shell: Sidebar · Conversation · resizable Editor/Flow/Browser panes ·
-docked Terminal · activity rail.
+**Streaming:** `backends/sse.ts` is the shared SSE parser. **GLM quirk:** real `input_tokens` arrive
+in `message_delta.usage` (the `message_start` usage is a zero placeholder).
 
-**Credentials:** model keys per-provider via Electron `safeStorage` (`vault.ts`), never plaintext,
-never shipped. `GRASP_API_KEY` is an in-memory dev/CI override, honored but never persisted.
+**IPC:** `preload/index.ts` exposes the typed `GraspApi` (`shared/types.ts`); agent progress streams
+over the `agent:event` channel. Credentials are per-provider via Electron `safeStorage` (`vault.ts`),
+never plaintext; `GRASP_API_KEY` is an in-memory dev/CI override only.
 
 ## Commands
 
-### Engine (Python — the organ)
-```bash
-cd engine && make venv        # creates engine/.venv (pytest, jsonschema, pyyaml, ast-grep-py, esprima)
-cd engine && make test        # = .venv/bin/pytest — flow canaries (FC1–FC8) + conformance moat + all tests
-                              #   language-toolchain tests self-skip when go/java/dotnet/g++/node are absent
-# Run one test file / one canary:
-cd engine && .venv/bin/pytest tests/test_flow_diff.py -q
-cd engine && .venv/bin/pytest flow_canaries/test_flow_canaries.py -k fc3
+The app is the product. **There is no app unit-test suite — `typecheck` is the gate.**
 
-# The skill the app shells (prints the JSON graph contract; add --html for the rendered graph):
-cd engine && .venv/bin/python -m dreplay.skill observe \
-  --repo engine --entrypoint flow_canaries.scenarios.create_organization --input '{"name":"Acme"}'
-```
-
-### App (Electron + React + TS — the surface)
 ```bash
 cd app && npm install
-cd app && npm run dev         # electron-vite dev (launches the desktop app + HMR)
-cd app && npm run build       # build all three targets to app/out
+cd app && npm run typecheck   # tsc --noEmit over tsconfig.node.json + tsconfig.web.json — THE gate; run before every commit
+cd app && npm run dev         # electron-vite dev (desktop app + HMR)
+cd app && npm run build       # build main/preload/renderer to app/out
 cd app && npm start           # electron-vite preview
-cd app && npm run typecheck   # tsc --noEmit for both tsconfig.node.json and tsconfig.web.json
-                              #   (there is NO unit-test suite for the app — typecheck is the gate)
 ```
+
+The `engine/` directory is retired from the product; only run its suite if you are deliberately
+touching that legacy code:
+
+```bash
+cd engine && make venv && make test   # pytest: flow canaries FC1–FC8 + the no-verdict conformance moat
+```
+
+### Verifying UI changes headlessly
+
+There is no automated UI test. Real changes to `FlowView`/the flow surfaces are validated by
+rendering real trace JSON and screenshotting under Xvfb (see `graph/examples/*.png` for prior
+proofs). When you change a renderer, produce a screenshot from real (not hand-written) trace data
+and confirm the moat visually (no verdict words, plumbing collapsed, `unobservable` honest).
 
 ## Configuration (env)
 
 | Var | Default | Purpose |
 |---|---|---|
-| `GRASP_ENGINE` | `../engine` (from `app/out/main`) | path to the Python engine |
-| `GRASP_PY` | `<engine>/.venv/bin/python` | engine **and** native-tracer interpreter (`engine.ts`, `tracer.ts`) |
 | `GRASP_MODEL_BASE` | `https://api.z.ai/api/anthropic` | GLM endpoint (Anthropic Messages format) |
 | `GRASP_MODEL` | `glm-5.2` | GLM model id |
-| `GRASP_OPENAI_BASE` | `https://api.openai.com/v1` | OpenAI-compatible endpoint |
-| `GRASP_OPENAI_MODELS` | `gpt-5.2,gpt-5.1,gpt-4.1` | OpenAI model list |
+| `GRASP_OPENAI_BASE` / `GRASP_OPENAI_MODELS` | OpenAI defaults | OpenAI-compatible endpoint + model list |
 | `GRASP_API_KEY` | — | model key for dev/CI; honored in-memory, never persisted |
-| `GRASP_WORKSPACE` | `process.cwd()` | default agent workspace |
+| `GRASP_WORKSPACE` | `process.cwd()` | default agent workspace at boot |
 
-The app shells `python -m dreplay.skill`, so the engine venv (`make venv`) must exist before the
-observe/diff/fuzz tools will work — otherwise they return the honest "engine python not found" error.
+## Working conventions
+
+- **Match the Trace protocol on both sides.** `shared/trace.ts` is imported by main (`tools.ts`)
+  and renderer (`FlowView.tsx`, `App.tsx`). Change a shape in one place → the other must follow.
+- **A linter reformats files between a Read and an Edit** in this workspace, which makes exact-match
+  `Edit` calls fail intermittently. Prefer scripted edits (a `python3 -` heredoc that rewrites the
+  file) for multi-line insertions, and always re-verify with `npm run typecheck`.
+- **Never kill Electron with `pkill -f`** (it matches the launching shell) — use `pkill -x electron`.

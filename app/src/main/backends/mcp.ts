@@ -9,6 +9,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
+import { pluginMcpConfigs } from '../plugins'
 
 export interface McpServerConfig {
   command: string
@@ -65,6 +66,20 @@ export function loadMcpConfig(workspace: string): McpConfig {
       if (servers && typeof servers === 'object') Object.assign(merged, servers)
     } catch {
       /* malformed file -> ignore it (honest: no partial config) */
+    }
+  }
+  // Plugin-bundled MCP servers: namespace as `<plugin>__<server>` (avoids collisions across
+  // plugins and the user config) and resolve ${plugin_root} to the plugin dir, so a plugin can
+  // ship a server script and reference it by relative path.
+  for (const plug of pluginMcpConfigs(workspace)) {
+    const sub = (s: string | undefined): string | undefined =>
+      s ? s.split('${plugin_root}').join(plug.dir) : s
+    for (const [server, cfg] of Object.entries(plug.servers)) {
+      merged[`${plug.name}__${server}`] = {
+        command: sub(cfg.command) ?? cfg.command,
+        ...(cfg.args ? { args: cfg.args.map((a) => sub(a) ?? a) } : {}),
+        ...(cfg.env ? { env: cfg.env } : {})
+      }
     }
   }
   for (const k of Object.keys(merged)) {
