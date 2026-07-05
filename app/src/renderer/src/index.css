@@ -169,7 +169,7 @@ input, textarea { font-family: inherit; }
 
 /* ── conversation column ──────────────────────────────────── */
 .conv { display: flex; flex-direction: column; min-width: 0; height: 100%; }
-.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 13px 20px; border-bottom: 1px solid var(--hair-soft); -webkit-app-region: drag; }
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 13px 20px; border-bottom: 1px solid var(--hair); -webkit-app-region: drag; }
 .conv-title { font-weight: 550; font-size: 14px; }
 .conv-title .sub { color: var(--faint); font-weight: 400; margin-left: 8px; font-size: 12.5px; }
 .chip { -webkit-app-region: no-drag; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); }
@@ -191,7 +191,7 @@ input, textarea { font-family: inherit; }
 .conv-empty h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 10px; }
 .conv-empty p { color: var(--muted); font-size: 13.5px; line-height: 1.65; margin: 0; }
 
-.msg { display: flex; flex-direction: column; gap: 5px; max-width: 92%; }
+.msg { display: flex; flex-direction: column; gap: 8px; max-width: 92%; }
 .msg.user { align-self: flex-end; align-items: flex-end; }
 .msg .who { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
 .msg.user .bubble { background: var(--accent-bg); border: 1px solid var(--accent-hair); color: var(--ink); padding: 10px 14px; border-radius: 12px 12px 3px 12px; font-size: 13.5px; line-height: 1.5; }
@@ -265,7 +265,7 @@ input, textarea { font-family: inherit; }
 .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-type { color: #c692e6; }
 .hljs-string, .hljs-regexp, .hljs-addition { color: #7fb98a; }
 .hljs-number, .hljs-symbol, .hljs-meta { color: #e8b160; }
-.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: #5b93ff; }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: #cca46a; }
 .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #6fb7d4; }
 .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: #e6a86b; }
 .hljs-params { color: var(--ink); }
