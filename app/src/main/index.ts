@@ -38,7 +38,7 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1320,
     height: 880,
-    backgroundColor: '#0e1116',
+    backgroundColor: '#161616',
     title: 'grasp',
     autoHideMenuBar: true,
     webPreferences: {

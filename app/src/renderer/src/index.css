@@ -13,28 +13,28 @@
 }
 
 :root, :root[data-theme='graphite'] {
-  --ground: #0e1116; --surface: #151922; --surface-2: #1b2029; --surface-3: #232936; --surface-4: #2b3140;
-  --hair: #242b38; --hair-soft: #1a1f29;
-  --ink: #e9edf4; --muted: #a2adbf; --faint: #6b7688; --disabled: #48515f;
-  --accent: #5b93ff; --accent-2: #3f78e6; --accent-bg: #16223b; --accent-hair: #2c477a;
-  --declared: #8792a0; --declared-bg: #1b212b;
-  --question: #e8b160; --question-bg: #241b0e; --question-hair: #4a3820;
-  --ghost: #5b6576;
-  --on-accent: #0a0f18;
-  --sh-1: 0 1px 2px rgba(0,0,0,.35); --sh-2: 0 6px 22px rgba(0,0,0,.4); --sh-3: 0 22px 60px rgba(0,0,0,.52);
-  --r: 10px; --r-sm: 7px; --r-lg: 15px;
-  --mono: 'Geist Mono', ui-monospace, 'JetBrains Mono', Menlo, monospace;
-  --sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ground: #161616; --surface: #202020; --surface-2: #2b2b2b; --surface-3: #363636; --surface-4: #404040;
+  --hair: #ffffff1a; --hair-soft: #ffffff0d;
+  --ink: #d4d4d4; --muted: #d4d4d499; --faint: #d4d4d44d; --disabled: #d4d4d433;
+  --accent: #ffffff; --accent-2: #e8e8e8; --accent-bg: #ffffff14; --accent-hair: #ffffff26;
+  --declared: #888888; --declared-bg: #2b2b2b;
+  --question: #e8b160; --question-bg: #2b2b2b; --question-hair: #4a3820;
+  --ghost: #707070;
+  --on-accent: #000000;
+  --sh-1: 0 1px 2px rgba(0,0,0,.4); --sh-2: 0 4px 16px rgba(0,0,0,.45); --sh-3: 0 16px 48px rgba(0,0,0,.55);
+  --r: 8px; --r-sm: 6px; --r-lg: 12px;
+  --mono: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 :root[data-theme='carbon'] {
-  --ground: #08090c; --surface: #0f1115; --surface-2: #15171d; --surface-3: #1d2027; --surface-4: #252932;
-  --hair: #1e2129; --hair-soft: #131418;
-  --ink: #eceef2; --muted: #9aa3b2; --faint: #616b7a; --disabled: #414a58;
-  --accent: #6a9cff; --accent-2: #4a80f0; --accent-bg: #111b30; --accent-hair: #274069;
-  --declared: #828c9a; --declared-bg: #14161d;
-  --question: #eab765; --question-bg: #211809; --question-hair: #453516;
-  --ghost: #525c6b; --on-accent: #05070b;
-  --sh-1: 0 1px 2px rgba(0,0,0,.5); --sh-2: 0 6px 22px rgba(0,0,0,.6); --sh-3: 0 22px 60px rgba(0,0,0,.72);
+  --ground: #121212; --surface: #1a1a1a; --surface-2: #242424; --surface-3: #2e2e2e; --surface-4: #383838;
+  --hair: #ffffff14; --hair-soft: #ffffff0a;
+  --ink: #c8c8c8; --muted: #c8c8c899; --faint: #c8c8c84d; --disabled: #c8c8c833;
+  --accent: #ffffff; --accent-2: #e0e0e0; --accent-bg: #ffffff0f; --accent-hair: #ffffff1f;
+  --declared: #7a7a7a; --declared-bg: #242424;
+  --question: #d4a050; --question-bg: #242424; --question-hair: #3a2c10;
+  --ghost: #606060; --on-accent: #000;
+  --sh-1: 0 1px 2px rgba(0,0,0,.5); --sh-2: 0 4px 16px rgba(0,0,0,.55); --sh-3: 0 16px 48px rgba(0,0,0,.7);
 }
 :root[data-theme='daylight'] {
   --ground: #f5f6f8; --surface: #ffffff; --surface-2: #f0f2f5; --surface-3: #e7eaef; --surface-4: #dde2e9;
