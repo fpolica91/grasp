@@ -126,14 +126,6 @@ export function App(): React.JSX.Element {
       'toggle-side-pane': toggleRight
     }
     const onKey = (e: KeyboardEvent): void => {
-      // Esc stops a running agent (the standard escape hatch) — only when no overlay is open,
-      // so it never fights the palette/settings/modal.
-      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal) {
-        e.preventDefault()
-        e.stopPropagation()
-        void window.grasp.stopAgent()
-        return
-      }
       for (const [action, chord] of Object.entries(keybinds)) {
         if (matches(chord, e)) {
           const fn = actions[action]
@@ -149,7 +141,7 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keybinds, busy, showPalette, showSettings, showWfModal])
+  }, [keybinds])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
 
@@ -165,6 +157,20 @@ export function App(): React.JSX.Element {
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
+  // Esc stops a running agent (the standard escape hatch) — only when no overlay is open, so
+  // it never fights the palette/settings/workflow modal. Separate from the keybinds effect so
+  // it can reference these overlay states (declared just above) cleanly.
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal) {
+        e.preventDefault()
+        e.stopPropagation()
+        void window.grasp.stopAgent()
+      }
+    }
+    window.addEventListener('keydown', onEsc, true)
+    return () => window.removeEventListener('keydown', onEsc, true)
+  }, [busy, showPalette, showSettings, showWfModal])
   const [skills, setSkills] = useState<{ name: string; description: string; source: string; enabled: boolean }[]>([])
   const [mcpServers, setMcpServers] = useState<Record<string, { command: string; args?: string[] }>>({})
   const [plugins, setPlugins] = useState<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>([])
