@@ -16,6 +16,7 @@ const THEMES: { id: Theme; label: string }[] = [
 ]
 
 const SECTIONS = [
+  { id: 'marketplace', label: 'Marketplace' },
   { id: 'keys', label: 'API keys' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'skills', label: 'Skills' },
@@ -25,6 +26,21 @@ const SECTIONS = [
   { id: 'keybindings', label: 'Keybindings' }
 ] as const
 type Section = (typeof SECTIONS)[number]['id']
+
+// Curated MCP server catalog — one-click install (npx -y). Ships with the app; no network
+// marketplace needed. Servers marked envHint need an API key (edit ~/.grasp/mcp.json after install).
+const MCP_CATALOG = [
+  { name: 'filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Read & write files on disk', args: '.' },
+  { name: 'github', pkg: '@modelcontextprotocol/server-github', desc: 'Repos, issues, PRs, search', envHint: 'GITHUB_PERSONAL_ACCESS_TOKEN' },
+  { name: 'sqlite', pkg: '@modelcontextprotocol/server-sqlite', desc: 'Query SQLite databases' },
+  { name: 'postgres', pkg: '@modelcontextprotocol/server-postgres', desc: 'Query PostgreSQL', args: 'postgresql://host/db' },
+  { name: 'brave-search', pkg: '@modelcontextprotocol/server-brave-search', desc: 'Web search via Brave', envHint: 'BRAVE_API_KEY' },
+  { name: 'puppeteer', pkg: '@modelcontextprotocol/server-puppeteer', desc: 'Browser automation & scraping' },
+  { name: 'memory', pkg: '@modelcontextprotocol/server-memory', desc: 'Persistent knowledge graph' },
+  { name: 'fetch', pkg: '@modelcontextprotocol/server-fetch', desc: 'Fetch & process web content' },
+  { name: 'git', pkg: '@modelcontextprotocol/server-git', desc: 'Git repository operations', args: '--repository .' },
+  { name: 'time', pkg: '@modelcontextprotocol/server-time', desc: 'Time & timezone conversion' }
+]
 
 function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: string; hint: string; onSaved: () => void }): React.JSX.Element {
   const [has, setHas] = useState(false)
@@ -75,7 +91,7 @@ function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: s
 }
 
 export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
-  const [section, setSection] = useState<Section>('keys')
+  const [section, setSection] = useState<Section>('marketplace')
   const [mcpName, setMcpName] = useState('')
   const [mcpCmd, setMcpCmd] = useState('')
   const [mcpArgs, setMcpArgs] = useState('')
@@ -104,6 +120,44 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             ))}
           </nav>
           <div className="set-content">
+            {section === 'marketplace' && (
+              <div className="set-section">
+                <div className="eyebrow">MCP Marketplace</div>
+                <p className="set-note">One-click install popular MCP tool servers. They run via <code>npx</code> and appear as agent tools on the next turn. Servers marked “needs key” require an API key — edit <code>~/.grasp/mcp.json</code> after install.</p>
+                <div className="mcp-grid">
+                  {MCP_CATALOG.map((item) => {
+                    const installed = item.name in props.mcpServers
+                    return (
+                      <div className={`mcp-card${installed ? ' installed' : ''}`} key={item.name}>
+                        <div className="mcp-card-head">
+                          <span className="mcp-card-name">{item.name}</span>
+                          {item.envHint && <span className="set-tag">needs key</span>}
+                        </div>
+                        <div className="mcp-card-desc">{item.desc}</div>
+                        <code className="mcp-card-pkg">{item.pkg}</code>
+                        <button
+                          className={`btn sm ${installed ? '' : 'primary'}`}
+                          disabled={installed}
+                          onClick={() =>
+                            void window.grasp
+                              .saveMcpServer(
+                                item.name,
+                                'npx',
+                                `-y ${item.pkg}${item.args ? ' ' + item.args : ''}`,
+                                item.envHint ? `${item.envHint}=` : ''
+                              )
+                              .then(props.onMcpChanged)
+                          }
+                        >
+                          {installed ? '✓ Installed' : 'Install'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {section === 'keys' && (
               <div className="set-section">
                 <div className="eyebrow">API keys</div>
