@@ -182,9 +182,9 @@ input, textarea { font-family: inherit; }
 .side-btn svg { flex: none; opacity: .8; }
 .side-sec { margin-top: 14px; padding: 0 10px 6px; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
 .side-list { -webkit-app-region: no-drag; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; flex: 1; }
-.side-item { padding: 7px 10px; border-radius: 8px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.side-item:hover { background: var(--surface-2); color: var(--ink); }
-.side-item.active { background: var(--surface-2); color: var(--ink); }
+.side-item { padding: 6px 8px; border-radius: 6px; font-size: 13px; color: var(--muted); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-item:hover { background: #ffffff0d; color: var(--ink); }
+.side-item.active { background: #ffffff1a; color: var(--ink); }
 .side-foot { -webkit-app-region: no-drag; border-top: 1px solid var(--hair); margin-top: 8px; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 /* project switcher */
 .proj { position: relative; -webkit-app-region: no-drag; }
@@ -209,13 +209,13 @@ input, textarea { font-family: inherit; }
 
 /* ── tabbed pane bar (right pane + bottom dock) ────────────── */
 .panebar { flex: none; display: flex; align-items: center; gap: 2px; padding: 7px 12px 0; border-bottom: 1px solid var(--hair); background: var(--surface); }
-.panebar button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--faint); font-size: 12.5px; font-weight: 500; padding: 6px 12px 8px; margin-bottom: -1px; }
+.panebar button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--faint); font-size: 13px; font-weight: 500; padding: 6px 12px 8px; margin-bottom: -1px; }
 .panebar button:hover { color: var(--muted); }
 .panebar button.on { color: var(--ink); border-bottom-color: var(--accent); }
 
 /* ── conversation column ──────────────────────────────────── */
 .conv { display: flex; flex-direction: column; min-width: 0; height: 100%; }
-.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 13px 20px; border-bottom: 1px solid var(--hair); -webkit-app-region: drag; }
+.conv-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 13px 20px; border-bottom: 1px solid var(--hair); background: var(--ground); -webkit-app-region: drag; }
 .conv-title { font-weight: 550; font-size: 14px; }
 .conv-title .sub { color: var(--faint); font-weight: 400; margin-left: 8px; font-size: 12.5px; }
 .chip { -webkit-app-region: no-drag; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--hair); color: var(--muted); }
