@@ -1,6 +1,6 @@
 // First-run onboarding. Names what grasp is, takes a model key (encrypted via the OS
 // keychain — never in the clear), and points at where projects live. Shown only when no
-// key is set.
+// key is set. Migrated to Tailwind v4 utilities matching ZCode's aesthetic.
 import { useState } from 'react'
 
 function Mark(): React.JSX.Element {
@@ -39,28 +39,28 @@ export function KeyGate({ onSaved }: { onSaved: () => void }): React.JSX.Element
   }
 
   return (
-    <div className="gate-overlay">
-      <div className="gate onboarding">
-        <div className="ob-head">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-background backdrop-blur-sm">
+      <div className="flex w-[440px] max-w-[90vw] flex-col gap-5 rounded-2xl border border-border bg-card p-8 shadow-2xl">
+        <div className="flex items-center gap-3">
           <Mark />
           <div>
-            <div className="ob-title">grasp</div>
-            <div className="ob-sub">the post-editor</div>
+            <div className="text-[20px] font-semibold tracking-tight text-foreground">grasp</div>
+            <div className="text-[13px] text-foreground-subtlest">the post-editor</div>
           </div>
         </div>
-        <p className="ob-lede">
-          Ask an agent to change code. grasp runs it for real and shows you <b>what changed</b> — the values it bound,
+        <p className="text-[13px] leading-relaxed text-foreground-subtle">
+          Ask an agent to change code. grasp runs it for real and shows you <b className="font-semibold text-foreground">what changed</b> — the values it bound,
           the paths it took — and asks whether that&rsquo;s what you meant. It never renders a verdict; you adjudicate.
         </p>
-        <ul className="ob-features">
+        <ul className="flex flex-col gap-2">
           {FEATURES.map((f, i) => (
-            <li key={i}>
-              <span className="ob-dot" />
+            <li key={i} className="flex items-start gap-2.5 text-[13px] text-foreground-subtle">
+              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand" />
               {f}
             </li>
           ))}
         </ul>
-        <div className="ob-field-label">Connect your model</div>
+        <div className="text-[11px] font-medium uppercase tracking-wide text-foreground-subtlest">Connect your model</div>
         <input
           type="password"
           value={key}
@@ -68,14 +68,19 @@ export function KeyGate({ onSaved }: { onSaved: () => void }): React.JSX.Element
           onKeyDown={(e) => e.key === 'Enter' && void save()}
           placeholder="GLM API key (z.ai / BigModel)…"
           autoFocus
+          className="w-full rounded-lg border border-border bg-input px-3.5 py-3 font-mono text-[13px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
         />
-        <button onClick={() => void save()} disabled={busy}>
+        <button
+          onClick={() => void save()}
+          disabled={busy}
+          className="w-full rounded-lg bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+        >
           {busy ? 'Saving…' : 'Get started'}
         </button>
-        {error && <div className="gate-error">{error}</div>}
-        <p className="ob-foot">
+        {error && <div className="text-[12px] text-destructive">{error}</div>}
+        <p className="text-[11px] leading-relaxed text-foreground-subtlest">
           Encrypted with your OS keychain, never written in the clear. Add OpenAI later in Settings. Your projects live
-          in <code>~/GraspProjects</code>.
+          in <code className="rounded bg-tag px-1 py-0.5 font-mono text-[10px]">~/GraspProjects</code>.
         </p>
       </div>
     </div>
