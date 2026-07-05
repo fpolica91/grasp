@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 // node-pty (and its per-platform native packages) must NOT be bundled — they load a
 // native addon via a dynamic require at runtime. externalizeDepsPlugin keeps every
@@ -36,6 +37,6 @@ export default defineConfig({
     build: {
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } }
     },
-    plugins: [react()]
+    plugins: [react(), tailwindcss()]
   }
 })
