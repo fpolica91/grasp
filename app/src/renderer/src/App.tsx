@@ -737,11 +737,14 @@ export function App(): React.JSX.Element {
                   ) : surface?.kind === 'flow' ? (
                     <DataflowGraph graph={surface.graph} varying={varying} onVary={() => void vary(surface.graph)} />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-8 py-10 text-center text-[13px] leading-relaxed text-foreground-subtlest">
-                      This is where grasp shows the <b className="font-semibold text-foreground">observed dataflow</b> — the real values a function binds and
-                      the paths it takes{flowAuto ? ', re-observed after every edit' : ''}. It fills in as soon as
-                      the agent runs a function through grasp (any language){flowAuto ? '' : ' — or when you click Run flow'}.
-                      Code with no callable entrypoint yet stays blank here until there&rsquo;s something to run. It ends in a question, never a verdict.
+                    <div className="flex h-full flex-col items-center justify-center gap-3 px-8 py-10 text-center">
+                      <div className="flex size-14 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
+                      </div>
+                      <p className="text-[14px] font-medium text-foreground">Observed dataflow</p>
+                      <p className="max-w-[300px] text-[13px] leading-relaxed text-foreground-subtlest">
+                        Ask the agent to run a function. The real values it binds and the paths it takes appear here — ending in a question, never a verdict.
+                      </p>
                     </div>
                   )}
                   </div>
