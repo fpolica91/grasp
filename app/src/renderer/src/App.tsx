@@ -708,48 +708,80 @@ export function App(): React.JSX.Element {
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
                 </div>
-                <div className={`absolute inset-0 overflow-y-auto p-4 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
+                <div className={`absolute inset-0 overflow-y-auto ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   {transcript.length === 0 ? (
-                    <div className="flex h-full items-center justify-center text-[13px] text-foreground-subtlest">
-                      The agent's step-by-step trajectory appears here once you start a conversation.
+                    <div className="flex h-full flex-col items-center justify-center gap-2.5 px-8 text-center">
+                      <div className="flex size-14 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" /></svg>
+                      </div>
+                      <p className="text-[14px] font-medium text-foreground">Model Trajectory</p>
+                      <p className="max-w-[280px] text-[13px] text-foreground-subtlest">The agent's step-by-step reasoning — thinking, tool calls, and decisions — appears here as you converse.</p>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-px p-4">
+                      {/* Timeline line */}
+                      <div className="pointer-events-none absolute left-7 top-4 bottom-4 w-px bg-border" />
                       {transcript.filter((it) => !it.parent).map((it, i) => {
-                        const stepNum = i + 1
-                        if (it.role === 'user') return (
-                          <div key={i} className="flex items-start gap-2.5 rounded-lg bg-surface px-3 py-2">
-                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{stepNum}</span>
-                            <div className="min-w-0 flex-1">
-                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">You</span>
-                              <p className="truncate text-[13px] text-foreground">{it.text}</p>
-                            </div>
-                          </div>
-                        )
-                        if (it.role === 'tool') return (
-                          <div key={i} className="flex items-center gap-2.5 px-3 py-1.5 pl-11">
-                            <span className="size-1.5 shrink-0 rounded-full bg-foreground-subtlest" />
-                            <span className="text-[12px] text-foreground-subtlest">{it.name}</span>
-                            <span className="truncate font-mono text-[11px] text-foreground-subtle">{it.summary}</span>
-                            <span className={`ml-auto rounded-full px-1.5 text-[9px] uppercase ${it.status === 'done' ? 'bg-tag text-foreground-subtlest' : 'bg-primary/20 text-foreground'}`}>{it.status === 'done' ? 'done' : '…'}</span>
-                          </div>
-                        )
-                        if (it.role === 'plan') return (
-                          <div key={i} className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2">
-                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-foreground">{stepNum}</span>
-                            <div className="min-w-0 flex-1">
-                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Plan</span>
-                              <p className="truncate text-[13px] text-foreground-subtle">{(it.text ?? '').slice(0, 120)}…</p>
-                            </div>
-                          </div>
-                        )
+                        const iconFor = (role: string): React.JSX.Element => {
+                          if (role === 'user') return <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground z-10">{i + 1}</span>
+                          if (role === 'tool') return <span className={`z-10 mt-0.5 size-2.5 shrink-0 rounded-full ${it.status === 'done' ? 'bg-foreground-subtlest' : 'animate-pulse bg-primary'}`} />
+                          if (role === 'plan') return <span className="z-10 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-foreground">P</span>
+                          if (role === 'approval') return <span className="z-10 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px]">?</span>
+                          return <span className="z-10 mt-0.5 size-2.5 shrink-0 rounded-full bg-foreground" />
+                        }
                         return (
-                          <div key={i} className="flex items-start gap-2.5 px-3 py-1.5 pl-11">
-                            <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Agent</span>
-                              <p className="line-clamp-2 text-[13px] text-foreground-subtle">{(it.text ?? '').slice(0, 200)}</p>
-                              {it.thinking && <p className="mt-0.5 line-clamp-1 text-[11px] text-foreground-subtlest italic">{it.thinking.slice(0, 120)}…</p>}
+                          <div key={i} className="relative flex gap-3 py-1.5">
+                            {/* Timeline dot */}
+                            <div className="flex flex-col items-center">
+                              {iconFor(it.role)}
+                            </div>
+                            {/* Content */}
+                            <div className="min-w-0 flex-1 pb-1">
+                              {it.role === 'user' && (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">User</span>
+                                  <div className="rounded-lg rounded-tl-sm border border-border bg-surface px-3 py-2 text-[13px] text-foreground">{it.text}</div>
+                                </div>
+                              )}
+                              {it.role === 'assistant' && (
+                                <div className="flex flex-col gap-1">
+                                  {it.thinking && (
+                                    <details className="rounded-lg border border-border bg-surface">
+                                      <summary className="cursor-pointer px-3 py-1.5 text-[11px] text-foreground-subtlest transition-colors hover:text-foreground-subtle">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className="mr-1 inline"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v5a2.5 2.5 0 0 1-5 0v-5A2.5 2.5 0 0 1 9.5 2z" stroke="currentColor" strokeWidth="1.5" /><path d="M7.5 15.5l2-3 2 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                                        Thought{it.thinkingMs ? ` · ${(it.thinkingMs / 1000).toFixed(1)}s` : ''}
+                                      </summary>
+                                      <div className="border-t border-border px-3 py-2 text-[12px] leading-relaxed text-foreground-subtlest whitespace-pre-wrap">{it.thinking}</div>
+                                    </details>
+                                  )}
+                                  <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Agent</span>
+                                  <div className="text-[13px] leading-relaxed text-foreground-subtle whitespace-pre-wrap">{(it.text ?? '').slice(0, 500)}{(it.text ?? '').length > 500 ? '…' : ''}</div>
+                                </div>
+                              )}
+                              {it.role === 'tool' && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-mono font-medium text-foreground">{it.name}</span>
+                                  <span className="truncate font-mono text-[11px] text-foreground-subtlest">{it.summary}</span>
+                                  {it.output && (
+                                    <details className="ml-1">
+                                      <summary className="cursor-pointer text-[10px] text-foreground-subtlest hover:text-foreground">output</summary>
+                                      <pre className="mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background p-2 font-mono text-[11px] text-foreground-subtle">{(it.output ?? '').slice(0, 800)}</pre>
+                                    </details>
+                                  )}
+                                </div>
+                              )}
+                              {it.role === 'plan' && (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Plan</span>
+                                  <div className="rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground-subtle">{(it.text ?? '').slice(0, 400)}…</div>
+                                </div>
+                              )}
+                              {it.role === 'approval' && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-medium text-foreground">{it.name}</span>
+                                  <span className={`rounded-full px-1.5 text-[10px] uppercase ${it.summary === 'allowed' ? 'bg-tag text-foreground' : 'bg-destructive/10 text-destructive'}`}>{it.summary}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )
