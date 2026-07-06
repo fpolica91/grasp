@@ -6,9 +6,9 @@ import { ProjectSwitcher } from './ProjectSwitcher'
 
 export type Theme = 'graphite' | 'carbon' | 'daylight'
 const THEMES: { id: Theme; label: string; dot: string }[] = [
-  { id: 'graphite', label: 'Graphite', dot: 'linear-gradient(135deg,#161616 50%,#fff 50%)' },
-  { id: 'carbon', label: 'Carbon', dot: 'linear-gradient(135deg,#121212 50%,#e8e8e8 50%)' },
-  { id: 'daylight', label: 'Daylight', dot: 'linear-gradient(135deg,#fff 50%,#000 50%)' }
+  { id: 'graphite', label: 'ZCode Dark', dot: 'linear-gradient(135deg,#161616 50%,#4099ff 50%)' },
+  { id: 'carbon', label: 'Carbon', dot: 'linear-gradient(135deg,#0d0d0d 50%,#7b5ce5 50%)' },
+  { id: 'daylight', label: 'ZCode Light', dot: 'linear-gradient(135deg,#f8f8f8 50%,#0b7fff 50%)' }
 ]
 
 function Mark(): React.JSX.Element {

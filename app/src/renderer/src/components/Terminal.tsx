@@ -94,10 +94,13 @@ export function TerminalPane({
       theme: {
         background: '#161616',
         foreground: '#d4d4d4',
-        cursor: '#ffffff',
-        selectionBackground: '#ffffff26',
-        black: '#161616', red: '#ff5c5c', green: '#7fb98a', yellow: '#e8b160',
-        blue: '#cca46a', magenta: '#b48ce6', cyan: '#5bb4c4', white: '#d4d4d4'
+        cursor: '#f8f8f8',
+        selectionBackground: '#4099ff47',
+        // ZCode's exact ANSI palette (.theme-zai-dark)
+        black: '#363636', red: '#ff5c5c', green: '#46bf72', yellow: '#ff8a30',
+        blue: '#4099ff', magenta: '#7b5ce5', cyan: '#42c8c8', white: '#adadad',
+        brightBlack: '#747474', brightRed: '#f99', brightGreen: '#87d9a4', brightYellow: '#ffb26b',
+        brightBlue: '#80beff', brightMagenta: '#a888f2', brightCyan: '#8ee5e5', brightWhite: '#f8f8f8'
       }
     })
     const fit = new FitAddon()

@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState, type Extension } from '@codemirror/state'
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 import { python } from '@codemirror/lang-python'
 import { javascript } from '@codemirror/lang-javascript'
 import { MergeView } from '@codemirror/merge'
@@ -18,16 +20,36 @@ function langFor(path: string): Extension {
   return []
 }
 
+// ZCode palette (.theme-zai-dark ANSI set) mapped to CodeMirror lezer tags —
+// shares one scheme across editor, terminal, and code blocks.
+const graspHighlight = HighlightStyle.define([
+  { tag: t.comment, color: '#d4d4d44d', fontStyle: 'italic' },
+  { tag: t.keyword, color: '#7b5ce5' },
+  { tag: [t.atom, t.bool, t.null], color: '#7b5ce5' },
+  { tag: [t.number, t.literal], color: '#ff8a30' },
+  { tag: t.string, color: '#46bf72' },
+  { tag: t.regexp, color: '#46bf72' },
+  { tag: [t.variableName, t.propertyName], color: '#d4d4d4' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#4099ff' },
+  { tag: t.definition(t.function(t.variableName)), color: '#4099ff' },
+  { tag: [t.typeName, t.className], color: '#42c8c8' },
+  { tag: [t.propertyName, t.attributeName, t.labelName], color: '#ff8a30' },
+  { tag: [t.heading, t.name], color: '#4099ff' },
+  { tag: t.invalid, color: '#ff5c5c' },
+  { tag: t.meta, color: '#87d9a4' }
+])
+
 const graspTheme = EditorView.theme(
   {
     '&': { color: '#d4d4d4', backgroundColor: 'transparent', fontSize: '12.5px', height: '100%' },
-    '.cm-content': { fontFamily: 'ui-monospace, monospace', caretColor: '#ffffff' },
+    '.cm-content': { fontFamily: 'ui-monospace, monospace', caretColor: '#f8f8f8' },
     '.cm-gutters': { backgroundColor: 'transparent', color: '#d4d4d44d', border: 'none' },
     '.cm-activeLine': { backgroundColor: '#ffffff08' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#d4d4d499' },
-    '.cm-selectionBackground, ::selection': { backgroundColor: '#ffffff1a !important' },
-    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#ffffff1a !important' },
-    '.cm-cursor': { borderLeftColor: '#ffffff' }
+    '.cm-selectionBackground, ::selection': { backgroundColor: '#4099ff47 !important' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#4099ff47 !important' },
+    '.cm-cursor': { borderLeftColor: '#f8f8f8' },
+    '.cm-matchingBracket': { backgroundColor: '#ffffff1a', outline: '1px solid #ffffff26' }
   },
   { dark: true }
 )
@@ -50,8 +72,8 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
         host.innerHTML = ''
         viewRef.current = new MergeView({
           parent: host,
-          a: { doc: d.old, extensions: [basicSetup, langFor(file), graspTheme, EditorState.readOnly.of(true)] },
-          b: { doc: d.new, extensions: [basicSetup, langFor(file), graspTheme, EditorState.readOnly.of(true)] }
+          a: { doc: d.old, extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorState.readOnly.of(true)] },
+          b: { doc: d.new, extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorState.readOnly.of(true)] }
         })
       } else {
         const r = await window.grasp.readFile(workspace, file)
@@ -62,7 +84,7 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
         viewRef.current = new EditorView({
           parent: host,
           doc: docRef.current,
-          extensions: [basicSetup, langFor(file), graspTheme, EditorView.updateListener.of((u) => {
+          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorView.updateListener.of((u) => {
             if (u.docChanged) { docRef.current = u.state.doc.toString(); setDirty(true) }
           })]
         })

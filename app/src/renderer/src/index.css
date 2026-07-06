@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
-/* ZCode v3.2.5 .theme-zai-dark design tokens (from CLONE-SPEC.md) */
+/* ZCode v3.2.5 .theme-zai-dark design tokens — extracted verbatim from ZCode's
+   app.asar CSS (the ground truth, not a guess). Dark is the default (:root). */
 @theme {
+  /* surfaces */
   --color-background: #161616;
   --color-sidebar: #161616;
   --color-panel: #202020;
@@ -10,39 +12,156 @@
   --color-surface: #ffffff0d;
   --color-surface-hover: #ffffff1a;
   --color-hover: #ffffff0d;
+  --color-selected: #ffffff1a;
   --color-border: #ffffff1a;
   --color-border-hover: #ffffff26;
-  --color-selected: #ffffff1a;
-  --color-foreground: #d4d4d4;
-  --color-foreground-subtle: #d4d4d499;
-  --color-foreground-subtlest: #d4d4d44d;
-  --color-foreground-inverse: #000000;
-  --color-primary: #ffffff;
-  --color-primary-foreground: #000000;
-  --color-brand: #ffffff;
-  --color-secondary: #363636;
-  --color-destructive: #ff5c5c;
   --color-input: #2b2b2b;
   --color-menu: #2b2b2b;
   --color-menu-hover: #363636;
   --color-popover: #2b2b2b;
   --color-tooltip: #2b2b2b;
-  --color-tooltip-foreground: #f8f8f8;
   --color-toast: #2b2b2b;
   --color-tag: #363636;
   --color-tab: #202020;
   --color-tab-active: #161616;
+  /* text */
+  --color-foreground: #d4d4d4;
+  --color-foreground-subtle: #d4d4d499;
+  --color-foreground-subtlest: #d4d4d44d;
+  --color-foreground-inverse: #000000;
+  --color-tooltip-foreground: #f8f8f8;
+  /* brand / primary */
+  --color-primary: #ffffff;
+  --color-primary-foreground: #000000;
+  --color-brand: #ffffff;
+  --color-secondary: #363636;
+  --color-accent: #001d3d;            /* ZCode's dark-navy accent surface */
+  --color-accent-blue: #4099ff;       /* ZCode's signature accent (selection/charts/focus) */
+  --color-find-highlight: #542500;
+  --color-find-highlight-active: #ff8a30;
+  /* semantic */
+  --color-success: #46bf72;
+  --color-success-foreground: #000000;
+  --color-warning: #ff8a30;
+  --color-warning-foreground: #000000;
+  --color-destructive: #ff5c5c;
+  --color-destructive-foreground: #000000;
+  /* git */
+  --color-git-added: #46bf72;
+  --color-git-modified: #ff8a30;
+  --color-git-deleted: #ff5c5c;
+  --color-git-renamed: #4099ff;
+  --color-git-untracked: #46bf72;
+  --color-git-descendant: #ff8a30;
+  /* diff */
+  --color-diff-added: #46bf72;
+  --color-diff-removed: #ff5c5c;
+  /* 16-color ANSI terminal palette (ZCode) */
+  --color-terminal-black: #363636;
+  --color-terminal-red: #ff5c5c;
+  --color-terminal-green: #46bf72;
+  --color-terminal-yellow: #ff8a30;
+  --color-terminal-blue: #4099ff;
+  --color-terminal-magenta: #7b5ce5;
+  --color-terminal-cyan: #42c8c8;
+  --color-terminal-white: #adadad;
+  --color-terminal-bright-black: #747474;
+  --color-terminal-bright-red: #f99;
+  --color-terminal-bright-green: #87d9a4;
+  --color-terminal-bright-yellow: #ffb26b;
+  --color-terminal-bright-blue: #80beff;
+  --color-terminal-bright-magenta: #a888f2;
+  --color-terminal-bright-cyan: #8ee5e5;
+  --color-terminal-bright-white: #f8f8f8;
+  --color-terminal-selection: #4099ff47;
+  --color-terminal-cursor: #f8f8f8;
+  /* usage charts / heatmaps (ZCode) */
+  --color-usage-chart-1: #4099ff;
+  --color-usage-chart-2: #46bf72;
+  --color-usage-chart-3: #7b5ce5;
+  --color-usage-chart-4: #ff5c5c;
+  --color-usage-chart-5: #ff8a30;
+  --color-usage-chart-6: #42c8c8;
+  /* extra accents (legacy grasp tokens kept for back-compat) */
+  --color-accent-green: #46bf72;
+  --color-accent-magenta: #7b5ce5;
+  --color-accent-cyan: #42c8c8;
+  --color-accent-orange: #ff8a30;
+  /* legacy flow tokens */
   --color-declared: #888888;
   --color-ghost: #707070;
-  --color-question: #e8b160;
-  --color-accent-blue: #4aa8ff;
-  --color-accent-green: #5bb98b;
+  --color-question: #ff8a30;
+  /* fonts + radii */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'JetBrains Mono', Menlo, monospace;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+}
+
+/* ZCode .theme-zai-light — opted into via <html data-theme="daylight"> (or "light").
+   Overrides the dark :root tokens; Tailwind utilities pick up the new values. */
+[data-theme="light"],
+[data-theme="daylight"] {
+  --color-background: #f8f8f8;
+  --color-sidebar: #f8f8f8;
+  --color-panel: #ffffff;
+  --color-header: #ffffff;
+  --color-card: #ffffff;
+  --color-surface: #0d0d0d0d;
+  --color-surface-hover: #0d0d0d1a;
+  --color-hover: #0d0d0d0d;
+  --color-selected: #0d0d0d1a;
+  --color-border: #0d0d0d1a;
+  --color-border-hover: #0d0d0d26;
+  --color-input: #ffffff;
+  --color-menu: #ffffff;
+  --color-menu-hover: #f2f2f2;
+  --color-popover: #ffffff;
+  --color-tooltip: #ffffff;
+  --color-toast: #ffffff;
+  --color-tag: #f2f2f2;
+  --color-tab: #ffffff;
+  --color-tab-active: #f8f8f8;
+  --color-foreground: #2b2b2b;
+  --color-foreground-subtle: #2b2b2b99;
+  --color-foreground-subtlest: #2b2b2b4d;
+  --color-tooltip-foreground: #2b2b2b;
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-brand: #000000;
+  --color-secondary: #e5e5e5;
+  --color-accent: #ebf4ff;
+  --color-accent-blue: #0b7fff;
+  --color-success: #1e8a3e;
+  --color-warning: #e07b00;
+  --color-destructive: #e03131;
+  --color-git-added: #1e8a3e;
+  --color-git-modified: #e07b00;
+  --color-git-deleted: #e03131;
+  --color-git-renamed: #0b7fff;
+  --color-diff-added: #1e8a3e;
+  --color-diff-removed: #e03131;
+  --color-terminal-black: #363636;
+  --color-terminal-red: #e03131;
+  --color-terminal-green: #1e8a3e;
+  --color-terminal-yellow: #e07b00;
+  --color-terminal-blue: #0b7fff;
+  --color-terminal-magenta: #7b5ce5;
+  --color-terminal-cyan: #42c8c8;
+  --color-terminal-white: #adadad;
+  --color-usage-chart-1: #0b7fff;
+  --color-usage-chart-2: #1e8a3e;
+  --color-usage-chart-3: #7b5ce5;
+  --color-usage-chart-4: #e03131;
+  --color-usage-chart-5: #e07b00;
+  --color-usage-chart-6: #42c8c8;
+  --color-accent-green: #1e8a3e;
+  --color-accent-magenta: #7b5ce5;
+  --color-accent-cyan: #42c8c8;
+  --color-accent-orange: #e07b00;
+  --color-question: #e07b00;
 }
 
 @font-face {
@@ -60,28 +179,30 @@
 
 /* Base reset — the app fills the window */
 html, body, #root { height: 100%; margin: 0; }
-body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #161616; color: #d4d4d4; overflow: hidden; }
+body { font-family: var(--font-sans); background: var(--color-background); color: var(--color-foreground); overflow: hidden; }
 * { box-sizing: border-box; }
 
 /* Custom scrollbar (matches ZCode) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #ffffff1a; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #ffffff26; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-hover); }
 
-/* Selection */
-::selection { background: #ffffff26; }
+/* Selection — ZCode uses the blue accent */
+::selection { background: var(--color-accent-blue); color: #fff; }
 
-/* Syntax highlighting (ZCode .theme-zai-dark palette) */
-.hljs { color: #d4d4d4; background: transparent; }
-.hljs-comment, .hljs-quote { color: #d4d4d44d; font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-type { color: #c692e6; }
-.hljs-string, .hljs-regexp, .hljs-addition { color: #7fb98a; }
-.hljs-number, .hljs-symbol, .hljs-meta { color: #e8b160; }
-.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: #cca46a; }
-.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable { color: #6fb7d4; }
-.hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: #e6a86b; }
-.hljs-deletion { color: #ff5c5c; }
+/* Syntax highlighting — ZCode .theme-zai-dark palette (VS Code dark-plus feel).
+   Uses the ANSI/terminal palette so code, terminal, and editor all share one scheme. */
+.hljs { color: var(--color-foreground); background: transparent; }
+.hljs-comment, .hljs-quote { color: var(--color-foreground-subtlest); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag { color: var(--color-terminal-magenta); }
+.hljs-type, .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: var(--color-terminal-cyan); }
+.hljs-string, .hljs-regexp, .hljs-addition { color: var(--color-terminal-green); }
+.hljs-number, .hljs-symbol { color: var(--color-terminal-yellow); }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: var(--color-terminal-blue); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-property { color: var(--color-terminal-yellow); }
+.hljs-meta, .hljs-meta .hljs-keyword { color: var(--color-terminal-bright-green); }
+.hljs-deletion { color: var(--color-terminal-red); }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 600; }
 
