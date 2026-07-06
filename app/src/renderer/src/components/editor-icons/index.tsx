@@ -79,7 +79,7 @@ export function EditorIcon({ id, size = 16, className = '' }: { id: string; size
   if (raw) {
     return (
       <span
-        className={`inline-flex shrink-0 items-center justify-center ${className}`}
+        className={`inline-flex shrink-0 items-center justify-center [&>svg]:size-full ${className}`}
         style={{ width: size, height: size }}
         dangerouslySetInnerHTML={{ __html: normalize(raw) }}
       />

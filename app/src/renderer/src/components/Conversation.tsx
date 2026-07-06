@@ -267,7 +267,7 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
   }
   // ZCode-style split button: primary "Open" (launches in the last editor) + caret (picker)
   return (
-    <div className="relative flex items-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+    <div className="relative flex items-stretch" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <button
         className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-card pl-2 pr-1.5 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
         onClick={openLast}
