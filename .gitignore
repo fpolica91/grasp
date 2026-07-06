@@ -26,3 +26,4 @@ app/*.tsbuildinfo
 .dolt/
 *.db
 .beads-credential-key
+nohup.out
