@@ -5,11 +5,12 @@
 import type { WebContents } from 'electron'
 import { glmBackend } from './backends/glm'
 import { claudeBackend } from './backends/claude'
+import { claudeCodeBackend } from './backends/claude-code'
 import { openaiBackend } from './backends/openai'
 import { checkpointWorkspace } from './checkpoint'
 import type { AgentBackend, Emit } from './backends/types'
 
-const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, openaiBackend]
+const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, claudeCodeBackend, openaiBackend]
 
 // The user's stop button. One active turn at a time; stopping aborts its signal —
 // owned loops end at the next await, the Claude Code child process is killed.

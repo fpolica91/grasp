@@ -4,6 +4,7 @@ import type { Theme } from './Sidebar'
 
 const PROVIDERS: { id: string; label: string; hint: string }[] = [
   { id: 'glm', label: 'GLM (Z.ai)', hint: 'z.ai API key — powers glm-4.6 / glm-5.2' },
+  { id: 'anthropic', label: 'Anthropic (Claude)', hint: 'sk-ant-… — powers Claude Sonnet 5 / Opus 4.8 / Haiku 4.5' },
   { id: 'openai', label: 'OpenAI', hint: 'sk-… (or any OpenAI-compatible key)' }
 ]
 
@@ -13,7 +14,7 @@ const THEME_DOTS: Record<Theme, string> = {
   daylight: 'linear-gradient(135deg,#fff 50%,#000 50%)'
 }
 const THEME_LABELS: { id: Theme; label: string }[] = [
-  { id: 'graphite', label: 'Graphite' }, { id: 'carbon', label: 'Carbon' }, { id: 'daylight', label: 'Daylight' }
+  { id: 'graphite', label: 'ZCode Dark' }, { id: 'carbon', label: 'Carbon' }, { id: 'daylight', label: 'ZCode Light' }
 ]
 
 const SECTIONS = [

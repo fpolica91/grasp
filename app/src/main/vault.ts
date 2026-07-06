@@ -19,6 +19,9 @@ const ENV_OVERRIDE: Record<string, string | undefined> = {
   },
   get openai() {
     return process.env.GRASP_OPENAI_KEY
+  },
+  get anthropic() {
+    return process.env.GRASP_ANTHROPIC_KEY ?? process.env.GRASP_CLAUDE_KEY
   }
 }
 
