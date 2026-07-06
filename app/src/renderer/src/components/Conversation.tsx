@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js/lib/common'
+import { EditorIcon } from './editor-icons'
 import type { BackendInfo, SlashCommand } from '../../../shared/types'
 
 export interface TranscriptItem {
@@ -251,29 +252,31 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
   const [apps, setApps] = useState<{ id: string; name: string; icon: string }[]>([])
   const [lastApp, setLastApp] = useState<string>(() => localStorage.getItem('grasp-last-app') ?? '')
   useEffect(() => { if (appsOpen) void window.grasp.detectApps().then(setApps) }, [appsOpen])
+  const lastAppObj = apps.find((a) => a.id === lastApp)
   return (
     <div className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <button
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
         onClick={() => setAppsOpen((o) => !o)}
         title="Open in external editor"
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M14 7h7v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        {lastApp ? apps.find((a) => a.id === lastApp)?.name ?? 'Open in…' : 'Open in…'}
+        {lastAppObj ? <EditorIcon id={lastAppObj.id} size={15} /> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M14 7h7v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+        {lastAppObj ? lastAppObj.name : 'Open in…'}
+        <svg width="9" height="9" viewBox="0 0 12 12" className="text-foreground-subtlest"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {appsOpen && (
-        <div className="absolute top-full left-0 z-50 mt-1 flex w-[180px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl" onClick={() => setAppsOpen(false)}>
+        <div className="absolute top-full left-0 z-50 mt-1 flex w-[200px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl" onClick={() => setAppsOpen(false)}>
           {apps.map((app) => (
             <button
               key={app.id}
-              className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+              className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
               onClick={() => {
                 setLastApp(app.id)
                 localStorage.setItem('grasp-last-app', app.id)
                 void window.grasp.openInApp(app.id, workspace)
               }}
             >
-              <span className="text-[14px]">{app.icon}</span>
+              <EditorIcon id={app.id} size={17} />
               <span className="flex-1 text-left">{app.name}</span>
               {app.id === lastApp && <span className="text-foreground-subtlest">✓</span>}
             </button>

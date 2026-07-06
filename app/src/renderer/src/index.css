@@ -35,6 +35,8 @@
   --color-declared: #888888;
   --color-ghost: #707070;
   --color-question: #e8b160;
+  --color-accent-blue: #4aa8ff;
+  --color-accent-green: #5bb98b;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'JetBrains Mono', Menlo, monospace;
   --radius-sm: 6px;

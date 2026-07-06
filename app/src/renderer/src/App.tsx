@@ -17,7 +17,8 @@ import { CommandPalette, type Command } from './components/CommandPalette'
 import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, SlashCommand, WorkflowRecord } from '../../shared/types'
+import { TrajectoryInspector } from './components/TrajectoryInspector'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
 type Surface =
@@ -31,6 +32,7 @@ type Surface =
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
   const [transcript, setTranscript] = useState<TranscriptItem[]>([])
+  const [calls, setCalls] = useState<TrajectoryCall[]>([]) // model-trajectory inspector records
   const [surface, setSurface] = useState<Surface | null>(null)
   const [traces, setTraces] = useState<TraceDoc[]>([])
   const [busy, setBusy] = useState(false)
@@ -472,6 +474,7 @@ export function App(): React.JSX.Element {
         setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running', parent: e.parent }])
       else if (e.type === 'tool_result')
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, output: e.output, status: 'done' } : it)))
+      else if (e.type === 'trajectory_call') setCalls((cs) => [...cs, e.call])
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
@@ -529,6 +532,7 @@ export function App(): React.JSX.Element {
     setSessionId(crypto.randomUUID())
     history.current = []
     setTranscript([])
+    setCalls([])
     setSurface(null)
     setError(null)
   }
@@ -709,91 +713,8 @@ export function App(): React.JSX.Element {
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
                 </div>
-                <div className={`absolute inset-0 overflow-y-auto ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
-                  {transcript.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2.5 px-8 text-center">
-                      <div className="flex size-14 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" /></svg>
-                      </div>
-                      <p className="text-[14px] font-medium text-foreground">Model Trajectory</p>
-                      <p className="max-w-[280px] text-[13px] text-foreground-subtlest">The agent's full step-by-step trace — thinking, tool calls, and responses — rendered here as you converse.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 p-4">
-                      {transcript.filter((it) => !it.parent).map((it, i) => {
-                        // USER — right-aligned surface bubble
-                        if (it.role === 'user') return (
-                          <div key={i} className="flex w-full justify-end">
-                            <div className="max-w-[85%] rounded-xl rounded-tr-sm border border-border bg-surface px-3.5 py-2.5 text-[13px] text-foreground whitespace-pre-wrap">{it.text}</div>
-                          </div>
-                        )
-                        // TOOL — dark card with command + output (ZCode Bash tool card)
-                        if (it.role === 'tool') {
-                          const isBash = it.name === 'run_bash' || it.name === 'Bash' || it.name === 'remote_bash'
-                          const cmd = isBash ? String(it.input?.command ?? '') : ''
-                          const desc = (() => {
-                            const p = String(it.input?.path ?? it.input?.entrypoint ?? it.input?.entry ?? '')
-                            const v = String(it.input?.command ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)
-                            if (it.name === 'write_file' || it.name === 'edit_file') return { verb: it.name === 'edit_file' ? 'Edited' : 'Wrote', arg: p.split('/').pop() ?? p }
-                            if (isBash) return { verb: 'Ran', arg: v || 'command' }
-                            if (it.name?.startsWith('grasp_')) return { verb: it.name.replace('grasp_', ''), arg: p }
-                            return { verb: it.name ?? 'Tool', arg: p || v }
-                          })()
-                          return (
-                            <div key={i} className="flex items-center gap-2 text-[13px]">
-                              <span className="size-1.5 shrink-0 rounded-full bg-foreground-subtlest" />
-                              <span className="shrink-0 font-medium text-foreground-subtlest">{desc.verb}</span>
-                              <span className="truncate font-mono text-[12px] text-foreground-subtle">{desc.arg}</span>
-                              {it.status !== 'done' && <span className="ml-1 size-2.5 shrink-0 animate-spin rounded-full border-[1.5px] border-foreground border-r-transparent" />}
-                              {it.output && (
-                                <details className="ml-1 shrink-0">
-                                  <summary className="cursor-pointer text-[10px] text-foreground-subtlest hover:text-foreground">▸</summary>
-                                  <pre className="mt-1 max-h-[160px] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-panel px-3 py-2 font-mono text-[12px] leading-relaxed text-foreground-subtle">{it.output}</pre>
-                                </details>
-                              )}
-                            </div>
-                          )
-                        }
-                        // PLAN — card
-                        if (it.role === 'plan') return (
-                          <div key={i} className="rounded-xl border border-border bg-card p-3">
-                            <div className="mb-1 flex items-center gap-2">
-                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Proposed plan</span>
-                              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground-subtlest">awaiting</span>
-                            </div>
-                            <div className="text-[13px] leading-relaxed text-foreground-subtle whitespace-pre-wrap">{(it.text ?? '').slice(0, 600)}</div>
-                          </div>
-                        )
-                        // APPROVAL — inline badge
-                        if (it.role === 'approval') return (
-                          <div key={i} className="flex items-center gap-2 text-[13px]">
-                            <span className="size-1.5 shrink-0 rounded-full bg-secondary" />
-                            <span className="font-mono text-[12px] text-foreground-subtlest">{it.name}</span>
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase ${it.summary === 'allowed' ? 'bg-tag text-foreground' : 'bg-destructive/10 text-destructive'}`}>{it.summary}</span>
-                          </div>
-                        )
-                        // ASSISTANT — thinking accordion + full markdown body
-                        return (
-                          <div key={i} className="flex flex-col gap-1.5">
-                            {/* Thinking — ZCode-style collapsible */}
-                            {it.thinking && (
-                              <details className="rounded-lg border border-border bg-surface">
-                                <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-[12px] text-foreground-subtlest transition-colors hover:text-foreground-subtle">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v5a2.5 2.5 0 0 1-5 0v-5A2.5 2.5 0 0 1 9.5 2z" stroke="currentColor" strokeWidth="1.5" /><path d="M7.5 15.5l2-3 2 3M14.5 15.5a3 3 0 1 0 0-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-                                  {it.thinkingStreaming ? <span className="animate-pulse text-foreground-subtle">Thinking…</span> : <span>Thought{it.thinkingMs ? ` for ${(it.thinkingMs / 1000).toFixed(1)}s` : ''}</span>}
-                                </summary>
-                                <div className="border-t border-border px-3 py-2.5 text-[12px] leading-relaxed text-foreground-subtlest whitespace-pre-wrap">{it.thinking}</div>
-                              </details>
-                            )}
-                            {/* Full response body */}
-                            {it.text && (
-                              <div className="max-w-none text-[13px] leading-relaxed text-foreground-subtle whitespace-pre-wrap">{it.text}</div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
+                  <TrajectoryInspector calls={calls} />
                 </div>
                 <div className={`absolute inset-0 flex flex-col ${rightTab === 'flow' ? 'visible' : 'hidden'}`}>
                   <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">

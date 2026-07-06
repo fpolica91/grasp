@@ -157,6 +157,39 @@ export interface FuzzResult {
   error?: string | null
 }
 
+// The model trajectory: a faithful request/response inspector for every LLM API call
+// the agent made — mirrors ZCode's "Model trajectory" view. Each call is one `#N` round
+// trip with its Input (messages by role), Reasoning (thinking), Tool calls, Output, and
+// Tool results. The agent emits one `trajectory_call` per completed callModel.
+export interface TrajectoryMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  text: string
+}
+export interface TrajectoryToolCall {
+  id: string
+  name: string
+  input: Record<string, unknown>
+}
+export interface TrajectoryToolResult {
+  id: string
+  name: string
+  output: string
+}
+export interface TrajectoryCall {
+  n: number
+  model: string
+  source: string // 'Main session' | 'Title generation' | 'Compaction' | 'Subagent' | ...
+  ms?: number
+  inputTokens?: number
+  outputTokens?: number
+  input: TrajectoryMessage[] // messages newly sent on this call (delta since the previous call)
+  system?: string // system prompt — emitted once on the first call of a turn
+  reasoning?: string // thinking block text
+  output?: string // assistant text response
+  toolCalls: TrajectoryToolCall[]
+  toolResults: TrajectoryToolResult[]
+}
+
 // Streaming events from the agent loop (main -> renderer).
 export type AgentEvent =
   | { type: 'text'; text: string; parent?: string }
@@ -166,6 +199,7 @@ export type AgentEvent =
   | { type: 'thinking_end'; ms?: number }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; parent?: string }
   | { type: 'tool_result'; id: string; name: string; summary: string; output?: string; parent?: string }
+  | { type: 'trajectory_call'; call: TrajectoryCall }
   | { type: 'dataflow'; graph: GraphModel }
   | { type: 'dataflow_diff'; diff: GraphDiffModel }
   | { type: 'fuzz'; report: FuzzReport }

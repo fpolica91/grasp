@@ -109,6 +109,30 @@ async function callModel(
   }
 }
 
+// Stringify one message's content (which may be a string or an array of content blocks)
+// into the flat text the trajectory inspector renders. Tool-result blocks read as 'tool'.
+function messageToTrajectory(m: { role?: string; content?: unknown }): { role: 'system' | 'user' | 'assistant' | 'tool'; text: string } | null {
+  const role = (m.role as string) ?? 'user'
+  const c = m.content
+  if (typeof c === 'string') {
+    if (!c.trim()) return null
+    return { role: role === 'system' ? 'system' : role === 'assistant' ? 'assistant' : 'user', text: c }
+  }
+  if (!Array.isArray(c)) return null
+  // Block array — group text/thinking vs tool_use/tool_result.
+  let text = ''
+  let isTool = false
+  for (const b of c as { type?: string; text?: string; content?: string; name?: string; input?: unknown }[]) {
+    const t = b.type
+    if (t === 'text' && b.text) text += (text ? '\n' : '') + b.text
+    else if (t === 'thinking' && b.text) text += (text ? '\n' : '') + b.text
+    else if (t === 'tool_use') { isTool = true; text += (text ? '\n' : '') + `→ ${b.name}(${JSON.stringify(b.input ?? {}).slice(0, 200)})` }
+    else if (t === 'tool_result') { isTool = true; const body = typeof b.content === 'string' ? b.content : JSON.stringify(b.content ?? ''); text += (text ? '\n' : '') + body.slice(0, 4000) }
+  }
+  if (!text.trim()) return null
+  return { role: isTool ? 'tool' : role === 'system' ? 'system' : role === 'assistant' ? 'assistant' : 'user', text }
+}
+
 async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[] }> {
   const workspace = turn.workspace
   const model = turn.model || DEFAULT_MODEL
@@ -149,23 +173,29 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
 
   let turnTokens = 0
   let fuzzNudged = false // remind once per turn to surface the differential fuzz after an edit
+  let shownMessages = 0 // messages already represented in the trajectory (for per-call input delta)
   for (let step = 0; step < MAX_STEPS; step++) {
     if (turn.signal?.aborted) {
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
     const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : await mcpAugmentedTools(workspace)
+    const sysPrompt = withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM)
+    // Snapshot the input delta for this call (what's newly sent since the previous call).
+    const inputDelta = messages.slice(shownMessages)
+    const callStart = Date.now()
+    let reasoning = '' // accumulate the thinking block for the trajectory inspector
     const r = await callModel(
       model,
       messages,
-      withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
+      sysPrompt,
       tools,
       turn.signal,
       // Stream text live (non-plan only — plan mode renders the final proposal as a card, so
       // its text is not streamed to avoid showing it twice).
       plan ? undefined : (d) => emit({ type: 'text_delta', text: d }),
       // Stream thinking/reasoning live — the model trajectory.
-      (d) => emit({ type: 'thinking_delta', text: d })
+      (d) => { reasoning += d; emit({ type: 'thinking_delta', text: d }) }
     )
     if (!r.ok) {
       if (turn.signal?.aborted) {
@@ -190,11 +220,29 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     const terminal = r.stop !== 'tool_use' || toolUses.length === 0
     const textBlocks = blocks.filter((b) => b.type === 'text' && b.text)
 
+    // Build the per-call trajectory record (the model-trajectory inspector). Emitted on
+    // every exit path below; tool results are appended in the non-terminal branch.
+    const trajCall = {
+      n: step + 1,
+      model,
+      source: 'Main session',
+      ms: Date.now() - callStart,
+      inputTokens: r.usage?.input,
+      outputTokens: r.usage?.output,
+      input: (inputDelta as { role?: string; content?: unknown }[]).map(messageToTrajectory).filter(Boolean) as { role: 'system' | 'user' | 'assistant' | 'tool'; text: string }[],
+      ...(step === 0 ? { system: sysPrompt } : {}),
+      reasoning: reasoning || undefined,
+      output: textBlocks.map((b) => b.text).join('\n\n') || undefined,
+      toolCalls: toolUses.map((tu) => ({ id: String(tu.id), name: String(tu.name ?? ''), input: tu.input ?? {} })),
+      toolResults: [] as { id: string; name: string; output: string }[]
+    }
+
     // In plan mode the FINAL message is the proposal — render it as a plan card, not a
     // duplicate chat bubble. Intermediate reasoning (accompanying tool calls) still shows.
     if (plan && terminal) {
       const planText = textBlocks.map((b) => b.text).join('\n\n')
       emit(planText ? { type: 'plan', text: planText } : { type: 'text', text: '(no plan produced)' })
+      emit({ type: 'trajectory_call', call: trajCall })
       emit({ type: 'done' })
       return { messages }
     }
@@ -207,6 +255,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'text_end' }) // finalize the streaming bubble (deltas were shown live)
     }
     if (terminal) {
+      emit({ type: 'trajectory_call', call: trajCall })
       emit({ type: 'done' })
       return { messages }
     }
@@ -253,6 +302,15 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       await liveSurface(workspace, mutatedNow, emit)
 
     messages.push({ role: 'user', content: results })
+    // Emit this call's trajectory now that tool results are in, then advance the input
+    // delta cursor so the next call shows only what's newly sent.
+    trajCall.toolResults = results.map((rr) => {
+      const r0 = rr as { tool_use_id: string; content: string }
+      const tu = toolUses.find((t) => t.id === r0.tool_use_id)
+      return { id: r0.tool_use_id, name: String(tu?.name ?? ''), output: String(r0.content ?? '') }
+    })
+    emit({ type: 'trajectory_call', call: trajCall })
+    shownMessages = messages.length
   }
   emit({ type: 'done', note: 'reached step limit' })
   return { messages }
