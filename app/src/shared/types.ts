@@ -179,6 +179,7 @@ export interface TrajectoryCall {
   n: number
   model: string
   source: string // 'Main session' | 'Title generation' | 'Compaction' | 'Subagent' | ...
+  ts?: number // epoch ms the call started (rendered as a clock time, ZCode-style)
   ms?: number
   inputTokens?: number
   outputTokens?: number

@@ -9,28 +9,23 @@ import type { TrajectoryCall } from '../../../shared/types'
 type Role = 'system' | 'user' | 'assistant' | 'tool'
 
 const ROLE_LABEL: Record<Role, string> = { system: 'System', user: 'User', assistant: 'Assistant', tool: 'Tool' }
-// A whisper of color per role — the screenshot is grayscale, but a single dot aids scanning.
-const ROLE_DOT: Record<Role, string> = {
-  system: 'bg-foreground-subtlest',
-  user: 'bg-accent-blue',
-  assistant: 'bg-foreground',
-  tool: 'bg-accent-green'
+
+function fmtTime(ts?: number): string {
+  if (!ts) return ''
+  try {
+    return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
+  } catch {
+    return ''
+  }
 }
 
-function fmtTok(n?: number): string {
-  if (!n && n !== 0) return ''
-  return n.toLocaleString()
-}
-
-// One role-labeled payload block (a System/User/Assistant/Tool message rendered as a card).
+// One role-labeled payload block. ZCode renders these grayscale (no colored dots),
+// with an inline SYSTEM/USER/TOOL pill above a darker, proportional-text payload.
 function RoleBlock({ role, text }: { role: Role; text: string }): React.JSX.Element {
   return (
-    <div className="rounded-md border border-border bg-panel">
-      <div className="flex items-center gap-1.5 border-b border-border px-2.5 py-1">
-        <span className={`size-1.5 rounded-full ${ROLE_DOT[role]}`} />
-        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">{ROLE_LABEL[role]}</span>
-      </div>
-      <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-foreground-subtle">{text}</pre>
+    <div className="flex flex-col gap-1">
+      <span className="w-fit rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">{ROLE_LABEL[role]}</span>
+      <div className="max-h-[240px] overflow-auto rounded-md bg-panel px-2.5 py-2 text-[12px] leading-relaxed text-foreground-subtle whitespace-pre-wrap">{text}</div>
     </div>
   )
 }
@@ -46,25 +41,24 @@ function SectionLabel({ children, right }: { children: React.ReactNode; right?: 
 
 function Call({ call }: { call: TrajectoryCall }): React.JSX.Element {
   const [open, setOpen] = useState(call.n <= 3) // first few open, rest collapsed
-  const inTok = fmtTok(call.inputTokens)
-  const outTok = fmtTok(call.outputTokens)
+  const time = fmtTime(call.ts)
   return (
     <div className="rounded-lg border border-border bg-card">
-      {/* Header — the #N row: number · model · source · tokens · duration */}
+      {/* Header — flat inline row like ZCode: #N · model · source · time · duration (no chevron, no inline tokens) */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-hover"
       >
-        <svg width="9" height="9" viewBox="0 0 12 12" className={`shrink-0 text-foreground-subtlest transition-transform ${open ? 'rotate-90' : ''}`}><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <span className="font-mono text-[12px] font-medium text-foreground">#{call.n}</span>
         <span className="text-[12px] text-foreground-subtle">{call.model}</span>
         <span className="text-[12px] text-foreground-subtlest">·</span>
         <span className="text-[12px] text-foreground-subtlest">{call.source}</span>
-        {(inTok || outTok) && (
-          <span className="ml-1 font-mono text-[11px] text-foreground-subtlest">
-            tool-calls <span className="text-foreground-subtle">in {inTok} out {outTok}</span>
-          </span>
+        {time && (
+          <>
+            <span className="text-[12px] text-foreground-subtlest/60">·</span>
+            <span className="font-mono text-[11px] text-foreground-subtlest/80">{time}</span>
+          </>
         )}
         {call.ms !== undefined && (
           <span className="ml-auto font-mono text-[11px] text-foreground-subtlest">{(call.ms / 1000).toFixed(1)}s</span>
@@ -125,19 +119,15 @@ export function TrajectoryInspector({ calls }: { calls: TrajectoryCall[] }): Rea
       </div>
     )
   }
-  const totalIn = calls.reduce((s, c) => s + (c.inputTokens ?? 0), 0)
-  const totalOut = calls.reduce((s, c) => s + (c.outputTokens ?? 0), 0)
+  const total = calls.reduce((s, c) => s + (c.inputTokens ?? 0) + (c.outputTokens ?? 0), 0)
   const model = calls[0]?.model ?? ''
   return (
     <div className="flex h-full flex-col">
-      {/* Toolbar — sess id · N calls · Σ tokens · model (ZCode style) */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 text-[11px] text-foreground-subtlest">
-        <span className="font-mono"><span className="text-foreground-subtle">{calls.length}</span> calls</span>
-        <span className="text-foreground-subtlest/50">·</span>
-        <span>Σ <span className="font-mono text-foreground-subtle">{(totalIn + totalOut).toLocaleString()}</span> tok</span>
-        <span className="text-foreground-subtlest/50">·</span>
-        <span className="font-mono text-foreground-subtle">in {totalIn.toLocaleString()} out {totalOut.toLocaleString()}</span>
-        {model && <span className="ml-auto rounded-full border border-border px-2 py-0.5 font-mono text-[10px] text-foreground-subtle">{model}</span>}
+      {/* Toolbar — N calls · Σ tokens · model (ZCode pills) */}
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] text-foreground-subtlest">
+        <span className="rounded-full border border-border px-2 py-0.5"><span className="font-mono text-foreground-subtle">{calls.length}</span> calls</span>
+        <span className="rounded-full border border-border px-2 py-0.5">Σ <span className="font-mono text-foreground-subtle">{total.toLocaleString()}</span> tok</span>
+        {model && <span className="ml-auto rounded-full border border-border px-2 py-0.5 font-mono text-foreground-subtle">{model}</span>}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-1.5 p-3">

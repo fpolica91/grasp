@@ -226,6 +226,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       n: step + 1,
       model,
       source: 'Main session',
+      ts: callStart,
       ms: Date.now() - callStart,
       inputTokens: r.usage?.input,
       outputTokens: r.usage?.output,
