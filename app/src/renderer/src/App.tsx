@@ -64,7 +64,7 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'browser'>('flow')
+  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -88,7 +88,7 @@ export function App(): React.JSX.Element {
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
-  const pickRight = (tab: 'editor' | 'flow' | 'browser'): void => {
+  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser'): void => {
     const p = rightRef.current
     if (!p) return
     if (!p.isCollapsed() && rightTab === tab) p.collapse()
@@ -621,6 +621,7 @@ export function App(): React.JSX.Element {
           onSearch={() => setShowPalette(true)}
           onNewWorkflow={() => setShowWfModal(true)}
           onSettings={() => setShowSettings(true)}
+          onRemote={() => setShowRemote(true)}
           theme={theme}
           onTheme={setTheme}
         />
@@ -690,6 +691,7 @@ export function App(): React.JSX.Element {
               <div className="flex shrink-0 items-center gap-0.5 border-b border-border bg-panel px-3 pt-1.5">
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'editor' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('editor')}>Editor</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'flow' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('flow')}>Flow</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'trajectory' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('trajectory')}>Trajectory</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
                 {surface && (
                   <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground-subtlest">
@@ -705,6 +707,55 @@ export function App(): React.JSX.Element {
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
+                </div>
+                <div className={`absolute inset-0 overflow-y-auto p-4 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
+                  {transcript.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-[13px] text-foreground-subtlest">
+                      The agent's step-by-step trajectory appears here once you start a conversation.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      {transcript.filter((it) => !it.parent).map((it, i) => {
+                        const stepNum = i + 1
+                        if (it.role === 'user') return (
+                          <div key={i} className="flex items-start gap-2.5 rounded-lg bg-surface px-3 py-2">
+                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{stepNum}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">You</span>
+                              <p className="truncate text-[13px] text-foreground">{it.text}</p>
+                            </div>
+                          </div>
+                        )
+                        if (it.role === 'tool') return (
+                          <div key={i} className="flex items-center gap-2.5 px-3 py-1.5 pl-11">
+                            <span className="size-1.5 shrink-0 rounded-full bg-foreground-subtlest" />
+                            <span className="text-[12px] text-foreground-subtlest">{it.name}</span>
+                            <span className="truncate font-mono text-[11px] text-foreground-subtle">{it.summary}</span>
+                            <span className={`ml-auto rounded-full px-1.5 text-[9px] uppercase ${it.status === 'done' ? 'bg-tag text-foreground-subtlest' : 'bg-primary/20 text-foreground'}`}>{it.status === 'done' ? 'done' : '…'}</span>
+                          </div>
+                        )
+                        if (it.role === 'plan') return (
+                          <div key={i} className="flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2">
+                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-foreground">{stepNum}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Plan</span>
+                              <p className="truncate text-[13px] text-foreground-subtle">{(it.text ?? '').slice(0, 120)}…</p>
+                            </div>
+                          </div>
+                        )
+                        return (
+                          <div key={i} className="flex items-start gap-2.5 px-3 py-1.5 pl-11">
+                            <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">Agent</span>
+                              <p className="line-clamp-2 text-[13px] text-foreground-subtle">{(it.text ?? '').slice(0, 200)}</p>
+                              {it.thinking && <p className="mt-0.5 line-clamp-1 text-[11px] text-foreground-subtlest italic">{it.thinking.slice(0, 120)}…</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className={`absolute inset-0 flex flex-col ${rightTab === 'flow' ? 'visible' : 'hidden'}`}>
                   <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
@@ -808,7 +859,7 @@ export function App(): React.JSX.Element {
 
       {/* activity rail */}
       <div className="flex w-11 shrink-0 flex-col items-center gap-1 border-l border-border bg-background py-2">
-        {(['editor', 'flow', 'browser'] as const).map((t) => (
+        {(['editor', 'flow', 'trajectory', 'browser'] as const).map((t) => (
           <button
             key={t}
             className={`relative flex size-[34px] items-center justify-center rounded-lg border-0 bg-transparent transition-colors ${!rightCollapsed && rightTab === t ? 'bg-surface text-foreground' : 'text-foreground-subtlest hover:bg-surface-hover hover:text-foreground-subtle'}`}
@@ -822,6 +873,8 @@ export function App(): React.JSX.Element {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
                 {surface && rightCollapsed && <span className="absolute right-1 top-1 size-[7px] rounded-full bg-foreground shadow-[0_0_0_2px_var(--color-background)]" title="new Flow — click to view" />}
               </>
+            ) : t === 'trajectory' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" /></svg>
             ) : (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" strokeWidth="1.5" /></svg>
             )}

@@ -110,6 +110,7 @@ export function Sidebar(props: {
   onSearch: () => void
   onNewWorkflow: () => void
   onSettings: () => void
+  onRemote: () => void
   theme: Theme
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
@@ -286,6 +287,13 @@ export function Sidebar(props: {
       {/* Footer */}
       <div className="mt-auto flex flex-col gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="flex items-center gap-1 px-1">
+          <button
+            className="rounded-md p-1.5 text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+            onClick={props.onRemote}
+            title="Connect to a remote environment"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.7" /><path d="M7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+          </button>
           <button
             className="rounded-md p-1.5 text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
             onClick={props.onSettings}
