@@ -339,17 +339,19 @@ export function App(): React.JSX.Element {
       model,
       workspace,
       transcript,
-      history: history.current
+      history: history.current,
+      calls
     }
     void window.grasp.saveSession(rec)
     setSessions((ss) => [rec, ...ss.filter((s) => s.id !== rec.id)])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, transcript])
+  }, [busy, transcript, calls])
 
   function applySession(rec: SessionRecord): void {
     setSessionId(rec.id)
     setTranscript(rec.transcript as TranscriptItem[])
     history.current = rec.history
+    setCalls((rec.calls ?? []) as TrajectoryCall[])
     setBackend(rec.backend)
     setModel(rec.model)
     if (rec.workspace) setWorkspace(rec.workspace)

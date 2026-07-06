@@ -271,6 +271,7 @@ export interface SessionRecord {
   workspace: string
   transcript: unknown[]
   history: unknown[]
+  calls?: TrajectoryCall[] // persisted model-trajectory inspector records (per-call request/response)
   parentId?: string // provenance: the session this was forked from
   titleUserSet?: boolean // true once the user renamed it -> autosave keeps the title
 }
