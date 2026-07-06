@@ -20,36 +20,63 @@ function langFor(path: string): Extension {
   return []
 }
 
-// ZCode palette (.theme-zai-dark ANSI set) mapped to CodeMirror lezer tags —
-// shares one scheme across editor, terminal, and code blocks.
+// Zed-inspired syntax palette (One Dark — the theme Zed ships) mapped to lezer tags.
+// Purple keywords, green strings, blue functions, yellow types, orange numbers,
+// red properties — the signature Zed look, shared with the terminal/code blocks.
 const graspHighlight = HighlightStyle.define([
-  { tag: t.comment, color: '#d4d4d44d', fontStyle: 'italic' },
-  { tag: t.keyword, color: '#7b5ce5' },
-  { tag: [t.atom, t.bool, t.null], color: '#7b5ce5' },
-  { tag: [t.number, t.literal], color: '#ff8a30' },
-  { tag: t.string, color: '#46bf72' },
-  { tag: t.regexp, color: '#46bf72' },
-  { tag: [t.variableName, t.propertyName], color: '#d4d4d4' },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#4099ff' },
-  { tag: t.definition(t.function(t.variableName)), color: '#4099ff' },
-  { tag: [t.typeName, t.className], color: '#42c8c8' },
-  { tag: [t.propertyName, t.attributeName, t.labelName], color: '#ff8a30' },
-  { tag: [t.heading, t.name], color: '#4099ff' },
+  { tag: t.comment, color: '#7f848e', fontStyle: 'italic' },
+  { tag: [t.keyword, t.controlKeyword, t.definitionKeyword, t.modifier, t.self], color: '#c678dd' },
+  { tag: [t.operator, t.derefOperator, t.arithmeticOperator, t.logicOperator, t.bitwiseOperator], color: '#56b6c2' },
+  { tag: [t.atom, t.bool, t.null], color: '#d19a66' },
+  { tag: [t.number, t.literal, t.unit], color: '#d19a66' },
+  { tag: [t.string, t.special(t.string)], color: '#98c379' },
+  { tag: t.escape, color: '#56b6c2' },
+  { tag: t.regexp, color: '#98c379' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.function(t.variableName))], color: '#61afef' },
+  { tag: [t.typeName, t.className, t.definition(t.typeName), t.namespace], color: '#e5c07b' },
+  { tag: [t.propertyName, t.constant(t.propertyName)], color: '#e06c75' },
+  { tag: [t.attributeName, t.attributeValue], color: '#d19a66' },
+  { tag: [t.variableName, t.definition(t.variableName)], color: '#e6e6e6' },
+  { tag: [t.local(t.variableName)], color: '#e6e6e6' },
+  { tag: [t.labelName, t.heading], color: '#e06c75' },
+  { tag: [t.punctuation, t.separator, t.bracket], color: '#abb2bf' },
+  { tag: t.meta, color: '#abb2bf' },
   { tag: t.invalid, color: '#ff5c5c' },
-  { tag: t.meta, color: '#87d9a4' }
+  { tag: t.link, color: '#61afef', textDecoration: 'underline' }
 ])
 
 const graspTheme = EditorView.theme(
   {
-    '&': { color: '#d4d4d4', backgroundColor: 'transparent', fontSize: '12.5px', height: '100%' },
-    '.cm-content': { fontFamily: 'ui-monospace, monospace', caretColor: '#f8f8f8' },
-    '.cm-gutters': { backgroundColor: 'transparent', color: '#d4d4d44d', border: 'none' },
-    '.cm-activeLine': { backgroundColor: '#ffffff08' },
-    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#d4d4d499' },
-    '.cm-selectionBackground, ::selection': { backgroundColor: '#4099ff47 !important' },
-    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#4099ff47 !important' },
-    '.cm-cursor': { borderLeftColor: '#f8f8f8' },
-    '.cm-matchingBracket': { backgroundColor: '#ffffff1a', outline: '1px solid #ffffff26' }
+    // canvas: a deep, dedicated editor background so code reads as the primary surface
+    '&': { color: '#abb2bf', backgroundColor: '#161616', fontSize: '13px', height: '100%' },
+    '&.cm-focused': { outline: 'none' },
+    '.cm-scroller': { fontFamily: "'Geist Mono', 'JetBrains Mono', ui-monospace, monospace", lineHeight: '1.65', fontVariantLigatures: 'contextual', fontFeatureSettings: "'liga' 1, 'calt' 1" },
+    '.cm-content': { caretColor: '#528bff', padding: '8px 0' },
+    // gutter — Zed-like: dim numbers, brighter on the active line, no separator border
+    '.cm-gutters': { backgroundColor: '#161616', color: '#4b5263', border: 'none', paddingRight: '6px' },
+    '.cm-gutter.cm-lineNumbers': { minWidth: '2.5em' },
+    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#abb2bf' },
+    // active line — a whisper of highlight
+    '.cm-activeLine': { backgroundColor: '#ffffff06' },
+    // selection — Zed's blue translucent
+    '.cm-selectionBackground, ::selection': { backgroundColor: '#2b6cb0 !important' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#3b6ea5 !important' },
+    '::selection': { backgroundColor: '#3b6ea5' },
+    // Zed's signature blue cursor
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#528bff', borderLeftWidth: '2px' },
+    // matching brackets
+    '.cm-matchingBracket': { backgroundColor: '#3b4252', color: '#ffffff !important', outline: '1px solid #61afef66' },
+    '.cm-nonmatchingBracket': { backgroundColor: '#432b34', color: '#ff5c5c !important' },
+    // whitespace + indentation guides (shown by indentUnit/foldGutter)
+    '.cm-indent': { borderLeftColor: '#ffffff0d' },
+    // search panel
+    '.cm-panels': { backgroundColor: '#1c1d23', color: '#abb2bf', borderTop: '1px solid #ffffff14' },
+    '.cm-panels input': { backgroundColor: '#22232a', border: '1px solid #ffffff1a', color: '#e6e6e6' },
+    '.cm-searchMatch': { backgroundColor: '#3d4050' },
+    '.cm-searchMatch-selected': { backgroundColor: '#528bff66' },
+    // tooltips / autocomplete
+    '.cm-tooltip': { backgroundColor: '#1c1d23', border: '1px solid #ffffff1a', color: '#abb2bf' },
+    '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: '#528bff33', color: '#ffffff' }
   },
   { dark: true }
 )
