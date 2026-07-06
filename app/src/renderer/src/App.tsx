@@ -441,6 +441,20 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     return window.grasp.onAgentEvent((e: AgentEvent) => {
       if (e.type === 'text') setTranscript((t) => [...t, { role: 'assistant', text: e.text, parent: e.parent }])
+      else if (e.type === 'thinking_delta')
+        setTranscript((t) => {
+          const last = t[t.length - 1]
+          if (last && last.role === 'assistant' && last.thinkingStreaming) {
+            const copy = t.slice()
+            copy[copy.length - 1] = { ...last, thinking: (last.thinking ?? '') + e.text }
+            return copy
+          }
+          return [...t, { role: 'assistant', thinking: e.text, thinkingStreaming: true, streaming: false }]
+        })
+      else if (e.type === 'thinking_end')
+        setTranscript((t) => t.map((it, idx) => idx === t.length - 1 && it.thinkingStreaming
+          ? { ...it, thinkingStreaming: false, thinkingMs: e.ms }
+          : it))
       else if (e.type === 'text_delta')
         // Append to the active streaming bubble, or start one. One bubble per model response.
         setTranscript((t) => {
@@ -638,6 +652,11 @@ export function App(): React.JSX.Element {
                 onDecideApproval={decideApproval}
                 onSend={send}
                 onStop={() => void window.grasp.stopAgent()}
+                onRegenerate={() => {
+                  const lastUser = [...transcript].reverse().find((it) => it.role === 'user')
+                  if (lastUser?.text) void send(lastUser.text)
+                }}
+                onReact={(index, reaction) => setTranscript((t) => t.map((it, i) => i === index ? { ...it, reaction } : it))}
                 commands={commands}
                 skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
                 onToggleTerminal={toggleBottom}

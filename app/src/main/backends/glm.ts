@@ -31,7 +31,8 @@ async function callModel(
   system: string,
   tools: Tool[],
   signal?: AbortSignal,
-  onText?: (delta: string) => void
+  onText?: (delta: string) => void,
+  onThinking?: (delta: string) => void
 ): Promise<{ ok: boolean; content?: AnyBlock[]; stop?: string; error?: string; usage?: { input: number; output: number } }> {
   const KEY = getKey()
   if (!KEY) return { ok: false, error: 'No model key. Add it in grasp (top-right).' }
@@ -51,14 +52,12 @@ async function callModel(
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
     if (!res.body) return { ok: false, error: 'model returned no stream body' }
-    // SSE reassembly: rebuild the content blocks (text + tool_use) from the streaming events
-    // so the loop's tool handling is identical to the non-streaming path. text deltas are
-    // forwarded live via onText so the UI renders the answer as it is written.
     const blocks: AnyBlock[] = []
     let cur: { type: string; text: string; id?: string; name?: string; json: string } | null = null
     let stopReason: string | undefined
     let inputTokens = 0
     let outputTokens = 0
+    let thinkingStart = 0
     await parseSSE(res.body, (ev) => {
       const t = ev.type as string
       if (t === 'message_start') {
@@ -66,24 +65,30 @@ async function callModel(
       } else if (t === 'content_block_start') {
         const cb = ev.content_block as { type: string; text?: string; id?: string; name?: string }
         cur = { type: cb.type, text: cb.text ?? '', id: cb.id, name: cb.name, json: '' }
+        if (cb.type === 'thinking') thinkingStart = Date.now()
       } else if (t === 'content_block_delta' && cur) {
-        const d = ev.delta as { type: string; text?: string; partial_json?: string }
+        const d = ev.delta as { type: string; text?: string; partial_json?: string; thinking?: string }
         if (d.type === 'text_delta' && typeof d.text === 'string') {
           cur.text += d.text
           if (onText) onText(d.text)
+        } else if (d.type === 'thinking_delta' && typeof d.thinking === 'string') {
+          cur.text += d.thinking
+          if (onThinking) onThinking(d.thinking)
         } else if (d.type === 'input_json_delta' && typeof d.partial_json === 'string') {
           cur.json += d.partial_json
         }
       } else if (t === 'content_block_stop' && cur) {
         if (cur.type === 'text') {
           blocks.push({ type: 'text', text: cur.text })
+        } else if (cur.type === 'thinking') {
+          // thinking blocks are NOT pushed to blocks — they're surfaced via events, not the content array
+          if (onThinking) {
+            const ms = thinkingStart ? Date.now() - thinkingStart : undefined
+            // The caller handles thinking_end separately; here we just note the block completed
+          }
         } else if (cur.type === 'tool_use') {
           let input: Record<string, unknown> = {}
-          try {
-            input = cur.json ? JSON.parse(cur.json) : {}
-          } catch {
-            /* keep {} on a malformed tool-input stream */
-          }
+          try { input = cur.json ? JSON.parse(cur.json) : {} } catch { /* keep {} */ }
           blocks.push({ type: 'tool_use', id: cur.id, name: cur.name, input })
         }
         cur = null
@@ -158,7 +163,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       turn.signal,
       // Stream text live (non-plan only — plan mode renders the final proposal as a card, so
       // its text is not streamed to avoid showing it twice).
-      plan ? undefined : (d) => emit({ type: 'text_delta', text: d })
+      plan ? undefined : (d) => emit({ type: 'text_delta', text: d }),
+      // Stream thinking/reasoning live — the model trajectory.
+      (d) => emit({ type: 'thinking_delta', text: d })
     )
     if (!r.ok) {
       if (turn.signal?.aborted) {
@@ -196,6 +203,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       // plan mode doesn't stream — emit intermediate reasoning as full text bubbles.
       for (const b of textBlocks) emit({ type: 'text', text: b.text })
     } else {
+      emit({ type: 'thinking_end' })
       emit({ type: 'text_end' }) // finalize the streaming bubble (deltas were shown live)
     }
     if (terminal) {

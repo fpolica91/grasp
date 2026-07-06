@@ -12,6 +12,9 @@ export interface TranscriptItem {
   id?: string
   role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval'
   text?: string
+  thinking?: string
+  thinkingMs?: number
+  thinkingStreaming?: boolean
   name?: string
   input?: Record<string, unknown>
   summary?: string
@@ -19,6 +22,7 @@ export interface TranscriptItem {
   status?: 'running' | 'done'
   parent?: string
   streaming?: boolean
+  reaction?: 'up' | 'down'
 }
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -260,6 +264,8 @@ export function Conversation(props: {
   onDecideApproval: (id: string, ok: boolean) => void
   onSend: (prompt: string) => void
   onStop: () => void
+  onRegenerate?: () => void
+  onReact?: (index: number, reaction: 'up' | 'down' | undefined) => void
   onToggleTerminal?: () => void
   onToggleSidebar?: () => void
   banner?: React.ReactNode
@@ -341,10 +347,59 @@ export function Conversation(props: {
         </div>
       )
     return (
-      <div key={i} className="flex w-full flex-col gap-2">
+      <div key={i} className="group/msg flex w-full flex-col gap-2">
+        {/* Thinking / reasoning collapsible (model trajectory) */}
+        {(it.thinking || it.thinkingStreaming) && (
+          <details className="rounded-lg border border-border bg-surface" open={it.thinkingStreaming}>
+            <summary className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[12px] text-foreground-subtlest transition-colors hover:text-foreground-subtle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v5a2.5 2.5 0 0 1-5 0v-5A2.5 2.5 0 0 1 9.5 2zM7.5 15.5l2-3 2 3M16.5 12a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              {it.thinkingStreaming ? <span className="animate-pulse text-foreground-subtle">Thinking…</span> : <span>Thought{it.thinkingMs ? ` for ${(it.thinkingMs / 1000).toFixed(1)}s` : ''}</span>}
+            </summary>
+            <div className="border-t border-border px-3 py-2 text-[12px] leading-relaxed text-foreground-subtlest">
+              {it.thinking || '…'}
+            </div>
+          </details>
+        )}
         <div className="prose max-w-none text-[13px] leading-relaxed text-foreground">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{it.text ?? ''}</ReactMarkdown>
         </div>
+        {/* Hover actions: copy + regenerate + reactions */}
+        {!it.streaming && it.text && (
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/msg:opacity-100">
+            <button
+              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+              onClick={() => { void navigator.clipboard.writeText(it.text ?? ''); }}
+              title="Copy message"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.7" /><path d="M5 15V5a2 2 0 0 1 2-2h10" stroke="currentColor" strokeWidth="1.7" /></svg>
+              Copy
+            </button>
+            {props.onRegenerate && (
+              <button
+                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+                onClick={() => props.onRegenerate?.()}
+                title="Regenerate response"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3M21 4v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Retry
+              </button>
+            )}
+            {props.onReact && (
+              <>
+                <button
+                  className={`ml-1 rounded-md p-1 text-[11px] transition-colors ${it.reaction === 'up' ? 'text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
+                  onClick={() => props.onReact?.(i, it.reaction === 'up' ? undefined : 'up')}
+                  title="Good response"
+                >👍</button>
+                <button
+                  className={`rounded-md p-1 text-[11px] transition-colors ${it.reaction === 'down' ? 'text-destructive' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
+                  onClick={() => props.onReact?.(i, it.reaction === 'down' ? undefined : 'down')}
+                  title="Bad response"
+                >👎</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     )
   }
