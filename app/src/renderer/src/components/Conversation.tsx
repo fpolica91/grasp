@@ -251,38 +251,65 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
   const [appsOpen, setAppsOpen] = useState(false)
   const [apps, setApps] = useState<{ id: string; name: string; icon: string }[]>([])
   const [lastApp, setLastApp] = useState<string>(() => localStorage.getItem('grasp-last-app') ?? '')
+  // Detect on open AND once on mount, so the trigger shows the last editor's icon immediately
+  useEffect(() => { void window.grasp.detectApps().then(setApps) }, [])
   useEffect(() => { if (appsOpen) void window.grasp.detectApps().then(setApps) }, [appsOpen])
-  const lastAppObj = apps.find((a) => a.id === lastApp)
+  const lastAppObj = apps.find((a) => a.id === lastApp) ?? apps[0] ?? null
+  const openLast = (): void => {
+    if (lastAppObj) void window.grasp.openInApp(lastAppObj.id, workspace)
+    else setAppsOpen(true)
+  }
+  const pick = (id: string): void => {
+    setLastApp(id)
+    localStorage.setItem('grasp-last-app', id)
+    void window.grasp.openInApp(id, workspace)
+    setAppsOpen(false)
+  }
+  // ZCode-style split button: primary "Open" (launches in the last editor) + caret (picker)
   return (
-    <div className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+    <div className="relative flex items-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <button
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
-        onClick={() => setAppsOpen((o) => !o)}
-        title="Open in external editor"
+        className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-card pl-2 pr-1.5 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
+        onClick={openLast}
+        title={lastAppObj ? `Open in ${lastAppObj.name}` : 'Open in external editor'}
       >
         {lastAppObj ? <EditorIcon id={lastAppObj.id} size={15} /> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M14 7h7v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-        {lastAppObj ? lastAppObj.name : 'Open in…'}
-        <svg width="9" height="9" viewBox="0 0 12 12" className="text-foreground-subtlest"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span>{lastAppObj ? 'Open' : 'Open in…'}</span>
+      </button>
+      <button
+        className="flex items-center rounded-r-lg border border-border bg-card px-1 py-1 text-foreground-subtlest shadow-sm transition-colors hover:bg-surface-hover"
+        onClick={() => setAppsOpen((o) => !o)}
+        title="Choose editor"
+      >
+        <svg width="9" height="9" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       {appsOpen && (
-        <div className="absolute top-full left-0 z-50 mt-1 flex w-[200px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl" onClick={() => setAppsOpen(false)}>
-          {apps.map((app) => (
+        <>
+          {/* click-away layer */}
+          <div className="fixed inset-0 z-40" onClick={() => setAppsOpen(false)} />
+          <div className="absolute top-full left-0 z-50 mt-1 flex w-[208px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl">
             <button
-              key={app.id}
-              className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
-              onClick={() => {
-                setLastApp(app.id)
-                localStorage.setItem('grasp-last-app', app.id)
-                void window.grasp.openInApp(app.id, workspace)
-              }}
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-hover"
+              onClick={() => { if (lastAppObj) pick(lastAppObj.id); else setAppsOpen(false) }}
             >
-              <EditorIcon id={app.id} size={17} />
-              <span className="flex-1 text-left">{app.name}</span>
-              {app.id === lastApp && <span className="text-foreground-subtlest">✓</span>}
+              {lastAppObj ? <EditorIcon id={lastAppObj.id} size={16} /> : <span className="w-4" />}
+              <span className="flex-1 text-left">Open</span>
             </button>
-          ))}
-          {apps.length === 0 && <div className="px-2.5 py-2 text-[12px] text-foreground-subtlest">No editors detected.</div>}
-        </div>
+            <div className="my-0.5 h-px bg-border" />
+            {apps.map((app) => (
+              <button
+                key={app.id}
+                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+                onClick={() => pick(app.id)}
+              >
+                <EditorIcon id={app.id} size={16} />
+                <span className="flex-1 text-left">{app.name}</span>
+                {app.id === lastApp && <span className="text-foreground-subtlest">✓</span>}
+              </button>
+            ))}
+            {apps.length === 0 && <div className="px-2.5 py-2 text-[12px] text-foreground-subtlest">No editors detected.</div>}
+          </div>
+        </>
       )}
     </div>
   )

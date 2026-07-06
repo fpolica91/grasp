@@ -320,9 +320,15 @@ export function App(): React.JSX.Element {
     void runWorkflow(wf)
   }
 
-  // Restore the session list on launch.
+  // Restore the session list on launch, AND re-open the most recent session so the
+  // transcript + model trajectory load on start (matches ZCode's restore-last-session).
   useEffect(() => {
-    void window.grasp.sessions().then(setSessions)
+    void window.grasp.sessions().then((ss) => {
+      setSessions(ss)
+      const latest = [...ss].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+      if (latest && latest.transcript?.length) applySession(latest)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Autosave: whenever a turn settles, persist the session (transcript + opaque history).
