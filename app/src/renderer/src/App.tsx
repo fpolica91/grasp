@@ -662,6 +662,7 @@ export function App(): React.JSX.Element {
                 skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
                 onToggleTerminal={toggleBottom}
                 onToggleSidebar={() => setSidebarOpen((s) => !s)}
+                workspace={workspace}
                 banner={
                   activeWf ? (
                     <WorkflowPanel

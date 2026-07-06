@@ -271,6 +271,7 @@ export function Conversation(props: {
   banner?: React.ReactNode
   commands: SlashCommand[]
   skills: { name: string; description: string }[]
+  workspace?: string
 }): React.JSX.Element {
   const [input, setInput] = useState('')
   const [slashIx, setSlashIx] = useState(0)
@@ -419,6 +420,45 @@ export function Conversation(props: {
           </button>
         )}
         <span className="text-[14px] font-medium text-foreground">Session<span className="ml-2 text-[12px] font-normal text-foreground-subtlest">post-editor</span></span>
+        {/* External app launcher */}
+        {props.workspace && (() => {
+          const [appsOpen, setAppsOpen] = useState(false)
+          const [apps, setApps] = useState<{ id: string; name: string; icon: string }[]>([])
+          const [lastApp, setLastApp] = useState<string>(() => localStorage.getItem('grasp-last-app') ?? '')
+          useEffect(() => { if (appsOpen) void window.grasp.detectApps().then(setApps) }, [appsOpen])
+          return (
+            <div className="relative" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              <button
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
+                onClick={() => setAppsOpen((o) => !o)}
+                title="Open in external editor"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 17l6-6 4 4 8-8M14 7h7v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                {lastApp ? apps.find((a) => a.id === lastApp)?.name ?? 'Open in…' : 'Open in…'}
+              </button>
+              {appsOpen && (
+                <div className="absolute top-full left-0 z-50 mt-1 flex w-[180px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl" onClick={() => setAppsOpen(false)}>
+                  {apps.map((app) => (
+                    <button
+                      key={app.id}
+                      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+                      onClick={() => {
+                        setLastApp(app.id)
+                        localStorage.setItem('grasp-last-app', app.id)
+                        void window.grasp.openInApp(app.id, props.workspace!)
+                      }}
+                    >
+                      <span className="text-[14px]">{app.icon}</span>
+                      <span className="flex-1 text-left">{app.name}</span>
+                      {app.id === lastApp && <span className="text-foreground-subtlest">✓</span>}
+                    </button>
+                  ))}
+                  {apps.length === 0 && <div className="px-2.5 py-2 text-[12px] text-foreground-subtlest">No editors detected.</div>}
+                </div>
+              )}
+            </div>
+          )
+        })()}
         <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-foreground-subtle shadow-sm" title="tokens used this session">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".4" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           {fmtTokens(props.tokens)}

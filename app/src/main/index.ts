@@ -30,6 +30,7 @@ import { listProjects, openFolder, newProject, rememberProject } from './project
 import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
 import { listCommands } from './commands'
 import { loadKeybindings } from './keybinds'
+import { detectApps, launchApp } from './launcher'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
 import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
@@ -115,6 +116,8 @@ app.whenReady().then(() => {
   // Reveal a ~/.grasp surface in the OS file manager. skills/plugins/commands open as dirs;
   // mcp selects mcp.json; a missing path falls back to opening ~/.grasp so the user sees where
   // to create it.
+  ipcMain.handle('grasp:detectApps', () => detectApps())
+  ipcMain.handle('grasp:openInApp', (_e, appId: string, ws: string) => launchApp(appId, ws))
   ipcMain.handle('grasp:revealInFiles', (_e, key: string) => {
     const root = join(homedir(), '.grasp')
     const file = key === 'mcp' ? 'mcp.json' : key === 'keybindings' ? 'keybindings.json' : key

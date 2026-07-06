@@ -284,6 +284,8 @@ export interface GraspApi {
   uninstallPlugin(name: string): Promise<{ ok: boolean; error?: string }>
   openFolder(): Promise<string>
   revealInFiles(key: string): Promise<void>
+  detectApps(): Promise<{ id: string; name: string; command: string; icon: string }[]>
+  openInApp(appId: string, workspace: string): Promise<boolean>
   newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void
   termWrite(id: string, data: string): void
