@@ -1,7 +1,7 @@
 {
   "name": "grasp",
   "version": "0.1.0",
-  "description": "grasp \u2014 the post-editor. An agentic desktop where you adjudicate observed behavior, not diffs.",
+  "description": "grasp — the post-editor. An agentic desktop where you adjudicate observed behavior, not diffs.",
   "main": "./out/main/index.js",
   "author": "Fabricio Policarpo",
   "license": "MIT",

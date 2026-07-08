@@ -334,6 +334,7 @@ export interface GraspApi {
   revealInFiles(key: string): Promise<void>
   detectApps(): Promise<{ id: string; name: string; command: string; icon: string }[]>
   openInApp(appId: string, workspace: string): Promise<boolean>
+  sshTest(host: string): Promise<{ ok: boolean; error?: string; output?: string }>
   newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void
   termWrite(id: string, data: string): void

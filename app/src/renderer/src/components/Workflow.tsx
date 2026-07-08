@@ -84,9 +84,20 @@ export function WorkflowPanel(props: {
   const live = props.busy && wf.status === 'running'
   return (
     <div className="flex flex-col gap-2 border-b border-border px-5 py-3">
-      <div className="flex items-center gap-2.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">workflow</span>
-        <span className="text-[13px] font-semibold text-foreground">{wf.title}</span>
+      {/* Row 1 — label + title (truncates) + dismiss. min-w-0 lets the title truncate. */}
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">workflow</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground" title={wf.title}>{wf.title}</span>
+        <button
+          className="shrink-0 border-0 bg-transparent text-[14px] leading-none text-foreground-subtlest transition-colors hover:text-foreground"
+          onClick={props.onDismiss}
+          title="dismiss"
+        >
+          ✕
+        </button>
+      </div>
+      {/* Row 2 — progress + status + action (wraps cleanly in the narrow sidebar) */}
+      <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground-subtlest">
           {done}/{wf.steps.length}
         </span>
@@ -113,13 +124,6 @@ export function WorkflowPanel(props: {
             Resume
           </button>
         )}
-        <button
-          className="ml-auto border-0 bg-transparent text-[14px] text-foreground-subtlest transition-colors hover:text-foreground"
-          onClick={props.onDismiss}
-          title="dismiss"
-        >
-          ✕
-        </button>
       </div>
       <ol className="flex flex-col gap-1">
         {wf.steps.map((s, i) => (

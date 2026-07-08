@@ -34,6 +34,7 @@ const api: GraspApi = {
   revealInFiles: (key: string) => ipcRenderer.invoke('grasp:revealInFiles', key),
   detectApps: () => ipcRenderer.invoke('grasp:detectApps'),
   openInApp: (appId: string, workspace: string) => ipcRenderer.invoke('grasp:openInApp', appId, workspace),
+  sshTest: (host: string) => ipcRenderer.invoke('grasp:sshTest', host),
   mcpServers: (workspace: string) => ipcRenderer.invoke('grasp:mcpServers', workspace),
   plugins: (workspace: string) => ipcRenderer.invoke('grasp:plugins', workspace),
   installPlugin: (url: string) => ipcRenderer.invoke('grasp:installPlugin', url),
