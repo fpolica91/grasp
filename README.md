@@ -49,7 +49,7 @@ grasp is agent-agnostic. Each backend implements one contract and streams the sa
 
 | Wire | Backend | Notes |
 |---|---|---|
-| Anthropic Messages | **GLM** (default), **Claude** (Sonnet 5 / Opus 4.8 / Fable 5 / Haiku 4.5), **Moonshot / Kimi**, **DeepSeek**, **Qwen**, **Xiaomi MiMo**, **MiniMax**, **BigModel** (智谱) | one shared owned loop; full inspector + moat prompt |
+| Anthropic Messages | **GLM** (default), **Anthropic** (Sonnet 5 / Opus 4.8 / Fable 5 / Haiku 4.5), **Moonshot / Kimi**, **DeepSeek**, **Qwen**, **Xiaomi MiMo**, **MiniMax**, **BigModel** (智谱) | one shared owned loop; full inspector + moat prompt |
 | OpenAI chat | **OpenAI** (or any compatible endpoint) | |
 | CLI | **Claude Code** | drives the `claude` CLI, brings its own tools |
 
