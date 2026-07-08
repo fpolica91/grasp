@@ -18,7 +18,10 @@ import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
 import { TrajectoryInspector } from './components/TrajectoryInspector'
+import { GitGraphPane } from './components/GitGraph'
+import { WikiPane } from './components/Wiki'
 import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
+import type { ThoughtLevel } from '../../shared/catalog'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
 type Surface =
@@ -67,11 +70,27 @@ export function App(): React.JSX.Element {
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
   const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
-  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser'>('flow')
+  const [thoughtLevel, setThoughtLevelState] = useState<ThoughtLevel | undefined>(() => (localStorage.getItem('grasp-thought') as ThoughtLevel) || undefined)
+  const setThoughtLevel = (l: ThoughtLevel | undefined): void => {
+    setThoughtLevelState(l)
+    if (l) localStorage.setItem('grasp-thought', l)
+    else localStorage.removeItem('grasp-thought')
+  }
+  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(260)
+  const [winW, setWinW] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440))
+  useEffect(() => {
+    const onResize = (): void => setWinW(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  // Cap the sidebar to ~30% of the window so it never eats a disproportionate share at
+  // small widths — keeps proportions consistent without forcing a "mobile" collapse.
+  // The user's drag intent (200–420) is preserved; only the render is capped below it.
+  const effectiveSidebarWidth = Math.min(sidebarWidth, Math.max(180, Math.round(winW * 0.3)))
   const startSidebarResize = (e: React.MouseEvent): void => {
     e.preventDefault()
     const startX = e.clientX
@@ -91,7 +110,7 @@ export function App(): React.JSX.Element {
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
-  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser'): void => {
+  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'): void => {
     const p = rightRef.current
     if (!p) return
     if (!p.isCollapsed() && rightTab === tab) p.collapse()
@@ -165,11 +184,16 @@ export function App(): React.JSX.Element {
   }, [keybinds])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
+  const [queue, setQueue] = useState<string[]>([]) // follow-ups queued while the agent was busy
 
   // Resolve an Ask-mode approval and mark it decided in the transcript.
   function decideApproval(id: string, ok: boolean): void {
     void window.grasp.approve(id, ok)
     setTranscript((t) => t.map((it) => (it.id === id ? { ...it, status: 'done', summary: ok ? 'allowed' : 'denied' } : it)))
+  }
+  function decideElicitation(id: string, answer: string | null): void {
+    void window.grasp.resolveElicitation(id, answer)
+    setTranscript((t) => t.map((it) => (it.elicit?.id === id ? { ...it, elicitAnswer: answer } : it)))
   }
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const [sessions, setSessions] = useState<SessionRecord[]>([])
@@ -347,22 +371,25 @@ export function App(): React.JSX.Element {
       workspace,
       transcript,
       history: history.current,
-      calls
+      calls,
+      traces,
+      surface
     }
     void window.grasp.saveSession(rec)
     setSessions((ss) => [rec, ...ss.filter((s) => s.id !== rec.id)])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, transcript, calls])
+  }, [busy, transcript, calls, traces, surface])
 
   function applySession(rec: SessionRecord): void {
     setSessionId(rec.id)
     setTranscript(rec.transcript as TranscriptItem[])
     history.current = rec.history
     setCalls((rec.calls ?? []) as TrajectoryCall[])
+    setTraces((rec.traces ?? []) as TraceDoc[]) // isolate: never inherit the previous session's traces
     setBackend(rec.backend)
     setModel(rec.model)
     if (rec.workspace) setWorkspace(rec.workspace)
-    setSurface(null)
+    setSurface((rec.surface ?? null) as Surface | null)
     setError(null)
   }
   function loadSession(id: string): void {
@@ -514,6 +541,8 @@ export function App(): React.JSX.Element {
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
+      else if (e.type === 'elicitation_request')
+        setTranscript((t) => [...t, { role: 'elicitation', elicit: { id: e.id, header: e.header, question: e.question, options: e.options, multiSelect: e.multiSelect } }])
       else if (e.type === 'usage') setTokens((n) => n + e.input + e.output)
       else if (e.type === 'done') {
         setBusy(false)
@@ -532,7 +561,7 @@ export function App(): React.JSX.Element {
     if (busy) return
     setError(null)
     setBusy(true)
-    setTranscript((t) => [...t, { role: 'user', text: prompt }])
+    setTranscript((t) => [...t, { role: 'user', text: prompt, histLen: history.current.length }])
     const b = parseInt(budget, 10)
     const res = await window.grasp.agent({
       workspace,
@@ -540,12 +569,61 @@ export function App(): React.JSX.Element {
       history: history.current,
       backend,
       model,
+      thoughtLevel,
       mode: modeOverride ?? agentMode,
       budget: Number.isFinite(b) && b > 0 ? b : undefined,
       flowAuto
     })
     history.current = res.messages
   }
+
+  // Steer: inject a message into the in-flight turn (drained by the owned loop each step).
+  function steerPrompt(text: string): void {
+    void window.grasp.steer(text)
+    setTranscript((t) => [...t, { role: 'user', text: `↳ ${text}` }])
+  }
+
+  // Compact: summarize the conversation so far into a handover, replacing the backend
+  // history with that summary so the next turn starts from a compressed context.
+  async function compactConversation(): Promise<void> {
+    if (busy) return
+    const lines = transcript
+      .filter((it) => (it.role === 'user' || it.role === 'assistant') && it.text)
+      .map((it) => `${it.role === 'user' ? 'User' : 'Assistant'}: ${(it.text ?? '').replace(/\s+/g, ' ').slice(0, 800)}`)
+    if (lines.length < 4) { setError('Not enough conversation to compact yet.'); return }
+    setBusy(true)
+    const sys = "Summarize the conversation into a concise handover for a coding agent: the user's goal, decisions made, what was changed (with file paths/commands/values), and the open question or next step. Reply with ONLY the summary, no preamble."
+    const res = await window.grasp.oneShot({ backend, model, system: sys, user: lines.join('\n\n'), maxTokens: 1024 })
+    setBusy(false)
+    if (!res.ok || !res.text) { setError(res.error ?? 'compaction failed'); return }
+    history.current = [{ role: 'user', content: `<conversation summary>\n${res.text}` }]
+    setTranscript((t) => [...t, { role: 'assistant', text: '_✦ Context compacted — earlier turns summarized into the next turn._' }])
+    setTokens(0)
+  }
+
+  // Fork: branch the conversation at a user message — a new session carrying the context
+  // up to that prompt (the turn's pre-history) and the transcript through it. The current
+  // session is preserved by the autosave effect; this just spins a fresh id for the branch.
+  function forkFromUser(index: number): void {
+    if (busy) return
+    const item = transcript[index]
+    if (!item || item.role !== 'user' || item.histLen == null) return
+    setSessionId(crypto.randomUUID())
+    history.current = history.current.slice(0, item.histLen)
+    setTranscript(transcript.slice(0, index + 1))
+    setCalls([])
+    setSurface(null)
+    setError(null)
+  }
+
+  // Drain the queue when a turn goes idle — send one follow-up per idle transition.
+  useEffect(() => {
+    if (busy) return
+    let next: string | undefined
+    setQueue((q) => { if (q.length) { next = q[0]; return q.slice(1) } return q })
+    if (next !== undefined) void send(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy])
 
   // Approving a plan executes it as a normal (build) turn — the plan text becomes the brief.
   function approvePlan(text: string): void {
@@ -624,7 +702,7 @@ export function App(): React.JSX.Element {
       )}
 
       {sidebarOpen && (
-        <div className="flex shrink-0 flex-col h-full border-r border-border overflow-hidden" style={{ width: sidebarWidth }}>
+        <div className="flex shrink-0 flex-col h-full border-r border-border overflow-hidden" style={{ width: effectiveSidebarWidth }}>
           <Sidebar
             workspace={workspace}
           onWorkspace={switchProject}
@@ -675,11 +753,20 @@ export function App(): React.JSX.Element {
                 tokens={tokens}
                 budget={budget}
                 onBudget={setBudget}
+                onCompact={compactConversation}
+                onForkUser={forkFromUser}
                 onBackend={pickBackend}
                 onModel={setModel}
+                thoughtLevel={thoughtLevel}
+                onThoughtLevel={setThoughtLevel}
                 onMode={setAgentMode}
+                onQueue={(t) => setQueue((q) => [...q, t])}
+                onSteer={steerPrompt}
+                queue={queue}
+                onRemoveQueued={(i) => setQueue((q) => q.filter((_, ix) => ix !== i))}
                 onApprovePlan={approvePlan}
                 onDecideApproval={decideApproval}
+                onDecideElicitation={decideElicitation}
                 onSend={send}
                 onStop={() => void window.grasp.stopAgent()}
                 onRegenerate={() => {
@@ -723,6 +810,8 @@ export function App(): React.JSX.Element {
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'flow' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('flow')}>Flow</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'trajectory' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('trajectory')}>Trajectory</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'git' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('git')}>Git</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'wiki' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('wiki')}>Wiki</button>
                 {surface && (
                   <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground-subtlest">
                     <span className="size-1.5 animate-pulse rounded-full bg-foreground" />
@@ -737,6 +826,12 @@ export function App(): React.JSX.Element {
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
+                </div>
+                <div className={`absolute inset-0 ${rightTab === 'git' ? 'visible' : 'hidden'}`}>
+                  <GitGraphPane workspace={workspace} active={rightTab === 'git'} />
+                </div>
+                <div className={`absolute inset-0 ${rightTab === 'wiki' ? 'visible' : 'hidden'}`}>
+                  <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />

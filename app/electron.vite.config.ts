@@ -34,6 +34,10 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    // 5188, not Vite's default 5173: grasp's app-first observation BOOTS target apps,
+    // and most of them claim 5173 for themselves. grasp must never squat the port its
+    // own subjects need. strictPort: a silent fallback would recreate the collision.
+    server: { port: 5188, strictPort: true },
     build: {
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } }
     },

@@ -8,10 +8,11 @@ import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js/lib/common'
 import { EditorIcon } from './editor-icons'
 import type { BackendInfo, SlashCommand } from '../../../shared/types'
+import { THOUGHT_LABEL, hasReasoning, lookupModel, type ThoughtLevel } from '../../../shared/catalog'
 
 export interface TranscriptItem {
   id?: string
-  role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval'
+  role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval' | 'elicitation'
   text?: string
   thinking?: string
   thinkingMs?: number
@@ -24,6 +25,9 @@ export interface TranscriptItem {
   parent?: string
   streaming?: boolean
   reaction?: 'up' | 'down'
+  elicit?: { id: string; header?: string; question: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
+  elicitAnswer?: string | null
+  histLen?: number // backend-history length captured when this user turn was sent (for Fork)
 }
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -173,8 +177,10 @@ function ModelPicker(props: {
   onBackend: (id: string) => void; onModel: (m: string) => void
 }): React.JSX.Element {
   const active = props.backends.find((b) => b.id === props.backend)
+  const meta = lookupModel(props.backend, props.model)
+  const ctx = meta?.contextWindow ? `${Math.round(meta.contextWindow / 1000)}k` : null
   return (
-    <span className="flex items-center gap-1.5 text-[12px] text-foreground-subtle">
+    <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-foreground-subtle">
       <span className={`size-1.5 rounded-full ${active?.ok ? 'bg-foreground' : 'bg-foreground-subtlest'}`} title={active?.ok ? 'available' : (active?.reason ?? 'unavailable')} />
       <select
         className="border-0 bg-transparent text-[12px] text-foreground-subtle outline-none"
@@ -189,11 +195,35 @@ function ModelPicker(props: {
         className="border-0 bg-transparent text-[12px] text-foreground-subtle outline-none"
         value={props.model}
         onChange={(e) => props.onModel(e.target.value)}
-        title="model"
+        title={meta ? `model · ${meta.contextWindow ? Math.round(meta.contextWindow / 1000) + 'k ctx' : ''}${meta.maxOutputTokens ? ' · ' + Math.round(meta.maxOutputTokens / 1000) + 'k out' : ''}${meta.inputModalities?.length ? ' · ' + meta.inputModalities.join('+') : ''}`.replace('  ', ' ').trim() : 'model'}
       >
         {(active?.models ?? []).map((m) => (<option key={m} value={m}>{m}</option>))}
       </select>
+      {ctx && <span className="text-foreground-subtlest" title="context window">{ctx}</span>}
     </span>
+  )
+}
+
+// ── reasoning / thought-level picker (cycle: Auto → low → medium → high → max → off) ──
+const THOUGHT_CYCLE: (ThoughtLevel | undefined)[] = [undefined, 'low', 'medium', 'high', 'max', 'off']
+function ThoughtLevelPicker(props: {
+  backend: string; model: string
+  level: ThoughtLevel | undefined
+  onLevel: (l: ThoughtLevel | undefined) => void
+}): React.JSX.Element | null {
+  // Hidden for models with no reasoning control (e.g. legacy gpt-4.1).
+  if (!hasReasoning(props.backend, props.model)) return null
+  const label = props.level ? THOUGHT_LABEL[props.level] : 'Auto'
+  const next = THOUGHT_CYCLE[(THOUGHT_CYCLE.indexOf(props.level) + 1) % THOUGHT_CYCLE.length]
+  return (
+    <button
+      className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] transition-colors ${props.level ? 'bg-tag text-foreground font-medium' : 'text-foreground-subtle hover:text-foreground'}`}
+      onClick={() => props.onLevel(next)}
+      title={`Reasoning effort — click to cycle. Current: ${props.level ? THOUGHT_LABEL[props.level] : 'auto (provider default)'}.`}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.76.76 1.23 1.52 1.41 2.5" /></svg>
+      {label}
+    </button>
   )
 }
 
@@ -242,6 +272,45 @@ function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: bo
           <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, true)}>Allow</button>
           <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[13px] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, false)}>Deny</button>
         </div>
+      )}
+    </div>
+  )
+}
+
+function ElicitationCard(props: { it: TranscriptItem; onDecide?: (id: string, answer: string | null) => void }): React.JSX.Element | null {
+  const e = props.it.elicit
+  const [sel, setSel] = useState(-1)
+  const [custom, setCustom] = useState('')
+  if (!e) return null
+  const resolved = props.it.elicitAnswer !== undefined
+  const choose = (ans: string | null): void => { if (!resolved && props.onDecide) props.onDecide(e.id, ans) }
+  const submit = (): void => {
+    if (sel >= 0) choose(e.options[sel].label)
+    else if (custom.trim()) choose(custom.trim())
+  }
+  return (
+    <div className={`flex w-full flex-col gap-3 rounded-xl border p-4 ${resolved ? 'border-border bg-card opacity-80' : 'border-border bg-popover'}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">{e.header ?? 'question'}</span>
+        {resolved && <span className="text-[11px] text-foreground-subtle">→ {props.it.elicitAnswer === null ? '(dismissed)' : props.it.elicitAnswer}</span>}
+      </div>
+      <div className="text-[13px] text-foreground">{e.question}</div>
+      {!resolved && (
+        <>
+          <div className="flex flex-col gap-1.5">
+            {e.options.map((o, i) => (
+              <button key={i} type="button" onClick={() => setSel(i)} className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 text-left text-[13px] transition-colors ${sel === i ? 'border-foreground bg-surface' : 'border-border hover:bg-surface-hover'}`}>
+                <span className={`mt-0.5 size-3.5 shrink-0 rounded-full border ${sel === i ? 'border-foreground bg-foreground' : 'border-foreground-subtlest'}`} />
+                <span className="flex flex-col"><span className="text-foreground">{o.label}</span>{o.description && <span className="text-[12px] text-foreground-subtle">{o.description}</span>}</span>
+              </button>
+            ))}
+          </div>
+          <input value={custom} onChange={(ev) => setCustom(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Enter') submit() }} placeholder="Or type your own answer…" className="rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none focus:border-foreground" />
+          <div className="flex items-center gap-2">
+            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
+            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[13px] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
+          </div>
+        </>
       )}
     </div>
   )
@@ -326,13 +395,22 @@ export function Conversation(props: {
   tokens: number
   budget: string
   onBudget: (v: string) => void
+  onCompact?: () => void
+  onForkUser?: (index: number) => void
   onBackend: (id: string) => void
   onModel: (m: string) => void
+  thoughtLevel?: ThoughtLevel
+  onThoughtLevel?: (l: ThoughtLevel | undefined) => void
   onMode: (m: 'auto' | 'ask' | 'plan') => void
   onApprovePlan: (text: string) => void
   onDecideApproval: (id: string, ok: boolean) => void
+  onDecideElicitation?: (id: string, answer: string | null) => void
   onSend: (prompt: string) => void
   onStop: () => void
+  onQueue?: (prompt: string) => void // while busy: queue a follow-up for after the turn
+  onSteer?: (prompt: string) => void // while busy: inject into the in-flight turn now
+  queue?: string[]
+  onRemoveQueued?: (index: number) => void
   onRegenerate?: () => void
   onReact?: (index: number, reaction: 'up' | 'down' | undefined) => void
   onToggleTerminal?: () => void
@@ -344,6 +422,7 @@ export function Conversation(props: {
 }): React.JSX.Element {
   const [input, setInput] = useState('')
   const [slashIx, setSlashIx] = useState(0)
+  const [enhancing, setEnhancing] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
   const stickBottom = useRef(true)
   const fmtTokens = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
@@ -360,7 +439,14 @@ export function Conversation(props: {
 
   function submit(): void {
     const t = input.trim()
-    if (!t || props.busy) return
+    if (!t) return
+    // While the agent runs, Enter queues a follow-up (sent when the turn ends)
+    // instead of dropping the input. Use the ⚡ Steer button to inject now.
+    if (props.busy && props.onQueue) {
+      props.onQueue(t)
+      setInput('')
+      return
+    }
     if (typedCmd && t.startsWith('/')) {
       // Never send a raw template: a command that needs arguments does not submit
       // without them (the hint row explains), and $ARGUMENTS/$N are substituted here.
@@ -374,6 +460,24 @@ export function Conversation(props: {
     stickBottom.current = true
     props.onSend(t)
     setInput('')
+  }
+
+  function steer(): void {
+    const t = input.trim()
+    if (!t || !props.onSteer) return
+    props.onSteer(t)
+    setInput('')
+  }
+
+  // Enhance: one-shot rewrite of the current prompt for clarity (no agent loop).
+  async function enhance(): Promise<void> {
+    const t = input.trim()
+    if (!t || enhancing || props.busy) return
+    setEnhancing(true)
+    const sys = "Rewrite the prompt to a coding agent to be clearer, more specific, and more actionable, preserving the user's intent and any names/paths/commands. Reply with ONLY the rewritten prompt — no preamble, no quotes."
+    const res = await window.grasp.oneShot({ backend: props.backend, model: props.model, system: sys, user: t, maxTokens: 512 })
+    setEnhancing(false)
+    if (res.ok && res.text) setInput(res.text.trim())
   }
 
   const slashQuery = input.startsWith('/') && !input.slice(1).includes(' ') ? input.slice(1).toLowerCase() : null
@@ -423,11 +527,14 @@ export function Conversation(props: {
   }
 
   const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
+  const cw = lookupModel(props.backend, props.model)?.contextWindow
+  const ctxPct = cw ? Math.min(100, Math.round((props.tokens / cw) * 100)) : null
   const top = props.transcript.filter((it) => !it.parent)
 
   const renderItem = (it: TranscriptItem, i: number, isLast = false): React.JSX.Element => {
     if (it.role === 'plan') return <PlanCard key={i} text={it.text ?? ''} latest={isLast} busy={props.busy} onApprove={props.onApprovePlan} />
     if (it.role === 'approval') return <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
+    if (it.role === 'elicitation') return <ElicitationCard key={it.elicit?.id ?? i} it={it} onDecide={props.onDecideElicitation} />
     if (it.role === 'tool') {
       const kids = it.id ? props.transcript.filter((k) => k.parent === it.id) : []
       const chip = <ToolBlock key={it.id ?? i} it={it} />
@@ -442,10 +549,16 @@ export function Conversation(props: {
     }
     if (it.role === 'user')
       return (
-        <div key={i} className="flex w-full flex-col items-end gap-2">
+        <div key={i} className="group/msguser flex w-full flex-col items-end gap-1">
           <div className="flex max-w-[576px] flex-col rounded-xl rounded-tr-sm border border-border bg-surface px-4 py-3 text-[13px] text-foreground">
             {it.text}
           </div>
+          {props.onForkUser && it.histLen !== undefined && (
+            <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:bg-surface-hover hover:text-foreground-subtle group-hover/msguser:opacity-100" onClick={() => props.onForkUser?.(i)} title="Fork from here — branch the conversation at your message">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 3v6a3 3 0 0 0 3 3h6M18 21v-6a3 3 0 0 0-3-3H9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="3" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="21" r="2.4" stroke="currentColor" strokeWidth="1.7" /></svg>
+              Fork
+            </button>
+          )}
         </div>
       )
     return (
@@ -520,12 +633,17 @@ export function Conversation(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
-        <span className="text-[14px] font-medium text-foreground">Session<span className="ml-2 text-[12px] font-normal text-foreground-subtlest">post-editor</span></span>
+        <span className="min-w-0 truncate whitespace-nowrap text-[14px] font-medium text-foreground">Session<span className="ml-2 hidden text-[12px] font-normal text-foreground-subtlest sm:inline">post-editor</span></span>
         {/* External app launcher */}
         {props.workspace && <AppLauncher workspace={props.workspace} />}
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-foreground-subtle shadow-sm" title="tokens used this session">
+        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-foreground-subtle shadow-sm min-[560px]:inline-flex" title="tokens used this session">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".4" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           {fmtTokens(props.tokens)}
+          {ctxPct !== null && (
+            <span className="ml-1 h-1 w-10 overflow-hidden rounded-full bg-border" title={`${ctxPct}% of ~${Math.round((cw ?? 0) / 1000)}k context window`}>
+              <span className="block h-full rounded-full" style={{ width: `${ctxPct}%`, background: ctxPct > 80 ? 'var(--color-destructive)' : ctxPct > 50 ? 'var(--color-warning)' : 'var(--color-accent-blue)' }} />
+            </span>
+          )}
           <span className="font-sans text-[10px] uppercase tracking-wide text-foreground-subtlest">budget</span>
           <input
             className="w-[46px] border-0 bg-transparent text-right font-mono text-[11px] text-foreground outline-none"
@@ -535,9 +653,14 @@ export function Conversation(props: {
             spellCheck={false}
           />
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm">
-          <span className="size-1.5 rounded-full bg-foreground" />
-          {activeLabel} · {props.model}
+        {props.onCompact && (
+          <button type="button" onClick={props.onCompact} disabled={props.busy || props.tokens < 1000} className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Compact context — summarize the conversation so far">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 9h4V4M20 9h-4V4M4 15h4v5M20 15h-4v5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        )}
+        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
+          <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
+          <span className="min-w-0 truncate">{activeLabel} · {props.model}</span>
         </span>
       </header>
 
@@ -602,17 +725,36 @@ export function Conversation(props: {
               }
               if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); submit() }
             }}
-            placeholder="Ask an agent to change code…  (type / for commands)"
+            placeholder={props.busy ? 'Queue a follow-up (Enter) — or ⚡ Steer to inject now' : 'Ask an agent to change code…  (type / for commands)'}
             rows={2}
             autoFocus
           />
-          <div className="flex items-center gap-2">
+          {props.queue && props.queue.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {props.queue.map((q, i) => (
+                <span key={i} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground-subtle" title={`Queued: ${q}`}>
+                  <span className="max-w-[240px] truncate">⏳ {q}</span>
+                  {props.onRemoveQueued && <button type="button" className="text-foreground-subtlest hover:text-foreground" onClick={() => props.onRemoveQueued?.(i)}>✕</button>}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
             <ModelPicker backends={props.backends} backend={props.backend} model={props.model} onBackend={props.onBackend} onModel={props.onModel} />
-            <span className="flex items-center rounded-lg bg-tag p-0.5 text-[12px]" title="Build: edit directly. Ask: approve each edit. Plan: propose first.">
+            {props.onThoughtLevel && (
+              <ThoughtLevelPicker backend={props.backend} model={props.model} level={props.thoughtLevel} onLevel={props.onThoughtLevel} />
+            )}
+            <span className="flex shrink-0 items-center rounded-lg bg-tag p-0.5 text-[12px]" title="Build: edit directly. Ask: approve each edit. Plan: propose first.">
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'auto' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('auto')}>Build</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'ask' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('ask')}>Ask</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'plan' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('plan')}>Plan</button>
             </span>
+            <button type="button" onClick={enhance} disabled={!input.trim() || enhancing || props.busy} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Enhance prompt — rewrite for clarity">
+              {enhancing
+                ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-foreground-subtle border-r-transparent" />
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>}
+              Enhance
+            </button>
             {props.onToggleTerminal && (
               <button
                 className="flex size-[30px] items-center justify-center rounded-lg border border-border text-foreground-subtle transition-colors hover:border-border-hover hover:text-foreground"
@@ -623,13 +765,26 @@ export function Conversation(props: {
               </button>
             )}
             {props.busy ? (
-              <button
-                className="ml-auto flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-filter hover:brightness-110"
-                onClick={props.onStop}
-                title="Stop the agent (Esc)"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
-              </button>
+              <div className="ml-auto flex items-center gap-1.5">
+                {props.onSteer && (
+                  <button
+                    type="button"
+                    className="flex size-8 items-center justify-center rounded-lg bg-tag text-foreground-subtle transition-filter hover:brightness-110 disabled:opacity-40"
+                    onClick={steer}
+                    disabled={!input.trim()}
+                    title="Steer — inject into the running turn now"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+                <button
+                  className="flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-filter hover:brightness-110"
+                  onClick={props.onStop}
+                  title="Stop the agent (Esc)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
+                </button>
+              </div>
             ) : (
               <button
                 className="ml-auto flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-filter hover:brightness-110"

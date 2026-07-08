@@ -3,14 +3,16 @@
 // they run code FOR REAL and surface observed dataflow into the UI. Claude Code
 // brings its own tools, so it does not use this registry (but shares liveSurface).
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, unlinkSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { validateTrace, validateObservation, diffTraces, buildFuzzDiff, validateClaim, validateAxes, type TraceDoc, type FuzzCase, type FuzzClaim, type FuzzAxes } from '../../shared/trace'
 import { listSkills, readSkill, skillsListing } from '../skills'
+import { requestElicitation } from '../approvals'
 import type { Emit } from './types'
 import type { IntroDoc } from '../../shared/types'
 import { McpRegistry } from './mcp'
 import { sshExec } from '../ssh'
+import { fetchText, searchWeb } from '../web'
 import { parse as parseYaml } from 'yaml'
 import { validateModel, checkModel, type BehaviorModel, type CaseRun } from '../../shared/model'
 
@@ -128,7 +130,7 @@ export const SYSTEM = [
 
 // PLAN MODE: inspect-only. The agent may read and observe, never mutate; its final
 // message is the proposed plan, which grasp holds for human approval before execution.
-export const PLAN_TOOL_NAMES = new Set(['read_file', 'list_dir', 'grasp_flow'])
+export const PLAN_TOOL_NAMES = new Set(['read_file', 'list_dir', 'grasp_flow', 'ask_user'])
 export const PLAN_SYSTEM =
   SYSTEM +
   ' PLAN MODE IS ACTIVE: you may only inspect (read_file, list_dir, grasp_flow). You cannot' +
@@ -138,14 +140,15 @@ export const PLAN_SYSTEM =
 
 // ASK MODE: these tools change the workspace, so they pause for human approval. They are also
 // the set that triggers liveSurface (a code change should re-run the observed dataflow).
-export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash', 'remote_bash'])
+export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash', 'remote_bash', 'ApplyPatch'])
 // The fuzz reminder fires only on ACTUAL file edits — run_bash may mutate, but treating every
 // shell command (grep, ls, npm install) as "you changed code" spams false reminders (observed).
-export const EDIT_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit'])
+export const EDIT_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'ApplyPatch'])
 
 // A subagent runner: run a focused sub-task and return its final text. Events it emits
 // are tagged with the parent task's id so the UI nests them.
-export type SubagentRunner = (prompt: string, parentId: string) => Promise<string>
+export interface SubagentOpts { system?: string; tools?: Tool[] }
+export type SubagentRunner = (prompt: string, parentId: string, opts?: SubagentOpts) => Promise<string>
 
 export interface ToolCtx {
   workspace: string
@@ -168,6 +171,74 @@ function inside(workspace: string, p: string): string {
 }
 const cap = (s: string): string => (s.length > OUT_CAP ? s.slice(0, OUT_CAP) + `\n…(+${s.length - OUT_CAP} chars)` : s)
 
+// Per-workspace objective tracker (the `goal` tool — GoalRead-equivalent).
+const goals = new Map<string, string>()
+
+// ApplyPatch: apply a Claude-Code-style patch (Add/Delete/Update File with ' '/'-'/'+' hunks).
+function applyHunk(orig: string, hunk: string[]): { ok: boolean; text?: string; error?: string } {
+  const search: string[] = []
+  const replace: string[] = []
+  for (const raw of hunk) {
+    if (raw.startsWith('@@') || raw === '') continue
+    const c = raw[0]
+    const rest = raw.slice(1)
+    if (c === '+') replace.push(rest)
+    else if (c === '-') search.push(rest)
+    else if (c === ' ') { search.push(rest); replace.push(rest) }
+    else { search.push(raw); replace.push(raw) } // no prefix → context
+  }
+  const sStr = search.join('\n')
+  const rStr = replace.join('\n')
+  if (!sStr) return { ok: false, error: 'no anchor (context/removed lines) in hunk' }
+  const count = orig.split(sStr).length - 1
+  if (count === 0) return { ok: false, error: 'anchor not found — re-read the file, your view is stale' }
+  if (count > 1) return { ok: false, error: `anchor matches ${count} places — add more context` }
+  return { ok: true, text: orig.replace(sStr, rStr) }
+}
+export function applyPatch(workspace: string, patch: string): string {
+  const lines = patch.split('\n')
+  let i = 0
+  while (i < lines.length && !lines[i].includes('*** Begin Patch')) i++
+  i++
+  const reports: string[] = []
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.includes('*** End Patch')) break
+    if (line.startsWith('*** Add File: ')) {
+      const rel = line.slice(14).trim()
+      const content: string[] = []
+      for (i++; i < lines.length && !lines[i].startsWith('*** '); i++) content.push(lines[i])
+      const p = inside(workspace, rel)
+      mkdirSync(dirname(p), { recursive: true })
+      writeFileSync(p, content.join('\n'), 'utf-8')
+      reports.push(`added ${rel}`)
+      continue
+    }
+    if (line.startsWith('*** Delete File: ')) {
+      const rel = line.slice(17).trim()
+      const p = inside(workspace, rel)
+      if (existsSync(p)) { try { unlinkSync(p) } catch { /* ignore */ } reports.push(`deleted ${rel}`) }
+      i++
+      continue
+    }
+    if (line.startsWith('*** Update File: ')) {
+      const rel = line.slice(17).trim()
+      const p = inside(workspace, rel)
+      i++
+      if (!existsSync(p)) { reports.push(`skipped ${rel}: file not found`); continue }
+      const hunk: string[] = []
+      for (; i < lines.length && !lines[i].startsWith('*** '); i++) hunk.push(lines[i])
+      const r = applyHunk(readFileSync(p, 'utf-8'), hunk)
+      if (!r.ok) { reports.push(`failed ${rel}: ${r.error}`); continue }
+      writeFileSync(p, r.text!, 'utf-8')
+      reports.push(`updated ${rel}`)
+      continue
+    }
+    i++
+  }
+  return reports.length ? 'patch applied:\n' + reports.join('\n') : 'patch did nothing (no recognized *** sections)'
+}
+
 // Per-workspace agent todos (TodoWrite/TodoRead). Agent self-organization — NOT a workspace
 // mutation, so it stays out of MUTATING_TOOLS and never triggers the dataflow rail.
 const TODO_STATUSES = ['pending', 'in_progress', 'completed'] as const
@@ -180,7 +251,10 @@ const todoMark = (s: TodoStatus): string => (s === 'completed' ? 'x' : s === 'in
 // project-specific instructions. Appended to the system prompt verbatim (highest-priority file
 // wins; CLAUDE.md before AGENTS.md). Kept separate from the dataflow SYSTEM so the moat prompt
 // stays authoritative and is never overridden by project text.
-const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md']
+// Memory files: root first, then nested agent-specific locations (Claude Code puts memory at
+// .claude/CLAUDE.md; ZCode/OpenCode at .agents/AGENTS.md or .zcode/AGENTS.md). First present
+// file wins so the most specific instruction set is obeyed.
+const PROJECT_FILES = ['CLAUDE.md', 'AGENTS.md', '.claude/CLAUDE.md', '.agents/AGENTS.md', '.zcode/AGENTS.md']
 export function projectContext(workspace: string): string {
   for (const name of PROJECT_FILES) {
     const p = join(workspace, name)
@@ -729,6 +803,112 @@ export const TOOLS: Tool[] = [
       if (!ctx.subagent) return 'subagents are not available on this backend.'
       return ctx.subagent(String(input.prompt), ctx.toolId ?? 'task')
     }
+  },
+  {
+    name: 'ask_user',
+    description:
+      'Ask the human a structured multiple-choice question when you genuinely need their input to proceed (choosing between approaches, confirming scope, picking a target). Use this INSTEAD of guessing when the answer changes the work — including in plan mode, before proposing. Do not use it for anything you can reasonably decide yourself. Returns their answer (the chosen option label, or their own custom text), or "(dismissed)" if they skipped. Max 6 options; keep labels short.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The question to ask.' },
+        header: { type: 'string', description: 'A short topic label, e.g. "App type".' },
+        options: {
+          type: 'array',
+          maxItems: 6,
+          items: { type: 'object', properties: { label: { type: 'string' }, description: { type: 'string' } }, required: ['label'] }
+        },
+        multiSelect: { type: 'boolean', description: 'Allow choosing more than one option.' }
+      },
+      required: ['question', 'options']
+    },
+    async run(input, ctx) {
+      const rawOpts = Array.isArray(input.options) ? input.options : []
+      const options = rawOpts.slice(0, 6).map((o: Record<string, unknown>) => ({
+        label: String(o.label ?? ''),
+        description: o.description ? String(o.description) : undefined
+      }))
+      const header = input.header ? String(input.header) : undefined
+      const ans = await requestElicitation(ctx.emit, {
+        header,
+        question: String(input.question ?? ''),
+        options,
+        multiSelect: !!input.multiSelect,
+        source: 'ask_user'
+      })
+      return ans ?? '(dismissed)'
+    }
+  },
+  {
+    name: 'web_fetch',
+    description: 'Fetch a URL and return its text content (HTML stripped; JSON/text left as-is), truncated to ~8KB. Use for reading a doc page, an API reference, a raw file, or any URL the user gave. Treat content as unverified external material.',
+    input_schema: { type: 'object', properties: { url: { type: 'string' } }, required: ['url'] },
+    async run(input) {
+      const url = String(input.url ?? '').trim()
+      if (!/^https?:\/\//i.test(url)) return 'web_fetch needs an absolute http(s) URL.'
+      const r = await fetchText(url)
+      if (!r.ok) return `fetch failed: ${r.error}`
+      return `${url}\n(status ${r.status}${r.contentType ? `, ${r.contentType}` : ''})\n\n${r.text ?? '(empty)'}`
+    }
+  },
+  {
+    name: 'web_search',
+    description: 'Search the web (DuckDuckGo, no key) and return up to 8 results (title, URL, snippet). Use for current info, docs, or solutions; then web_fetch a result for full content. Best-effort — markup may change.',
+    input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+    async run(input) {
+      const q = String(input.query ?? '').trim()
+      if (!q) return 'web_search needs a query.'
+      const r = await searchWeb(q)
+      if (!r.ok) return `search failed: ${r.error}`
+      if (!r.results?.length) return `no results for "${q}".`
+      return r.results.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`).join('\n\n')
+    }
+  },
+  {
+    name: 'Skill',
+    description: 'Load a reusable SKILL by name (Claude-Code-compatible alias of use_skill). Call with NO name to list available skills; with a name to load its instructions and follow them.',
+    input_schema: { type: 'object', properties: { name: { type: 'string' } } },
+    async run(input, { workspace }) {
+      const name = String(input.name ?? '').trim()
+      if (!name) {
+        const list = listSkills(workspace).filter((s) => s.enabled)
+        if (!list.length) return 'No skills installed.'
+        return 'Available skills:\n' + list.map((s) => `- ${s.name}: ${s.description.slice(0, 200)}`).join('\n')
+      }
+      const s = readSkill(workspace, name)
+      if (!s) return `No skill named "${name}".`
+      return `Skill "${s.name}":\n\n${s.body}`
+    }
+  },
+  {
+    name: 'goal',
+    description: "Read or set the session's single objective — the one-line goal of this task. Set it when the task starts or when the user states intent; read it when you lose the thread. Pass set:'' to clear. (Objective tracker; GoalRead-equivalent.)",
+    input_schema: { type: 'object', properties: { set: { type: 'string', description: 'set the objective to this (omit to read)' } } },
+    async run(input, { workspace }) {
+      if (typeof input.set === 'string') {
+        const g = input.set.trim()
+        if (g) { goals.set(workspace, g); return `objective set: ${g}` }
+        goals.delete(workspace); return 'objective cleared.'
+      }
+      return goals.get(workspace) ?? '(no objective set)'
+    }
+  },
+  {
+    name: 'ApplyPatch',
+    description: "Apply a Claude-Code-style patch. Format: '*** Begin Patch', then sections — '*** Add File: <path>' (content follows), '*** Delete File: <path>', or '*** Update File: <path>' followed by ' '/'-'/'+' prefixed hunk lines (optionally with @@ anchors) — ending with '*** End Patch'. Prefer edit_file for a single change; use this for coordinated multi-file edits.",
+    input_schema: { type: 'object', properties: { patch: { type: 'string' } }, required: ['patch'] },
+    async run(input, { workspace }) {
+      return applyPatch(workspace, String(input.patch ?? ''))
+    }
+  },
+  {
+    name: 'explore',
+    description: 'Delegate READ-ONLY research to an exploration subagent — e.g. "find every place X is validated", "where is config loaded". It reads/searches and returns findings; it does not edit. Use it to gather context without losing your main thread.',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string' } }, required: ['prompt'] },
+    async run(input, ctx) {
+      if (!ctx.subagent) return 'subagents are not available on this backend.'
+      return ctx.subagent(String(input.prompt), ctx.toolId ?? 'explore', { system: EXPLORE_SYSTEM, tools: EXPLORE_TOOLS })
+    }
   }
 ]
 
@@ -739,6 +919,15 @@ export const SUBAGENT_SYSTEM =
   ' You are a SUBAGENT handling one focused sub-task. Do the work with your tools, then end' +
   ' with a concise result for the main agent — what you found or did, and any observed' +
   ' dataflow question. Do not delegate further.'
+
+// Explore: a read-only research subagent (keeps run_bash for grep, but the system prompt
+// forbids mutation; edit/write tools are excluded so it cannot change files).
+export const EXPLORE_TOOLS = SUBAGENT_TOOLS.filter((t) => !EDIT_TOOLS.has(t.name))
+export const EXPLORE_SYSTEM =
+  SYSTEM +
+  ' You are an EXPLORATION subagent. READ and SEARCH ONLY — do not edit, write, or run ' +
+  'mutating commands. Investigate the question, then return a concise, evidence-backed answer ' +
+  'with file paths and line references. Do not delegate further.'
 
 // grasp does NOT execute the target codebase. The AGENT is the compiler: it reads the repo
 // (README / AGENTS.md / CLAUDE.md), installs deps, runs the real entrypoint, observes the flow

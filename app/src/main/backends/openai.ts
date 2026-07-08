@@ -20,6 +20,7 @@ import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
+import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
 const MODELS = (process.env.GRASP_OPENAI_MODELS ?? 'gpt-5.2,gpt-5.1,gpt-4.1').split(',').map((s) => s.trim()).filter(Boolean)
@@ -29,6 +30,7 @@ type Msg = { role: string; content: string | null; tool_calls?: ToolCall[]; tool
 
 async function callModel(
   model: string,
+  thoughtLevel: ThoughtLevel | undefined,
   messages: Msg[],
   system: string,
   tools: Tool[],
@@ -38,18 +40,21 @@ async function callModel(
   const KEY = getKey('openai')
   if (!KEY) return { ok: false, error: 'No OpenAI key. Add one in grasp (or set GRASP_OPENAI_KEY).' }
   try {
+    const body: Record<string, unknown> = {
+      model,
+      max_tokens: 4096,
+      messages: [{ role: 'system', content: system }, ...messages],
+      tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })),
+      stream: true,
+      stream_options: { include_usage: true }
+    }
+    // Apply reasoning/thought-level shaping (openai wire: reasoning.effort).
+    applyPathOps(body, shapingFor('openai', model, thoughtLevel))
     const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
       signal,
       headers: { authorization: `Bearer ${KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        max_tokens: 4096,
-        messages: [{ role: 'system', content: system }, ...messages],
-        tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })),
-        stream: true,
-        stream_options: { include_usage: true }
-      })
+      body: JSON.stringify(body)
     })
     if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
     if (!res.body) return { ok: false, error: 'model returned no stream body' }
@@ -110,12 +115,14 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   const plan = turn.mode === 'plan'
   const messages: Msg[] = [...(turn.history as Msg[]), { role: 'user', content: turn.prompt }]
 
-  const subagent: SubagentRunner = async (prompt, parentId) => {
+  const subagent: SubagentRunner = async (prompt, parentId, opts) => {
     const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
+    const sys = opts?.system ?? SUBAGENT_SYSTEM
+    const subTools = opts?.tools ?? SUBAGENT_TOOLS
     const sub: Msg[] = [{ role: 'user', content: prompt }]
     let finalText = ''
     for (let s = 0; ; s++) {
-      const sr = await callModel(model, sub, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
+      const sr = await callModel(model, turn.thoughtLevel, sub, withProjectContext(workspace, sys), subTools)
       if (!sr.ok || !sr.msg) return `subagent error: ${sr.error}`
       sub.push(sr.msg)
       if (sr.msg.content) { finalText = sr.msg.content; subEmit({ type: 'text', text: sr.msg.content }) }
@@ -128,7 +135,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         } catch {
           /* ignore */
         }
-        const tool = SUBAGENT_TOOLS.find((t) => t.name === tc.function.name)
+        const tool = subTools.find((t) => t.name === tc.function.name)
         subEmit({ type: 'tool_use', id: tc.id, name: tc.function.name, input: inp })
         let out = ''
         try {
@@ -150,9 +157,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
     }
+    const steerText = turn.steer?.()
+    if (steerText) messages.push({ role: 'user', content: steerText })
     const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : await mcpAugmentedTools(workspace)
     const r = await callModel(
       model,
+      turn.thoughtLevel,
       messages,
       withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM),
       tools,

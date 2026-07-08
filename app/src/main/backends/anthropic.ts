@@ -25,6 +25,7 @@ import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
+import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
 
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
@@ -48,6 +49,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
 
   async function callModel(
     model: string,
+    thoughtLevel: ThoughtLevel | undefined,
     messages: unknown[],
     system: string,
     tools: Tool[],
@@ -58,19 +60,23 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
     const KEY = getKey(keyProvider)
     if (!KEY) return { ok: false, error: o.keyEnvNote ?? `No ${o.label} key. Add it in grasp (top-right).` }
     try {
+      const body: Record<string, unknown> = {
+        model,
+        max_tokens: maxTokens,
+        system,
+        tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
+        messages,
+        stream: true,
+        ...(o.extraBody ?? {})
+      }
+      // Apply reasoning/thought-level shaping (anthropic wire: thinking.budget_tokens;
+      // a thinking level also bumps max_tokens above the budget, which the op does).
+      applyPathOps(body, shapingFor(o.id, model, thoughtLevel))
       const res = await fetch(`${o.base}/v1/messages`, {
         method: 'POST',
         signal,
         headers: { 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(o.extraHeaders ?? {}) },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          system,
-          tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
-          messages,
-          stream: true,
-          ...(o.extraBody ?? {})
-        })
+        body: JSON.stringify(body)
       })
       if (!res.ok) return { ok: false, error: `model HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` }
       if (!res.body) return { ok: false, error: 'model returned no stream body' }
@@ -157,12 +163,14 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
     const plan = turn.mode === 'plan'
     const messages: unknown[] = [...turn.history, { role: 'user', content: turn.prompt }]
 
-    const subagent: SubagentRunner = async (prompt, parentId) => {
+    const subagent: SubagentRunner = async (prompt, parentId, opts) => {
       const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
+      const sys = opts?.system ?? SUBAGENT_SYSTEM
+      const subTools = opts?.tools ?? SUBAGENT_TOOLS
       const subMessages: unknown[] = [{ role: 'user', content: prompt }]
       let finalText = ''
       for (let s = 0; ; s++) {
-        const sr = await callModel(model, subMessages, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
+        const sr = await callModel(model, turn.thoughtLevel, subMessages, withProjectContext(workspace, sys), subTools)
         if (!sr.ok) return `subagent error: ${sr.error}`
         const blocks = sr.content ?? []
         subMessages.push({ role: 'assistant', content: blocks })
@@ -171,7 +179,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         if (sr.stop !== 'tool_use' || subUses.length === 0) return finalText || '(subagent done)'
         const subResults: unknown[] = []
         for (const tu of subUses) {
-          const tool = SUBAGENT_TOOLS.find((t) => t.name === tu.name)
+          const tool = subTools.find((t) => t.name === tu.name)
           subEmit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
           let out = ''
           try {
@@ -195,6 +203,8 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         emit({ type: 'done', note: 'stopped by you' })
         return { messages }
       }
+      const steerText = turn.steer?.()
+      if (steerText) messages.push({ role: 'user', content: steerText })
       const tools = plan ? TOOLS.filter((t) => PLAN_TOOL_NAMES.has(t.name)) : await mcpAugmentedTools(workspace)
       const sysPrompt = withProjectContext(workspace, plan ? PLAN_SYSTEM : SYSTEM)
       const inputDelta = messages.slice(shownMessages)
@@ -202,6 +212,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
       let reasoning = ''
       const r = await callModel(
         model,
+        turn.thoughtLevel,
         messages,
         sysPrompt,
         tools,

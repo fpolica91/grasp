@@ -3,6 +3,7 @@ import type { AgentEvent, AgentTurn, ChatMessage, FuzzParams, GraspApi, ObserveP
 
 const api: GraspApi = {
   chat: (messages: ChatMessage[]) => ipcRenderer.invoke('grasp:chat', messages),
+  oneShot: (opts: { backend: string; model?: string; system: string; user: string; maxTokens?: number }) => ipcRenderer.invoke('grasp:oneShot', opts),
   observe: (params: ObserveParams) => ipcRenderer.invoke('grasp:observe', params),
   fuzz: (params: FuzzParams) => ipcRenderer.invoke('grasp:fuzz', params),
   agent: (turn: AgentTurn) => ipcRenderer.invoke('grasp:agent', turn),
@@ -21,7 +22,9 @@ const api: GraspApi = {
   forkSession: (id: string) => ipcRenderer.invoke('grasp:forkSession', id),
   renameSession: (id: string, title: string) => ipcRenderer.invoke('grasp:renameSession', id, title),
   approve: (id: string, ok: boolean) => ipcRenderer.invoke('grasp:approve', id, ok),
+  resolveElicitation: (id: string, answer: string | null) => ipcRenderer.invoke('grasp:resolveElicitation', id, answer),
   flowNow: (workspace: string) => ipcRenderer.invoke('grasp:flowNow', workspace),
+  steer: (text: string) => ipcRenderer.invoke('grasp:steer', text),
   stopAgent: () => ipcRenderer.invoke('grasp:stopAgent'),
   workflows: () => ipcRenderer.invoke('grasp:workflows'),
   saveWorkflow: (rec: WorkflowRecord) => ipcRenderer.invoke('grasp:saveWorkflow', rec),
@@ -61,7 +64,11 @@ const api: GraspApi = {
   listTree: (workspace: string) => ipcRenderer.invoke('grasp:listTree', workspace),
   readFile: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:readFile', workspace, rel),
   writeFile: (workspace: string, rel: string, content: string) => ipcRenderer.invoke('grasp:writeFile', workspace, rel, content),
-  fileDiff: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileDiff', workspace, rel)
+  fileDiff: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileDiff', workspace, rel),
+  gitGraph: (workspace: string) => ipcRenderer.invoke('grasp:gitGraph', workspace),
+  gitAction: (workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string) => ipcRenderer.invoke('grasp:gitAction', workspace, op, arg),
+  wikiRead: (workspace: string) => ipcRenderer.invoke('grasp:wikiRead', workspace),
+  wikiGenerate: (workspace: string, backend: string, model?: string) => ipcRenderer.invoke('grasp:wikiGenerate', workspace, backend, model)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)
