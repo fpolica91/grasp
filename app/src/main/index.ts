@@ -132,6 +132,14 @@ app.whenReady().then(() => {
   // to create it.
   ipcMain.handle('grasp:detectApps', () => detectApps())
   ipcMain.handle('grasp:openInApp', (_e, appId: string, ws: string) => launchApp(appId, ws))
+  // Remote workspace (VS Code Remote-SSH style): a persistent ssh2 session that the
+  // whole workspace routes through when active — file ops, shell, file tree, terminal.
+  ipcMain.handle('grasp:remoteConnect', async (_e, opts) => {
+    const { remoteConnect } = await import('./remote')
+    return remoteConnect(opts as { host: string; port?: number; user?: string; keyPath?: string; password?: string; passphrase?: string })
+  })
+  ipcMain.handle('grasp:remoteDisconnect', async () => { const { remoteDisconnect } = await import('./remote'); remoteDisconnect(); return { ok: true } })
+  ipcMain.handle('grasp:remoteStatus', async () => { const { remoteStatus } = await import('./remote'); return remoteStatus() })
   ipcMain.handle('grasp:revealInFiles', (_e, key: string) => {
     const root = join(homedir(), '.grasp')
     const file = key === 'mcp' ? 'mcp.json' : key === 'keybindings' ? 'keybindings.json' : key

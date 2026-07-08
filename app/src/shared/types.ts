@@ -377,6 +377,9 @@ export interface GraspApi {
   revealInFiles(key: string): Promise<void>
   detectApps(): Promise<{ id: string; name: string; command: string; icon: string }[]>
   openInApp(appId: string, workspace: string): Promise<boolean>
+  remoteConnect(opts: { host: string; port?: number; user?: string; keyPath?: string; password?: string; passphrase?: string }): Promise<{ ok: boolean; error?: string; cwd?: string; platform?: string }>
+  remoteDisconnect(): Promise<{ ok: boolean }>
+  remoteStatus(): Promise<{ active: boolean; host?: string; user?: string; cwd?: string; platform?: string }>
   newProject(name: string): Promise<{ ok: boolean; path?: string; error?: string }>
   termCreate(id: string, cwd: string, cols: number, rows: number): void
   termWrite(id: string, data: string): void
