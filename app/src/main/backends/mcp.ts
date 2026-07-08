@@ -78,7 +78,20 @@ export function deleteMcpServer(name: string): boolean {
 
 export function loadMcpConfig(workspace: string): McpConfig {
   const merged: McpConfig = {}
-  for (const p of [userConfigPath(), projectConfigPath(workspace)]) {
+  // Multi-source: grasp-native (.grasp/mcp.json) + Claude-Code (.mcp.json, .claude/settings.json)
+  // + Agents (.agents/mcp.json), user-scope first then project so project wins. Same wire as
+  // ZCode's resolver — works with configs authored for any of those agents.
+  const ws = workspace || '.'
+  const candidates = [
+    userConfigPath(),                              // ~/.grasp/mcp.json
+    join(homedir(), '.claude', 'settings.json'),   // global Claude Code
+    join(homedir(), '.agents', 'mcp.json'),        // global Agents
+    projectConfigPath(workspace),                  // <ws>/.grasp/mcp.json
+    join(ws, '.mcp.json'),                         // <ws>/.mcp.json (top-level)
+    join(ws, '.claude', 'settings.json'),          // <ws> Claude Code
+    join(ws, '.agents', 'mcp.json')                // <ws> Agents
+  ]
+  for (const p of candidates) {
     if (!existsSync(p)) continue
     try {
       const data = JSON.parse(readFileSync(p, 'utf-8'))

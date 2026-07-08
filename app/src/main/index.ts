@@ -17,12 +17,15 @@ function defaultWorkspace(): string {
   return root
 }
 import { chat } from './model'
+import { oneShot } from './oneshot'
+import { gitGraph, gitAction } from './git'
+import { readWiki, generateWiki } from './wiki'
 import { observe, fuzz } from './engine'
-import { runAgent, listBackends, stopAgent } from './agent'
+import { runAgent, listBackends, stopAgent, steerAgent } from './agent'
 import { hasKey, setKey } from './vault'
 import { listSessions, saveSession, deleteSession, forkSession, renameSession } from './sessions'
 import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
-import { resolveApproval } from './approvals'
+import { resolveApproval, resolveElicitation } from './approvals'
 import { flowNow, clearMcpCache, mcpStatus } from './backends/tools'
 import { loadMcpConfig, saveMcpServer, deleteMcpServer } from './backends/mcp'
 import { listPlugins, installPlugin, uninstallPlugin } from './plugins'
@@ -59,9 +62,15 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   ipcMain.handle('grasp:chat', (_e, messages: ChatMessage[]) => chat(messages))
+  ipcMain.handle('grasp:oneShot', (_e, opts: { backend: string; model?: string; system: string; user: string; maxTokens?: number }) => oneShot(opts))
+  ipcMain.handle('grasp:gitGraph', (_e, workspace: string) => gitGraph(workspace))
+  ipcMain.handle('grasp:gitAction', (_e, workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string) => gitAction(workspace, op, arg))
+  ipcMain.handle('grasp:wikiRead', (_e, workspace: string) => readWiki(workspace))
+  ipcMain.handle('grasp:wikiGenerate', (_e, workspace: string, backend: string, model?: string) => generateWiki(workspace, backend, model))
   ipcMain.handle('grasp:observe', (_e, params: ObserveParams) => observe(params))
   ipcMain.handle('grasp:fuzz', (_e, params: FuzzParams) => fuzz(params))
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))
+  ipcMain.handle('grasp:steer', (_e, text: string) => steerAgent(text))
   ipcMain.handle('grasp:keyStatus', (_e, provider?: string) => hasKey(provider))
   ipcMain.handle('grasp:setKey', (_e, key: string, provider?: string) => setKey(key, provider))
   ipcMain.handle('grasp:defaultWorkspace', () => {
@@ -151,6 +160,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:forkSession', (_e, id: string) => forkSession(id))
   ipcMain.handle('grasp:renameSession', (_e, id: string, title: string) => renameSession(id, title))
   ipcMain.handle('grasp:approve', (_e, id: string, ok: boolean) => resolveApproval(id, ok))
+  ipcMain.handle('grasp:resolveElicitation', (_e, id: string, answer: string | null) => resolveElicitation(id, answer))
   ipcMain.handle('grasp:stopAgent', () => stopAgent())
   ipcMain.handle('grasp:flowNow', (e, workspace: string) =>
     flowNow(workspace, (event) => {

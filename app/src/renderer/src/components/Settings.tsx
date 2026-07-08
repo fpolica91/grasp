@@ -5,7 +5,13 @@ import type { Theme } from './Sidebar'
 const PROVIDERS: { id: string; label: string; hint: string }[] = [
   { id: 'glm', label: 'GLM (Z.ai)', hint: 'z.ai API key — powers glm-4.6 / glm-5.2' },
   { id: 'anthropic', label: 'Anthropic (Claude)', hint: 'sk-ant-… — powers Claude Sonnet 5 / Opus 4.8 / Haiku 4.5' },
-  { id: 'openai', label: 'OpenAI', hint: 'sk-… (or any OpenAI-compatible key)' }
+  { id: 'openai', label: 'OpenAI', hint: 'sk-… (or any OpenAI-compatible key)' },
+  { id: 'moonshot', label: 'Moonshot (Kimi)', hint: 'api.moonshot.cn key — powers kimi-k2.6' },
+  { id: 'deepseek', label: 'DeepSeek', hint: 'api.deepseek.com key — powers deepseek-v4' },
+  { id: 'qwen', label: 'Qwen (DashScope)', hint: 'DashScope key — powers qwen3.5-plus' },
+  { id: 'xiaomi', label: 'Xiaomi MiMo', hint: 'api.xiaomimimo.com key — powers mimo-v2.5' },
+  { id: 'minimax', label: 'MiniMax', hint: 'api.minimaxi.com key — powers MiniMax-M3' },
+  { id: 'bigmodel', label: 'BigModel (智谱)', hint: 'open.bigmodel.cn key — China mirror for GLM' }
 ]
 
 const THEME_DOTS: Record<Theme, string> = {

@@ -1,4 +1,5 @@
 import type { TraceDoc, TraceDiff, FuzzDiff } from './trace'
+import type { ThoughtLevel } from './catalog'
 // Shared contracts between main and renderer.
 
 export type Provenance = 'observed' | 'declared' | 'unknown'
@@ -9,6 +10,41 @@ export interface Operand {
   display: string
   provenance: Provenance
   derived_from: string | null
+}
+
+// A structured multiple-choice question the agent asks the human (elicitation).
+export interface ElicitOption {
+  label: string
+  description?: string
+}
+
+// Git Graph: the commit history shown in the right pane.
+export interface GitCommit {
+  hash: string
+  short: string
+  parents: string[]
+  author: string
+  date: string
+  subject: string
+  refs: string // raw %d decoration, e.g. ' (HEAD -> main, origin/main)'
+}
+export interface GitGraph {
+  ok: boolean
+  error?: string
+  branch: string
+  commits: GitCommit[]
+  branches: string[]
+  dirty?: boolean
+  ahead?: number
+  behind?: number
+}
+
+// Repo Wiki: an AI-generated single-page repo doc, persisted to <ws>/.grasp/wiki.md.
+export interface RepoWiki {
+  ok: boolean
+  markdown?: string
+  generatedAt?: number
+  error?: string
 }
 
 export interface GraphNode {
@@ -221,6 +257,7 @@ export type AgentEvent =
   | { type: 'intro'; intro: IntroDoc }
   | { type: 'plan'; text: string }
   | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
+  | { type: 'elicitation_request'; id: string; header?: string; question: string; options: ElicitOption[]; multiSelect?: boolean; source?: string }
   | { type: 'usage'; input: number; output: number }
   | { type: 'done'; note?: string }
   | { type: 'error'; error: string }
@@ -239,6 +276,7 @@ export interface AgentTurn {
   watch?: Watch
   backend?: string // backend id ('glm' | 'claude-code' | 'openai'); default glm
   model?: string // model id within the backend
+  thoughtLevel?: ThoughtLevel // reasoning/thinking effort (off/low/medium/high/max); undefined = provider default
   mode?: 'auto' | 'ask' | 'plan' // ask: approve each edit; plan: read-only, propose first
   budget?: number // optional per-turn token ceiling; the loop stops honestly when reached
   flowAuto?: boolean // false = Flow doesn't auto re-observe after edits; use flowNow() on demand
@@ -285,6 +323,8 @@ export interface SessionRecord {
   transcript: unknown[]
   history: unknown[]
   calls?: TrajectoryCall[] // persisted model-trajectory inspector records (per-call request/response)
+  traces?: unknown[] // persisted TraceDoc[] observed this session — restored on load, isolated per session
+  surface?: unknown // the last Flow/report surface shown, so a reopened session shows its own flow, not a stale one
   parentId?: string // provenance: the session this was forked from
   titleUserSet?: boolean // true once the user renamed it -> autosave keeps the title
 }
@@ -299,6 +339,7 @@ export interface SlashCommand {
 
 export interface GraspApi {
   chat(messages: ChatMessage[]): Promise<ChatResult>
+  oneShot(opts: { backend: string; model?: string; system: string; user: string; maxTokens?: number }): Promise<{ ok: boolean; text?: string; error?: string }>
   observe(params: ObserveParams): Promise<ObserveResult>
   fuzz(params: FuzzParams): Promise<FuzzResult>
   agent(turn: AgentTurn): Promise<{ messages: unknown[] }>
@@ -313,7 +354,9 @@ export interface GraspApi {
   forkSession(id: string): Promise<string> // returns the new session id, or '' if not found
   renameSession(id: string, title: string): Promise<void>
   approve(id: string, ok: boolean): Promise<void>
+  resolveElicitation(id: string, answer: string | null): Promise<void>
   flowNow(workspace: string): Promise<{ ok: boolean; error?: string }>
+  steer(text: string): Promise<void>
   stopAgent(): Promise<void>
   workflows(): Promise<WorkflowRecord[]>
   saveWorkflow(rec: WorkflowRecord): Promise<void>
@@ -348,6 +391,10 @@ export interface GraspApi {
   readFile(workspace: string, rel: string): Promise<{ ok: boolean; content?: string; error?: string }>
   writeFile(workspace: string, rel: string, content: string): Promise<{ ok: boolean; error?: string }>
   fileDiff(workspace: string, rel: string): Promise<{ ok: boolean; old: string; new: string; error?: string }>
+  gitGraph(workspace: string): Promise<GitGraph>
+  gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
+  wikiRead(workspace: string): Promise<RepoWiki>
+  wikiGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
 }
 
 export interface TreeNode {

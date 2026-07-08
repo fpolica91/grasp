@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "pid": 16275,
+  "tools": [
+    "read_file",
+    "write_file",
+    "edit_file",
+    "notebook_edit",
+    "list_dir",
+    "run_bash",
+    "remote_bash",
+    "grasp_flow",
+    "grasp_flow_diff",
+    "grasp_fuzz_diff",
+    "grasp_intro",
+    "use_skill",
+    "TodoWrite",
+    "TodoRead",
+    "task",
+    "ask_user",
+    "web_fetch",
+    "web_search",
+    "Skill",
+    "goal",
+    "ApplyPatch",
+    "explore"
+  ]
+}

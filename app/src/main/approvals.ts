@@ -3,6 +3,7 @@
 // grasp:approve resolves the pending promise so the tool proceeds or is skipped.
 import { randomUUID } from 'node:crypto'
 import type { Emit } from './backends/types'
+import type { ElicitOption } from '../shared/types'
 
 const pending = new Map<string, (ok: boolean) => void>()
 
@@ -19,5 +20,33 @@ export function resolveApproval(id: string, ok: boolean): void {
   if (r) {
     pending.delete(id)
     r(ok)
+  }
+}
+
+// Elicitation: a structured multiple-choice question the agent asks the human.
+// Resolves to the chosen answer (a label or the human's custom text), or null if dismissed.
+export interface ElicitPayload {
+  header?: string
+  question: string
+  options: ElicitOption[]
+  multiSelect?: boolean
+  source?: string
+}
+
+const pendingElicit = new Map<string, (answer: string | null) => void>()
+
+export function requestElicitation(emit: Emit, payload: ElicitPayload): Promise<string | null> {
+  const id = randomUUID()
+  return new Promise<string | null>((resolve) => {
+    pendingElicit.set(id, resolve)
+    emit({ type: 'elicitation_request', id, ...payload })
+  })
+}
+
+export function resolveElicitation(id: string, answer: string | null): void {
+  const r = pendingElicit.get(id)
+  if (r) {
+    pendingElicit.delete(id)
+    r(answer)
   }
 }

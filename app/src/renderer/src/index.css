@@ -1,14 +1,26 @@
 @import "tailwindcss";
 
-/* ZCode v3.2.5 .theme-zai-dark design tokens — extracted verbatim from ZCode's
-   app.asar CSS (the ground truth, not a guess). Dark is the default (:root). */
+/* ============================================================================
+   grasp theme — Tailwind v4 (CSS-first).
+   Dark ("graphite") is the default :root. Light via <html data-theme="daylight">.
+   A third theme, "carbon", is the cooler neutral-900 / sky palette.
+
+   IMPORTANT (learned the hard way): Tailwind v4 INLINES and DROPS any `--color-*`
+   token whose value is a `var()` reference to another theme token, and it can
+   tree-shake unused default-ramp stops. So every value here is CONCRETE
+   (hex/oklch/color-mix with concrete operands) — no var() aliases. This guarantees
+   the node-graph / heatmap / chrome tokens FlowView depends on actually emit.
+   ============================================================================ */
 @theme {
-  /* surfaces */
+  /* ---- surfaces ---- */
   --color-background: #161616;
+  --color-background-alt: #ffffff14;
   --color-sidebar: #161616;
   --color-panel: #202020;
   --color-header: #202020;
   --color-card: #2b2b2b;
+  --color-card-selected: #363636;
+  --color-card-border: #ffffff1a;
   --color-surface: #ffffff0d;
   --color-surface-hover: #ffffff1a;
   --color-hover: #ffffff0d;
@@ -16,152 +28,272 @@
   --color-border: #ffffff1a;
   --color-border-hover: #ffffff26;
   --color-input: #2b2b2b;
+  --color-input-focused: #202020;
+  --color-input-border: #ffffff1a;
+  --color-input-border-hover: #ffffff26;
+  --color-input-border-focused: #4099ff;
   --color-menu: #2b2b2b;
   --color-menu-hover: #363636;
   --color-popover: #2b2b2b;
+  --color-popover-header: #202020;
+  --color-popover-border: #ffffff1a;
   --color-tooltip: #2b2b2b;
+  --color-tooltip-foreground: #f8f8f8;
+  --color-tooltip-tag: #363636;
+  --color-tooltip-tag-foreground: #adadad;
   --color-toast: #2b2b2b;
   --color-tag: #363636;
   --color-tab: #202020;
   --color-tab-active: #161616;
-  /* text */
+  --color-tab-border: #ffffff1a;
+  --color-markdown-inline-code: #363636;
+  /* ---- text ---- */
   --color-foreground: #d4d4d4;
   --color-foreground-subtle: #d4d4d499;
   --color-foreground-subtlest: #d4d4d44d;
   --color-foreground-inverse: #000000;
-  --color-tooltip-foreground: #f8f8f8;
-  /* brand / primary */
+  /* ---- brand / primary ---- */
   --color-primary: #ffffff;
   --color-primary-foreground: #000000;
   --color-brand: #ffffff;
   --color-secondary: #363636;
-  --color-accent: #001d3d;            /* ZCode's dark-navy accent surface */
-  --color-accent-blue: #4099ff;       /* ZCode's signature accent (selection/charts/focus) */
+  --color-accent: #001d3d;
+  --color-accent-blue: #4099ff;
   --color-find-highlight: #542500;
   --color-find-highlight-active: #ff8a30;
-  /* semantic */
-  --color-success: #46bf72;
-  --color-success-foreground: #000000;
-  --color-warning: #ff8a30;
-  --color-warning-foreground: #000000;
-  --color-destructive: #ff5c5c;
-  --color-destructive-foreground: #000000;
-  /* git */
-  --color-git-added: #46bf72;
-  --color-git-modified: #ff8a30;
-  --color-git-deleted: #ff5c5c;
-  --color-git-renamed: #4099ff;
-  --color-git-untracked: #46bf72;
-  --color-git-descendant: #ff8a30;
-  /* diff */
-  --color-diff-added: #46bf72;
-  --color-diff-removed: #ff5c5c;
-  /* 16-color ANSI terminal palette (ZCode) */
-  --color-terminal-black: #363636;
-  --color-terminal-red: #ff5c5c;
-  --color-terminal-green: #46bf72;
-  --color-terminal-yellow: #ff8a30;
-  --color-terminal-blue: #4099ff;
-  --color-terminal-magenta: #7b5ce5;
-  --color-terminal-cyan: #42c8c8;
-  --color-terminal-white: #adadad;
-  --color-terminal-bright-black: #747474;
-  --color-terminal-bright-red: #f99;
-  --color-terminal-bright-green: #87d9a4;
-  --color-terminal-bright-yellow: #ffb26b;
-  --color-terminal-bright-blue: #80beff;
-  --color-terminal-bright-magenta: #a888f2;
-  --color-terminal-bright-cyan: #8ee5e5;
-  --color-terminal-bright-white: #f8f8f8;
-  --color-terminal-selection: #4099ff47;
-  --color-terminal-cursor: #f8f8f8;
-  /* usage charts / heatmaps (ZCode) */
-  --color-usage-chart-1: #4099ff;
-  --color-usage-chart-2: #46bf72;
-  --color-usage-chart-3: #7b5ce5;
-  --color-usage-chart-4: #ff5c5c;
-  --color-usage-chart-5: #ff8a30;
-  --color-usage-chart-6: #42c8c8;
-  /* extra accents (legacy grasp tokens kept for back-compat) */
-  --color-accent-green: #46bf72;
-  --color-accent-magenta: #7b5ce5;
-  --color-accent-cyan: #42c8c8;
-  --color-accent-orange: #ff8a30;
-  /* legacy flow tokens */
+  /* ---- semantic ---- */
+  --color-success: #46bf72;  --color-success-foreground: #000000;
+  --color-warning: #ff8a30;  --color-warning-foreground: #000000;
+  --color-destructive: #ff5c5c; --color-destructive-foreground: #000000;
+  /* ---- git ---- */
+  --color-git-added: #46bf72;  --color-git-modified: #ff8a30;
+  --color-git-deleted: #ff5c5c; --color-git-renamed: #4099ff;
+  --color-git-untracked: #46bf72; --color-git-descendant: #ff8a30;
+  --color-git-ignored: #d4d4d44d; --color-git-none: #d4d4d4;
+  /* ---- diff ---- */
+  --color-diff-added: #46bf72;  --color-diff-added-foreground: #000000;
+  --color-diff-removed: #ff5c5c; --color-diff-removed-foreground: #000000;
+  /* ---- node-graph (FlowView: file/skill/command/subagent/session) ---- */
+  --color-file-node: #8fc5ef1a;     --color-file-node-hover: #8fc5ef33;     --color-file-node-foreground: #8fc5ef;
+  --color-skill-node: #bda5e61a;    --color-skill-node-hover: #bda5e633;    --color-skill-node-foreground: #bda5e6;
+  --color-command-node: #b5c0cc1a;  --color-command-node-hover: #b5c0cc33;  --color-command-node-foreground: #b5c0cc;
+  --color-subagent-node: #c8cd901a; --color-subagent-node-hover: #c8cd9033; --color-subagent-node-foreground: #c8cd90;
+  --color-session-node: #93d8d21a; --color-session-node-hover: #93d8d233;  --color-session-node-foreground: #93d8d2;
+  /* ---- data-viz: context breakdown (7) + usage heatmap (5) ---- */
+  --color-context-breakdown-1: #4099ff; --color-context-breakdown-2: #66adff;
+  --color-context-breakdown-3: #80beff; --color-context-breakdown-4: #9dceff;
+  --color-context-breakdown-5: #b9ddff; --color-context-breakdown-6: #d0e8ff;
+  --color-context-breakdown-7: #e4f1ff;
+  --color-usage-heatmap-0: color-mix(in oklab, #4099ff 0%, #161616);
+  --color-usage-heatmap-1: color-mix(in oklab, #4099ff 24%, #161616);
+  --color-usage-heatmap-2: color-mix(in oklab, #4099ff 42%, #161616);
+  --color-usage-heatmap-3: color-mix(in oklab, #4099ff 62%, #161616);
+  --color-usage-heatmap-4: color-mix(in oklab, #4099ff 78%, #161616);
+  /* ---- usage charts (6 categorical) ---- */
+  --color-usage-chart-1: #4099ff; --color-usage-chart-2: #46bf72; --color-usage-chart-3: #7b5ce5;
+  --color-usage-chart-4: #ff5c5c; --color-usage-chart-5: #ff8a30; --color-usage-chart-6: #42c8c8;
+  /* ---- terminal chrome + 16 ANSI ---- */
+  --color-terminal-bg: #161616; --color-terminal-fg: #d4d4d4;
+  --color-terminal-cursor: #f8f8f8; --color-terminal-cursor-accent: #161616;
+  --color-terminal-selection: #4099ff47; --color-terminal-selection-inactive: #ffffff14;
+  --color-terminal-black: #363636; --color-terminal-red: #ff5c5c; --color-terminal-green: #46bf72;
+  --color-terminal-yellow: #ff8a30; --color-terminal-blue: #4099ff; --color-terminal-magenta: #7b5ce5;
+  --color-terminal-cyan: #42c8c8;  --color-terminal-white: #adadad;
+  --color-terminal-bright-black: #747474; --color-terminal-bright-red: #ff9999;
+  --color-terminal-bright-green: #87d9a4; --color-terminal-bright-yellow: #ffb26b;
+  --color-terminal-bright-blue: #80beff; --color-terminal-bright-magenta: #a888f2;
+  --color-terminal-bright-cyan: #8ee5e5; --color-terminal-bright-white: #f8f8f8;
+  /* ---- decorative ---- */
+  --color-animated-gradient-text-strong: #ffffff;
+  --color-animated-gradient-text-soft: #ffffff38;
+  /* ---- legacy flow tokens + the shorthand aliases the Sidebar SVG consumes ---- */
   --color-declared: #888888;
   --color-ghost: #707070;
   --color-question: #ff8a30;
-  /* fonts + radii */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'JetBrains Mono', Menlo, monospace;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --ghost: #707070;
+  --faint: #d4d4d44d;
+  --accent: #001d3d;
+  --question: #ff8a30;
+
+  /* ---- typography / motion / radius (concrete; ZCode rem scale) ---- */
+  --font-sans: "Geist", system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif,
+               "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  --font-mono: "Geist Mono", ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  --text-xs: .75rem;   --text-sm: .875rem;  --text-base: 1rem;    --text-lg: 1.125rem;
+  --text-xl: 1.25rem;  --text-2xl: 1.5rem;  --text-3xl: 1.875rem; --text-4xl: 2.25rem;
+  --tracking-tight: -.025em; --tracking-normal: 0em; --tracking-wide: .025em; --tracking-widest: .1em;
+  --leading-tight: 1.25; --leading-snug: 1.375; --leading-normal: 1.5; --leading-relaxed: 1.625;
+  --font-weight-normal: 400; --font-weight-medium: 500; --font-weight-semibold: 600; --font-weight-bold: 700;
+  --radius-xs: .125rem; --radius-sm: .25rem; --radius-md: .375rem;
+  --radius-lg: .5rem;   --radius-xl: .75rem; --radius-2xl: 1rem;  --radius-3xl: 1.5rem;
+  --blur-xs: 4px; --blur-sm: 8px; --blur-md: 12px; --blur-2xl: 40px; --blur-3xl: 64px;
+  --ease-out: cubic-bezier(0, 0, .2, 1);
+  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --default-transition-duration: .15s;
+  --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ZCode .theme-zai-light — opted into via <html data-theme="daylight"> (or "light").
-   Overrides the dark :root tokens; Tailwind utilities pick up the new values. */
+/* ============================================================================
+   LIGHT ("daylight") — ZCode .theme-zai-light. All concrete.
+   ============================================================================ */
 [data-theme="light"],
 [data-theme="daylight"] {
-  --color-background: #f8f8f8;
-  --color-sidebar: #f8f8f8;
-  --color-panel: #ffffff;
-  --color-header: #ffffff;
-  --color-card: #ffffff;
-  --color-surface: #0d0d0d0d;
-  --color-surface-hover: #0d0d0d1a;
-  --color-hover: #0d0d0d0d;
-  --color-selected: #0d0d0d1a;
-  --color-border: #0d0d0d1a;
-  --color-border-hover: #0d0d0d26;
-  --color-input: #ffffff;
-  --color-menu: #ffffff;
-  --color-menu-hover: #f2f2f2;
-  --color-popover: #ffffff;
-  --color-tooltip: #ffffff;
-  --color-toast: #ffffff;
-  --color-tag: #f2f2f2;
-  --color-tab: #ffffff;
-  --color-tab-active: #f8f8f8;
-  --color-foreground: #2b2b2b;
-  --color-foreground-subtle: #2b2b2b99;
-  --color-foreground-subtlest: #2b2b2b4d;
-  --color-tooltip-foreground: #2b2b2b;
-  --color-primary: #000000;
-  --color-primary-foreground: #ffffff;
-  --color-brand: #000000;
-  --color-secondary: #e5e5e5;
-  --color-accent: #ebf4ff;
-  --color-accent-blue: #0b7fff;
-  --color-success: #1e8a3e;
-  --color-warning: #e07b00;
-  --color-destructive: #e03131;
-  --color-git-added: #1e8a3e;
-  --color-git-modified: #e07b00;
-  --color-git-deleted: #e03131;
-  --color-git-renamed: #0b7fff;
-  --color-diff-added: #1e8a3e;
-  --color-diff-removed: #e03131;
-  --color-terminal-black: #363636;
-  --color-terminal-red: #e03131;
-  --color-terminal-green: #1e8a3e;
-  --color-terminal-yellow: #e07b00;
-  --color-terminal-blue: #0b7fff;
-  --color-terminal-magenta: #7b5ce5;
-  --color-terminal-cyan: #42c8c8;
-  --color-terminal-white: #adadad;
-  --color-usage-chart-1: #0b7fff;
-  --color-usage-chart-2: #1e8a3e;
-  --color-usage-chart-3: #7b5ce5;
-  --color-usage-chart-4: #e03131;
-  --color-usage-chart-5: #e07b00;
-  --color-usage-chart-6: #42c8c8;
-  --color-accent-green: #1e8a3e;
-  --color-accent-magenta: #7b5ce5;
-  --color-accent-cyan: #42c8c8;
-  --color-accent-orange: #e07b00;
+  --color-background: #f8f8f8;  --color-background-alt: #0d0d0d0d;
+  --color-sidebar: #f0f0f0;     --color-panel: #ffffff;     --color-header: #ffffff;
+  --color-card: #ffffff;        --color-card-selected: #ffffff; --color-card-border: #0d0d0d1a;
+  --color-surface: #0d0d0d0d;   --color-surface-hover: #0d0d0d1a;
+  --color-hover: #0d0d0d0d;     --color-selected: #0d0d0d1a;
+  --color-border: #0d0d0d1a;    --color-border-hover: #0d0d0d26;
+  --color-input: #ffffff;       --color-input-focused: #f8f8f8;
+  --color-input-border: #0d0d0d1a; --color-input-border-hover: #0d0d0d26; --color-input-border-focused: #0b7fff;
+  --color-menu: #ffffff;        --color-menu-hover: #f2f2f2;
+  --color-popover: #ffffff;     --color-popover-header: #f8f8f8; --color-popover-border: #0d0d0d1a;
+  --color-tooltip: #ffffff;     --color-tooltip-foreground: #2b2b2b;
+  --color-tooltip-tag: #e6e6e6; --color-tooltip-tag-foreground: #5c5c5c;
+  --color-toast: #ffffff;       --color-tag: #f2f2f2;
+  --color-tab: #ffffff;         --color-tab-active: #f8f8f8;   --color-tab-border: #0d0d0d1a;
+  --color-markdown-inline-code: #f2f2f2;
+  --color-foreground: #2b2b2b;  --color-foreground-subtle: #2b2b2b99; --color-foreground-subtlest: #2b2b2b4d;
+  --color-foreground-inverse: #ffffff;
+  --color-primary: #000000;     --color-primary-foreground: #ffffff;
+  --color-brand: #000000;       --color-secondary: #e5e5e5;
+  --color-accent: #ebf4ff;      --color-accent-blue: #0b7fff;
+  --color-find-highlight: #fff4eb; --color-find-highlight-active: #ffb26b;
+  --color-success: #1e8a3e;  --color-success-foreground: #ffffff;
+  --color-warning: #e07b00;  --color-warning-foreground: #ffffff;
+  --color-destructive: #e03131; --color-destructive-foreground: #ffffff;
+  --color-git-added: #1e8a3e; --color-git-modified: #e07b00; --color-git-deleted: #e03131;
+  --color-git-renamed: #0b7fff; --color-git-untracked: #1e8a3e; --color-git-descendant: #e07b00;
+  --color-git-ignored: #2b2b2b4d; --color-git-none: #2b2b2b;
+  --color-diff-added: #1e8a3e;  --color-diff-added-foreground: #ffffff;
+  --color-diff-removed: #e03131; --color-diff-removed-foreground: #ffffff;
+  --color-file-node: #1a70b81a;     --color-file-node-hover: #1a70b833;     --color-file-node-foreground: #1a70b8;
+  --color-skill-node: #7453b01a;    --color-skill-node-hover: #7453b033;    --color-skill-node-foreground: #7453b0;
+  --color-command-node: #5662701a;  --color-command-node-hover: #56627029;  --color-command-node-foreground: #566270;
+  --color-subagent-node: #6f7a2f24; --color-subagent-node-hover: #6f7a2f33; --color-subagent-node-foreground: #6f7a2f;
+  --color-session-node: #14807a1a; --color-session-node-hover: #14807a29;  --color-session-node-foreground: #14807a;
+  --color-context-breakdown-1: #0b7fff; --color-context-breakdown-2: #338fff;
+  --color-context-breakdown-3: #5ca7ff; --color-context-breakdown-4: #85bbff;
+  --color-context-breakdown-5: #acd0ff; --color-context-breakdown-6: #c8ddff;
+  --color-context-breakdown-7: #e0ecff;
+  --color-usage-heatmap-0: color-mix(in oklab, #0b7fff 0%, #f8f8f8);
+  --color-usage-heatmap-1: color-mix(in oklab, #0b7fff 18%, #f8f8f8);
+  --color-usage-heatmap-2: color-mix(in oklab, #0b7fff 36%, #f8f8f8);
+  --color-usage-heatmap-3: color-mix(in oklab, #0b7fff 58%, #f8f8f8);
+  --color-usage-heatmap-4: color-mix(in oklab, #0b7fff 82%, #f8f8f8);
+  --color-usage-chart-1: #0b7fff; --color-usage-chart-2: #1e8a3e; --color-usage-chart-3: #7b5ce5;
+  --color-usage-chart-4: #e03131; --color-usage-chart-5: #e07b00; --color-usage-chart-6: #42c8c8;
+  --color-terminal-bg: #f8f8f8; --color-terminal-fg: #2b2b2b;
+  --color-terminal-cursor: #0d0d0d; --color-terminal-cursor-accent: #f8f8f8;
+  --color-terminal-selection: #0b7fff38; --color-terminal-selection-inactive: #0d0d0d1a;
+  --color-terminal-black: #363636; --color-terminal-red: #e03131; --color-terminal-green: #1e8a3e;
+  --color-terminal-yellow: #e07b00; --color-terminal-blue: #0b7fff; --color-terminal-magenta: #7b5ce5;
+  --color-terminal-cyan: #42c8c8;  --color-terminal-white: #adadad;
+  --color-terminal-bright-black: #747474; --color-terminal-bright-red: #ff7a7a;
+  --color-terminal-bright-green: #4fbf72; --color-terminal-bright-yellow: #ffb26b;
+  --color-terminal-bright-blue: #4d9dff; --color-terminal-bright-magenta: #9e77ed;
+  --color-terminal-bright-cyan: #5fc8c8; --color-terminal-bright-white: #2b2b2b;
+  --color-animated-gradient-text-strong: #0d0d0d; --color-animated-gradient-text-soft: #0d0d0d38;
   --color-question: #e07b00;
+  --ghost: #2b2b2b99; --faint: #2b2b2b4d; --accent: #ebf4ff; --question: #e07b00;
+}
+
+/* ============================================================================
+   CARBON — cooler neutral-900 / sky palette (ZCode's .dark variant). All concrete.
+   ============================================================================ */
+[data-theme="carbon"] {
+  --color-background: oklch(20.5% 0 0);
+  --color-background-alt: color-mix(in oklab, oklch(26.9% 0 0) 60%, transparent);
+  --color-sidebar: oklch(14.5% 0 0);
+  --color-panel: oklch(20.5% 0 0);
+  --color-header: oklch(20.5% 0 0);
+  --color-card: oklch(26.9% 0 0);
+  --color-card-selected: oklch(37.1% 0 0);
+  --color-card-border: color-mix(in oklab, oklch(98.5% 0 0) 10%, transparent);
+  --color-surface: color-mix(in oklab, #ffffff 5%, transparent);
+  --color-surface-hover: color-mix(in oklab, #ffffff 10%, transparent);
+  --color-hover: color-mix(in oklab, #ffffff 10%, transparent);
+  --color-selected: color-mix(in oklab, #ffffff 10%, transparent);
+  --color-border: color-mix(in oklab, oklch(98.5% 0 0) 10%, transparent);
+  --color-border-hover: color-mix(in oklab, oklch(98.5% 0 0) 30%, transparent);
+  --color-input: oklch(26.9% 0 0);
+  --color-input-focused: oklch(14.5% 0 0);
+  --color-input-border: color-mix(in oklab, oklch(98.5% 0 0) 10%, transparent);
+  --color-input-border-hover: color-mix(in oklab, oklch(98.5% 0 0) 30%, transparent);
+  --color-input-border-focused: oklch(74.6% .16 232.661);
+  --color-menu: oklch(14.5% 0 0);
+  --color-menu-hover: oklch(20.5% 0 0);
+  --color-popover: oklch(26.9% 0 0);
+  --color-popover-header: oklch(37.1% 0 0);
+  --color-popover-border: color-mix(in oklab, oklch(98.5% 0 0) 10%, transparent);
+  --color-tooltip: oklch(26.9% 0 0);
+  --color-tooltip-foreground: oklch(97% 0 0);
+  --color-tooltip-tag: oklch(37.1% 0 0);
+  --color-tooltip-tag-foreground: oklch(92.2% 0 0);
+  --color-toast: oklch(20.5% 0 0);
+  --color-tag: oklch(37.1% 0 0);
+  --color-tab: oklch(26.9% 0 0);
+  --color-tab-active: oklch(20.5% 0 0);
+  --color-tab-border: color-mix(in oklab, oklch(98.5% 0 0) 10%, transparent);
+  --color-markdown-inline-code: oklch(37.1% 0 0);
+  --color-foreground: oklch(92.2% 0 0);
+  --color-foreground-subtle: color-mix(in oklab, oklch(92.2% 0 0) 60%, transparent);
+  --color-foreground-subtlest: color-mix(in oklab, oklch(92.2% 0 0) 30%, transparent);
+  --color-foreground-inverse: #ffffff;
+  --color-primary: oklch(97% 0 0);
+  --color-primary-foreground: oklch(14.5% 0 0);
+  --color-brand: oklch(68.5% .169 237.323);
+  --color-secondary: oklch(37.1% 0 0);
+  --color-accent: color-mix(in oklab, oklch(29.3% .066 243.157) 50%, transparent);
+  --color-accent-blue: oklch(74.6% .16 232.661);
+  --color-find-highlight: #713f12; --color-find-highlight-active: #a16207;
+  --color-success: oklch(72.3% .219 149.579);  --color-success-foreground: #000;
+  --color-warning: oklch(79.5% .184 86.047);   --color-warning-foreground: #000;
+  --color-destructive: oklch(63.7% .237 25.331); --color-destructive-foreground: #000;
+  --color-git-added: oklch(77.7% .152 181.912); --color-git-modified: oklch(82.8% .189 84.429);
+  --color-git-deleted: oklch(70% .191 22);      --color-git-renamed: oklch(74.6% .16 232.661);
+  --color-git-untracked: oklch(77.7% .152 181.912); --color-git-descendant: oklch(82.8% .189 84.429);
+  --color-git-ignored: color-mix(in oklab, oklch(92.2% 0 0) 30%, transparent);
+  --color-git-none: oklch(92.2% 0 0);
+  --color-diff-added: oklch(72.3% .219 149.579);  --color-diff-added-foreground: #000;
+  --color-diff-removed: oklch(63.7% .237 25.331); --color-diff-removed-foreground: #000;
+  --color-file-node: color-mix(in oklab, oklch(74.6% .16 232.661) 14%, transparent);
+  --color-file-node-hover: color-mix(in oklab, oklch(74.6% .16 232.661) 22%, transparent);
+  --color-file-node-foreground: oklch(74.6% .16 232.661);
+  --color-skill-node: color-mix(in oklab, oklch(70.2% .183 293.541) 14%, transparent);
+  --color-skill-node-hover: color-mix(in oklab, oklch(70.2% .183 293.541) 22%, transparent);
+  --color-skill-node-foreground: oklch(70.2% .183 293.541);
+  --color-command-node: color-mix(in oklab, oklch(86.9% .022 252.894) 14%, transparent);
+  --color-command-node-hover: color-mix(in oklab, oklch(86.9% .022 252.894) 22%, transparent);
+  --color-command-node-foreground: oklch(86.9% .022 252.894);
+  --color-subagent-node: color-mix(in oklab, oklch(85% .16 80) 16%, transparent);
+  --color-subagent-node-hover: color-mix(in oklab, oklch(85% .16 80) 24%, transparent);
+  --color-subagent-node-foreground: oklch(85% .16 80);
+  --color-session-node: color-mix(in oklab, oklch(78.9% .154 211.53) 14%, transparent);
+  --color-session-node-hover: color-mix(in oklab, oklch(78.9% .154 211.53) 22%, transparent);
+  --color-session-node-foreground: oklch(78.9% .154 211.53);
+  --color-context-breakdown-1: oklch(74.6% .16 232.661);
+  --color-context-breakdown-2: color-mix(in oklab, oklch(78% .112 230.318) 80%, #fff);
+  --color-context-breakdown-3: color-mix(in oklab, oklch(78% .112 230.318) 60%, #fff);
+  --color-context-breakdown-4: color-mix(in oklab, oklch(78% .112 230.318) 40%, #fff);
+  --color-context-breakdown-5: color-mix(in oklab, oklch(78% .112 230.318) 24%, #fff);
+  --color-context-breakdown-6: color-mix(in oklab, oklch(78% .112 230.318) 12%, #fff);
+  --color-context-breakdown-7: color-mix(in oklab, oklch(78% .112 230.318) 6%, #fff);
+  --color-usage-heatmap-0: color-mix(in oklab, oklch(74.6% .16 232.661) 0%, oklch(20.5% 0 0));
+  --color-usage-heatmap-1: color-mix(in oklab, oklch(74.6% .16 232.661) 24%, oklch(20.5% 0 0));
+  --color-usage-heatmap-2: color-mix(in oklab, oklch(74.6% .16 232.661) 42%, oklch(20.5% 0 0));
+  --color-usage-heatmap-3: color-mix(in oklab, oklch(74.6% .16 232.661) 62%, oklch(20.5% 0 0));
+  --color-usage-heatmap-4: color-mix(in oklab, oklch(78% .112 230.318) 78%, oklch(20.5% 0 0));
+  --color-terminal-bg: oklch(14.5% 0 0); --color-terminal-fg: oklch(97% 0 0);
+  --color-terminal-cursor: oklch(97% 0 0); --color-terminal-cursor-accent: oklch(14.5% 0 0);
+  --color-terminal-selection: color-mix(in oklab, oklch(68.5% .169 237.323) 26%, transparent);
+  --color-terminal-selection-inactive: color-mix(in oklab, oklch(97% 0 0) 16%, transparent);
+  --color-animated-gradient-text-strong: #ffffff;
+  --color-animated-gradient-text-soft: #ffffff33;
+  --color-question: oklch(79.5% .184 86.047);
+  --ghost: color-mix(in oklab, oklch(92.2% 0 0) 60%, transparent);
+  --faint: color-mix(in oklab, oklch(92.2% 0 0) 30%, transparent);
+  --accent: color-mix(in oklab, oklch(29.3% .066 243.157) 50%, transparent);
 }
 
 @font-face {
@@ -182,17 +314,23 @@ html, body, #root { height: 100%; margin: 0; }
 body { font-family: var(--font-sans); background: var(--color-background); color: var(--color-foreground); overflow: hidden; }
 * { box-sizing: border-box; }
 
-/* Custom scrollbar (matches ZCode) */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+/* Custom scrollbar — ZCode: 14px pill, floating thumb */
+::-webkit-scrollbar { width: 14px; height: 14px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  min-width: 32px; min-height: 32px;
+  background-clip: padding-box;
+}
 ::-webkit-scrollbar-thumb:hover { background: var(--color-border-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
 
 /* Selection — ZCode uses the blue accent */
 ::selection { background: var(--color-accent-blue); color: #fff; }
 
-/* Syntax highlighting — ZCode .theme-zai-dark palette (VS Code dark-plus feel).
-   Uses the ANSI/terminal palette so code, terminal, and editor all share one scheme. */
+/* Syntax highlighting — shared by code blocks, CodeMirror, and xterm. */
 .hljs { color: var(--color-foreground); background: transparent; }
 .hljs-comment, .hljs-quote { color: var(--color-foreground-subtlest); font-style: italic; }
 .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag { color: var(--color-terminal-magenta); }

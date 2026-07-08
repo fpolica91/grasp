@@ -7,16 +7,27 @@ import { glmBackend } from './backends/glm'
 import { claudeBackend } from './backends/claude'
 import { claudeCodeBackend } from './backends/claude-code'
 import { openaiBackend } from './backends/openai'
+import { providerBackends } from './backends/providers'
 import { checkpointWorkspace } from './checkpoint'
 import type { AgentBackend, Emit } from './backends/types'
+import type { ThoughtLevel } from '../shared/catalog'
 
-const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, claudeCodeBackend, openaiBackend]
+const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, claudeCodeBackend, openaiBackend, ...providerBackends]
 
 // The user's stop button. One active turn at a time; stopping aborts its signal —
 // owned loops end at the next await, the Claude Code child process is killed.
 let activeAbort: AbortController | null = null
 export function stopAgent(): void {
   activeAbort?.abort()
+}
+
+// Steer: a message the user injects into the in-flight turn. The owned loop drains
+// this each iteration and inserts it as a user message before the next model call.
+// One active turn ⇒ one queue (cleared at turn start so stale steers don't leak).
+const steerQueue: string[] = []
+export function steerAgent(text: string): void {
+  const t = text?.trim()
+  if (t) steerQueue.push(t)
 }
 
 export function listBackends(): { id: string; label: string; models: string[]; ok: boolean; reason?: string }[] {
@@ -39,6 +50,7 @@ export async function runAgent(
     watch?: { entrypoint: string; input?: string }
     backend?: string
     model?: string
+    thoughtLevel?: ThoughtLevel
     mode?: 'auto' | 'ask' | 'plan'
     budget?: number
     flowAuto?: boolean
@@ -64,6 +76,7 @@ export async function runAgent(
   activeAbort?.abort() // a new turn supersedes any stuck one
   const ac = new AbortController()
   activeAbort = ac
+  steerQueue.length = 0 // fresh steer queue per turn
 
   let result: { messages: unknown[] }
   try {
@@ -74,10 +87,12 @@ export async function runAgent(
         history: params.history,
         watch: params.watch,
         model: params.model,
+        thoughtLevel: params.thoughtLevel,
         mode: params.mode,
         budget: params.budget,
         flowAuto: params.flowAuto,
-        signal: ac.signal
+        signal: ac.signal,
+        steer: () => (steerQueue.length ? steerQueue.splice(0).join('\n\n') : undefined)
       },
       emit
     )
