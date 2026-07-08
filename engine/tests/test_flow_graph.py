@@ -10,7 +10,11 @@ import json
 import os
 
 from dreplay.flow import Flow, Node, Operand, BusinessObject, observe_flow
-from dreplay.flow_graph import graph_model, to_graph_json, to_graph_html
+from dreplay.flow_diff import align_and_diff
+from dreplay.flow_graph import (
+    graph_diff_model, graph_model, to_graph_diff_html, to_graph_diff_json,
+    to_graph_json, to_graph_html,
+)
 from dreplay.types import CanonicalValue, ImplSpec
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -111,6 +115,67 @@ def test_html_is_self_contained() -> None:
     out = to_graph_html(_observe("create_organization", {"name": "Acme"}))
     assert out.startswith("<!doctype html>")
     # no external network resources — the render must be a standalone artifact.
+    assert "http://" not in out and "https://" not in out
+
+
+# ---- the A→B change view (graph-diff) --------------------------------------- #
+def _flow(*nodes) -> Flow:
+    return Flow(entrypoint="x.save", mode="instant", nodes=tuple(nodes))
+
+
+def _save(owner) -> Node:
+    return Node(kind="db_write", label="save", provenance="observed",
+                business_meaningful=True,
+                operands=(Operand(name="owner", value=owner, provenance="observed"),))
+
+
+def test_graph_diff_marks_a_changed_operand_old_to_new() -> None:
+    fd = align_and_diff(_flow(_save(None)), _flow(_save(42)))
+    g = graph_diff_model(fd)
+    assert g["grasp_graph_diff_version"] == "1"
+    assert g["changed_count"] == 1 and g["empty"] is False
+    node = g["nodes"][0]
+    assert node["status"] == "changed"
+    assert node["deltas"][0] == {"field": "owner", "old": "None", "new": "42",
+                                 "provenance": "observed"}
+    # the terminal question states the delta as a neutral question.
+    assert any("None → 42" in q and q.endswith("intended?") for q in g["questions"])
+
+
+def test_graph_diff_added_and_removed_status() -> None:
+    added = graph_diff_model(align_and_diff(_flow(_save(1)),
+                                            _flow(_save(1), Node(kind="auth_check",
+                                                  label="check", provenance="observed"))))
+    assert added["nodes"][-1]["status"] == "added"
+    assert any("now runs" in q for q in added["questions"])
+
+    removed = graph_diff_model(align_and_diff(
+        _flow(_save(1), Node(kind="auth_check", label="check", provenance="observed")),
+        _flow(_save(1))))
+    rn = next(n for n in removed["nodes"] if n["status"] == "removed")
+    assert rn["presence"] == "ghosted"           # removed => coverage-boundary ghost
+    assert any("no longer runs" in q for q in removed["questions"])
+
+
+def test_graph_diff_empty_is_honest_never_a_pass() -> None:
+    g = graph_diff_model(align_and_diff(_flow(_save(1)), _flow(_save(1))))
+    assert g["empty"] is True and g["changed_count"] == 0
+    assert g["honest_message"] and "intended?" in g["honest_message"]
+    html_out = to_graph_diff_html(align_and_diff(_flow(_save(1)), _flow(_save(1))))
+    # honest empty-state: states what was/wasn't tested, never a bare "no change"
+    assert "structural change" in html_out
+
+
+def test_no_verdict_word_in_graph_diff_json_or_html() -> None:
+    fd = align_and_diff(_flow(_save(None)), _flow(_save(42)))
+    for text in (to_graph_diff_json(fd).lower(), to_graph_diff_html(fd).lower()):
+        for bad in _VERDICT_WORDS:
+            assert bad not in text, f"graph-diff leaked verdict word {bad!r}"
+
+
+def test_graph_diff_html_self_contained() -> None:
+    out = to_graph_diff_html(align_and_diff(_flow(_save(None)), _flow(_save(42))))
+    assert out.startswith("<!doctype html>")
     assert "http://" not in out and "https://" not in out
 
 

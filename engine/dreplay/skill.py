@@ -25,7 +25,7 @@ from .flow_cli import (
     _auto_detect_language, _repo_subpath, _resolve_head, _trace,
 )
 from .flow_diff import align_and_diff
-from .flow_graph import graph_model
+from .flow_graph import graph_diff_model, graph_model
 from .types import ImplSpec
 from . import worktree
 
@@ -119,8 +119,9 @@ def diff(*, repo: str, entrypoint: str, old_ref: str, input: dict | None = None,
         "old_ref": old_ref, "new_ref": new_ref,
         "language": lang,
         "delta": _diff_to_dict(fd),
-        # Until to_graph_diff lands, both observed graphs travel so the surface can
-        # render A→B from the pair.
+        # The A→B change view — the headline surface renders this directly.
+        "graph_diff": graph_diff_model(fd),
+        # Both observed graphs also travel (comprehension of each side on demand).
         "old_graph": graph_model(flow_old),
         "new_graph": graph_model(flow_new),
     }
@@ -187,6 +188,10 @@ def main(argv: list[str] | None = None) -> int:
             sp.add_argument("--variants", type=int, default=8)
             sp.add_argument("--seed", type=int, default=0)
             sp.add_argument("--allow-egress", action="store_true")
+        if name in ("observe", "diff"):
+            sp.add_argument("--html", action="store_true",
+                            help="emit the rendered graph HTML instead of JSON "
+                                 "(what the desktop shell displays)")
 
     args = p.parse_args(argv)
     inp = json.loads(args.input) if getattr(args, "input", None) else None
@@ -199,6 +204,17 @@ def main(argv: list[str] | None = None) -> int:
     else:
         out = fuzz(repo=args.repo, entrypoint=args.entrypoint, schema=args.schema,
                    variants=args.variants, seed=args.seed, allow_egress=args.allow_egress)
+
+    # --html: emit the rendered graph the shell displays. Falls back to the JSON
+    # envelope on a refusal/config-error (no graph to render) — honest, not blank.
+    if getattr(args, "html", False):
+        from .flow_graph import render_graph_diff_html, render_graph_html
+        if args.cap == "observe" and out.get("graph"):
+            print(render_graph_html(out["graph"]))
+            return 0
+        if args.cap == "diff" and out.get("graph_diff"):
+            print(render_graph_diff_html(out["graph_diff"]))
+            return 0
     print(json.dumps(out, indent=2, sort_keys=True, default=repr))
     return 0
 

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -40,7 +41,81 @@ from ..flow import BusinessObject, Flow, Node, Operand
 # records the outbound call (url/method) WITHOUT throwing — in FLOW mode the
 # instrument observes real behavior; the egress wall belongs to the fuzzer/differ
 # (Mode B), not the instrument (Mode A). See docs/what-this-is.md "Safety stance".
-_FLOW_WORKER_JS = r"""
+# Named-argument binding for JS entrypoints (shared by both harnesses). Python has real
+# **kwargs; JS does not — so the JSON input keys are bound to the function's DECLARED
+# parameter names (fn.toString()), and a single-parameter function whose param is a
+# destructuring pattern or doesn't match any key receives the whole object (the standard
+# JS options-object idiom). Falls back to insertion-order values if the source can't be
+# parsed — never fabricates, worst case is the old behavior.
+_BIND_ARGS_JS = r"""
+function __dreplaySplitParams(s){
+  const out=[]; let d=0, cur='';
+  for (const ch of s){
+    if ('([{'.includes(ch)) d++;
+    else if (')]}'.includes(ch)) d--;
+    if (ch === ',' && d === 0){ out.push(cur); cur=''; continue; }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+function __dreplayBindArgs(fn, input){
+  const kw = (input && typeof input.kwargs === 'object' && input.kwargs) || null;
+  if (!kw) return input.args || [];
+  let params;
+  try {
+    const src = String(fn.toString());
+    const m = src.match(/^[^(]*\(([\s\S]*?)\)\s*(=>|\{)/) || src.match(/^\(?([^)=]*)\)?\s*=>/);
+    params = m ? __dreplaySplitParams(m[1]).map(function(p){ return p.trim(); }).filter(Boolean) : null;
+  } catch(e){ params = null; }
+  if (!params) return input.args || [];
+  if (params.length === 0) return [];
+  if (params.length === 1){
+    const p = params[0];
+    if (p[0] === '{' || p[0] === '[') return [kw];              // destructured options object
+    const name = p.split('=')[0].trim().replace(/^\.\.\./, '');
+    if (!(name in kw)) return [kw];                              // fn(opts) style
+    return [kw[name]];
+  }
+  return params.map(function(p){
+    const name = p.split('=')[0].trim().replace(/^\.\.\./, '');
+    return kw[name];                                             // by-name; missing -> undefined
+  });
+}
+"""
+
+# Module-loading ladder (the "type": "module" trap). A repo-root package.json with
+# "type": "module" makes Node parse every .js as ESM — a CJS file (e.g. esbuild output)
+# then dies with "module is not defined", and require() of true ESM can throw
+# ERR_REQUIRE_ESM on older Nodes. The ladder: require → dynamic import() → copy the file
+# beside itself as .cjs (so its relative requires still resolve) and require that.
+# Honest: if every rung fails, the ORIGINAL error propagates — nothing is faked.
+_LOAD_MODULE_JS = r"""
+async function __dreplayLoad(p){
+  let e1;
+  try { return require(p); } catch (err) { e1 = err; }
+  const msg = String((e1 && e1.message) || e1);
+  const esmish = (e1 && e1.code === 'ERR_REQUIRE_ESM')
+    || /module is not defined|exports is not defined|Cannot use import statement|Unexpected token 'export'/.test(msg);
+  if (!esmish) throw e1;
+  try {
+    return await import(require('url').pathToFileURL(p).href);
+  } catch (e2) {
+    const fs = require('fs');
+    const alt = p.replace(/\.[cm]?js$/, '') + '.__dreplay.cjs';
+    try {
+      fs.copyFileSync(p, alt);
+      return require(alt);
+    } catch (e3) {
+      throw e1; // report the original failure, not the workaround's
+    } finally {
+      try { fs.unlinkSync(alt); } catch (_) {}
+    }
+  }
+}
+"""
+
+_FLOW_WORKER_JS = _BIND_ARGS_JS + _LOAD_MODULE_JS + r"""
 const path = require('path');
 const input = JSON.parse(process.env.DREPLAY_INPUT);
 const out = {return_value: null, has_return: false, exception: null,
@@ -71,7 +146,7 @@ for (const name of ['http','https']) {
 }
 (async () => {
   try {
-    const mod = require(path.resolve(input.module));
+    const mod = await __dreplayLoad(path.resolve(input.module));
     // Resolve the fn across CommonJS shapes: `module.exports = function name()`,
     // `module.exports = {name: fn}`, and ESM-interop `mod.default` (fn or obj).
     let fn = null;
@@ -81,7 +156,7 @@ for (const name of ['http','https']) {
            ? mod.default : mod.default[input.func])) || null;
     }
     if (typeof fn !== 'function') throw new Error('entrypoint not a function: '+input.func);
-    let ret = fn.apply(null, input.args);  // positional, in kwarg insertion order
+    let ret = fn.apply(null, __dreplayBindArgs(fn, input));
     if (ret && typeof ret.then === 'function') ret = await ret;
     out.return_value = canon(ret); out.has_return = true;
   } catch (e) {
@@ -123,7 +198,7 @@ def node_flow(
     (``business_meaningful=False``, ``provenance="unknown"``) records *why*.
     """
     kwargs = dict(kwargs or {})
-    entrypoint = f"{module_path}::{func}"
+    entrypoint = f"{os.path.basename(module_path)}::{func}"
 
     # Try the AST-traced path FIRST (real interior nodes for top-level sync funcs).
     # Falls back to endpoints-only on any failure (parse/rewrite/worker) — never fakes.
@@ -133,7 +208,7 @@ def node_flow(
 
     env = dict(os.environ)
     env["DREPLAY_INPUT"] = json.dumps(
-        {"module": module_path, "func": func, "args": list(kwargs.values())}
+        {"module": module_path, "func": func, "args": list(kwargs.values()), "kwargs": kwargs}
     )
     env["DREPLAY_WORKER_JS"] = _FLOW_WORKER_JS
 
@@ -159,7 +234,7 @@ def node_flow(
 # --------------------------------------------------------------------------- #
 # Traced path — real interior nodes via AST-rewrite (closes the §8.8 gap)
 # --------------------------------------------------------------------------- #
-_TRACING_HEADER_JS = r"""
+_TRACING_HEADER_JS = _BIND_ARGS_JS + r"""
 const input = JSON.parse(process.env.DREPLAY_INPUT);
 var __DT_LOG = [];
 function canon(v){ try { return JSON.parse(JSON.stringify(v === undefined ? null : v)); } catch(e){ return String(v); } }
@@ -176,7 +251,7 @@ _TRACING_HARNESS_JS = r"""
     const mod = module.exports;
     let fn = (typeof mod === "function") ? mod : (mod ? mod[input.func] : null);
     if (typeof fn !== "function") throw new Error("entrypoint not a function: " + input.func);
-    let r = fn.apply(null, input.args);
+    let r = fn.apply(null, __dreplayBindArgs(fn, input));
     if (r && typeof r.then === "function") r = await r;
     process.stdout.write(JSON.stringify({log: __DT_LOG, outbound: __OUT, result: canon(r), error: null}));
   } catch (e) {
@@ -199,11 +274,18 @@ def _node_flow_traced(module_path: str, func: str, kwargs: dict, timeout_s: floa
     rewritten, ok = js_trace.rewrite(source)
     if not ok:
         return None
+    # ESM sources can't be hosted by this CJS tracing harness: Node >=22.7 auto-detects
+    # `import`/`export` syntax and parses the tempfile as ESM, where the harness's
+    # `module.exports` reference throws — and that HARNESS failure would be misreported
+    # as the target function throwing (faked evidence). Decline honestly; the plain
+    # worker's load ladder handles ESM endpoints-only.
+    if re.search(r"^\s*(import\s|export\s)", source, re.MULTILINE):
+        return None
 
     worker = _TRACING_HEADER_JS + "\n" + rewritten + "\n;\n" + _TRACING_HARNESS_JS
     env = dict(os.environ)
     env["DREPLAY_INPUT"] = json.dumps(
-        {"module": module_path, "func": func, "args": list(kwargs.values())}
+        {"module": module_path, "func": func, "args": list(kwargs.values()), "kwargs": kwargs}
     )
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as tf:
         tf.write(worker)
@@ -224,7 +306,14 @@ def _node_flow_traced(module_path: str, func: str, kwargs: dict, timeout_s: floa
     except json.JSONDecodeError:
         return None  # worker failed under rewrite → fall back to clean endpoints-only
 
-    return _flow_from_traced(f"{module_path}::{func}", kwargs, data, func)
+    # A HARNESS-environment failure (CJS globals missing because the tempfile got parsed
+    # as ESM) must never be reported as the target function throwing — that would be
+    # faked evidence. Decline; the plain worker re-runs the real module honestly.
+    err_msg = str((data.get("error") or {}).get("message", ""))
+    if re.search(r"\b(module|exports|require) is not defined\b", err_msg):
+        return None
+
+    return _flow_from_traced(f"{os.path.basename(module_path)}::{func}", kwargs, data, func)
 
 
 def _classify_js(name: str) -> str:

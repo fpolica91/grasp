@@ -21,6 +21,7 @@ import argparse
 import dataclasses
 import json
 import os
+import re
 import sys
 
 from .flow import observe_flow
@@ -116,15 +117,36 @@ def _trace(language: str, entrypoint: str, kwargs: dict, repo: str, interpreter:
         return observe_flow(spec=ImplSpec(module=module, func=func), kwargs=kwargs,
                             python_path=[repo], interpreter=interpreter)
     elif language in ("js", "javascript"):
-        mod, _, func = entrypoint.rpartition(".")
         from .adapter.node_flow import node_flow
-        return node_flow(module_path=os.path.join(repo, mod.replace(".", "/") + ".js"),
-                         func=func, kwargs=kwargs)
+        # Two entrypoint forms:
+        #  * path form  "src/colorUtils.cjs:getFontColor" — any of .js/.cjs/.mjs, real
+        #    file paths (survives dots in dirs; the only way to express .cjs/.mjs);
+        #  * dotted form "svc.createOrder" — resolved to svc.js, falling back to a
+        #    sibling .cjs/.mjs when the .js doesn't exist (esbuild output in a
+        #    "type": "module" repo is emitted as .cjs).
+        if re.search(r"\.(js|cjs|mjs)x?:", entrypoint):
+            src, _, func = entrypoint.rpartition(":")
+            module_path = os.path.join(repo, src)
+        else:
+            mod, _, func = entrypoint.rpartition(".")
+            module_path = os.path.join(repo, mod.replace(".", "/") + ".js")
+            if not os.path.exists(module_path):
+                for ext in (".cjs", ".mjs"):
+                    alt = os.path.join(repo, mod.replace(".", "/") + ext)
+                    if os.path.exists(alt):
+                        module_path = alt
+                        break
+        return node_flow(module_path=module_path, func=func, kwargs=kwargs)
     elif language == "ts":
-        mod, _, func = entrypoint.rpartition(".")
         from .adapter.ts_flow import ts_flow
-        return ts_flow(source_path=os.path.join(repo, mod.replace(".", "/") + ".ts"),
-                       func=func, kwargs=kwargs, search_paths=[repo])
+        # path form "src/utils/colorUtils.ts:getFontColor" or dotted "mod.func"
+        if re.search(r"\.tsx?:", entrypoint):
+            src, _, func = entrypoint.rpartition(":")
+            source_path = os.path.join(repo, src)
+        else:
+            mod, _, func = entrypoint.rpartition(".")
+            source_path = os.path.join(repo, mod.replace(".", "/") + ".ts")
+        return ts_flow(source_path=source_path, func=func, kwargs=kwargs, search_paths=[repo])
     elif language == "cpp":
         source, _, func = entrypoint.rpartition(":")
         if not func:

@@ -125,3 +125,79 @@ def test_no_interior_node_synthesized(tmp_path):
     assert note.business_meaningful is False
     assert note.provenance == "unknown"
     assert note not in flow.default_nodes()
+
+
+def test_kwargs_bind_by_parameter_name(tmp_path):
+    """JSON input keys bind to DECLARED JS parameter names, not insertion order.
+
+    Pins the fix for the car-rental session failure: a destructured options-object
+    param receives the whole kwargs object; a multi-param function binds each key by
+    name even when the JSON key order is shuffled; fn(opts) receives the whole object.
+    """
+    mod = tmp_path / "svc.js"
+    mod.write_text(
+        "function optsFn({ a, b } = {}) { return { sum: a + b }; }\n"
+        "function multi(a, b, c) { return { got: [a, b, c] }; }\n"
+        "function bag(opts) { return { keys: Object.keys(opts).sort() }; }\n"
+        "module.exports = { optsFn, multi, bag };\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f1 = node_flow(module_path=str(mod), func="optsFn", kwargs={"a": 2, "b": 3})
+    ret1 = [n for n in f1.nodes if n.kind == "return"]
+    assert ret1 and any(o.name == "sum" and o.value == 5 for o in ret1[0].operands)
+
+    # shuffled key order must still bind by name
+    f2 = node_flow(module_path=str(mod), func="multi", kwargs={"c": 3, "a": 1, "b": 2})
+    ret2 = [n for n in f2.nodes if n.kind == "return"]
+    assert ret2 and any(o.name == "got" and o.value == [1, 2, 3] for o in ret2[0].operands)
+
+    f3 = node_flow(module_path=str(mod), func="bag", kwargs={"x": 1, "y": 2})
+    ret3 = [n for n in f3.nodes if n.kind == "return"]
+    assert ret3 and any(o.name == "keys" and o.value == ["x", "y"] for o in ret3[0].operands)
+
+
+def test_type_module_repo_cjs_output(tmp_path):
+    """The TodoApp trap: repo-root package.json says "type": "module", but the target
+    file is CJS syntax (esbuild output). Plain require -> "module is not defined".
+    The load ladder must still bind and observe honestly."""
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (tmp_path / "colorUtils.js").write_text(
+        '"use strict";\n'
+        "function isDarkMode(theme) { return { dark: theme === 'dark' }; }\n"
+        "module.exports = { isDarkMode };\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f = node_flow(module_path=str(tmp_path / "colorUtils.js"), func="isDarkMode", kwargs={"theme": "dark"})
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "dark" and o.value is True for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]
+
+
+def test_true_esm_module(tmp_path):
+    """Real ESM source (export function) under "type": "module" loads via the ladder."""
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (tmp_path / "esm.js").write_text(
+        "export function greet(name) { return { msg: 'hi ' + name }; }\n"
+    )
+    from dreplay.adapter.node_flow import node_flow
+
+    f = node_flow(module_path=str(tmp_path / "esm.js"), func="greet", kwargs={"name": "z"})
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "msg" and o.value == "hi z" for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]
+
+
+def test_cjs_extension_and_path_entrypoint(tmp_path):
+    """.cjs files work, and the path-form entrypoint "dir/file.cjs:func" parses."""
+    sub = tmp_path / "grasp_out"
+    sub.mkdir()
+    (tmp_path / "package.json").write_text('{"name": "x", "type": "module"}')
+    (sub / "util.cjs").write_text("module.exports = { double: (n) => ({ out: n * 2 }) };\n")
+    from dreplay.flow_cli import _trace
+
+    f = _trace("js", "grasp_out/util.cjs:double", {"n": 21}, str(tmp_path))
+    ret = [n for n in f.nodes if n.kind == "return"]
+    assert ret and any(o.name == "out" and o.value == 42 for o in ret[0].operands), \
+        [(n.kind, [(o.name, o.value) for o in n.operands]) for n in f.nodes]

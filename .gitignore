@@ -11,3 +11,19 @@ build/
 
 # upstream ZCode extraction — proprietary (License: unknown), local working copy only
 shell/zcode/
+
+# electron install for the desktop shell (reinstall via npm)
+shell/app/node_modules/
+
+# grasp app
+app/node_modules/
+app/out/
+app/dist/
+
+app/*.tsbuildinfo
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+nohup.out

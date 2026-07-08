@@ -1,0 +1,150 @@
+{
+  "changed_count": 3,
+  "empty": false,
+  "entrypoint": "flow_canaries.scenarios.create_organization",
+  "grasp_graph_diff_version": "1",
+  "honest_message": null,
+  "new_ref": "HEAD",
+  "nodes": [
+    {
+      "deltas": [
+        {
+          "field": "owner_id",
+          "new": "42",
+          "old": "None",
+          "provenance": "observed"
+        }
+      ],
+      "id": "d0",
+      "kind": "input",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        },
+        {
+          "derived_from": null,
+          "display": "42",
+          "name": "owner_id",
+          "provenance": "observed",
+          "value": 42
+        }
+      ],
+      "presence": "observed",
+      "status": "changed"
+    },
+    {
+      "deltas": [
+        {
+          "field": "owner",
+          "new": "42",
+          "old": "None",
+          "provenance": "observed"
+        }
+      ],
+      "id": "d1",
+      "kind": "db_write",
+      "label": "_save",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        },
+        {
+          "derived_from": null,
+          "display": "42",
+          "name": "owner",
+          "provenance": "observed",
+          "value": 42
+        },
+        {
+          "derived_from": null,
+          "display": "'active'",
+          "name": "status",
+          "provenance": "observed",
+          "value": "active"
+        }
+      ],
+      "presence": "observed",
+      "status": "changed"
+    },
+    {
+      "deltas": [],
+      "id": "d2",
+      "kind": "db_write",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "True",
+          "name": "saved",
+          "provenance": "observed",
+          "value": true
+        }
+      ],
+      "presence": "observed",
+      "status": "unchanged"
+    },
+    {
+      "deltas": [
+        {
+          "field": "owner",
+          "new": "42",
+          "old": "None",
+          "provenance": "observed"
+        }
+      ],
+      "id": "d3",
+      "kind": "return",
+      "label": "create_organization",
+      "operands": [
+        {
+          "derived_from": null,
+          "display": "'Acme'",
+          "name": "name",
+          "provenance": "observed",
+          "value": "Acme"
+        },
+        {
+          "derived_from": null,
+          "display": "42",
+          "name": "owner",
+          "provenance": "observed",
+          "value": 42
+        },
+        {
+          "derived_from": null,
+          "display": "True",
+          "name": "saved",
+          "provenance": "observed",
+          "value": true
+        },
+        {
+          "derived_from": null,
+          "display": "'active'",
+          "name": "status",
+          "provenance": "observed",
+          "value": "active"
+        }
+      ],
+      "presence": "observed",
+      "status": "changed"
+    }
+  ],
+  "old_ref": "HEAD~1",
+  "questions": [
+    "owner_id: None \u2192 42 \u2014 intended?",
+    "owner: None \u2192 42 \u2014 intended?"
+  ],
+  "transparency": {
+    "classifier_mode": "non_vocab",
+    "vocab_size": 0
+  }
+}

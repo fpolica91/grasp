@@ -98,6 +98,7 @@ exit-code-as-signal). `llm_fuzzer` (optional). *(Prune incrementally, gate green
 | Stack trace | **Input variations** (edge cases) | `flow_fuzz` |
 | PR/MR comment | **Recorded graph + adjudication** | evidence + recording (TODO) |
 | "Tests pass ✅" | **A question** ("is this expected?") | "— intended?" |
+| The PR description | **Checked contract delta** — where + how, checked per observed case | claim check in `shared/trace.ts` |
 | The editor | **The behavioral surface** | `graph/` (net-new) |
 
 ## 4. The graph — the 80%, and its design law

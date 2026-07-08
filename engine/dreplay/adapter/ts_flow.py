@@ -105,7 +105,7 @@ def ts_flow(
     never a fake clean run).
     """
     kwargs = dict(kwargs or {})
-    entrypoint = f"{source_path}::{func}"
+    entrypoint = f"{os.path.basename(source_path)}::{func}"
 
     if shutil.which("node") is None:
         return _error_flow(entrypoint, kwargs, "node executable not found on PATH")
