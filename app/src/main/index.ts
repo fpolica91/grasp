@@ -123,14 +123,14 @@ app.whenReady().then(() => {
   // to create it.
   ipcMain.handle('grasp:detectApps', () => detectApps())
   ipcMain.handle('grasp:openInApp', (_e, appId: string, ws: string) => launchApp(appId, ws))
-  // Real SSH connectivity test — runs `ssh ... <host> echo grasp_ssh_ok` via the system
-  // binary (BatchMode + StrictHostKeyChecking=yes), short timeout. Returns real ok/error.
-  ipcMain.handle('grasp:sshTest', async (_e, host: string) => {
-    const { sshExec } = await import('./ssh')
-    const r = await sshExec(String(host || ''), 'echo grasp_ssh_ok', 12_000)
-    const ok = r.ok && /grasp_ssh_ok/.test(r.stdout)
-    return { ok, output: r.stdout.trim(), error: ok ? undefined : (r.error || r.stderr.split('\n')[0] || 'SSH failed') }
+  // Remote workspace (VS Code Remote-SSH style): a persistent ssh2 session that the
+  // whole workspace routes through when active — file ops, shell, file tree, terminal.
+  ipcMain.handle('grasp:remoteConnect', async (_e, opts) => {
+    const { remoteConnect } = await import('./remote')
+    return remoteConnect(opts as { host: string; port?: number; user?: string; keyPath?: string; password?: string; passphrase?: string })
   })
+  ipcMain.handle('grasp:remoteDisconnect', async () => { const { remoteDisconnect } = await import('./remote'); remoteDisconnect(); return { ok: true } })
+  ipcMain.handle('grasp:remoteStatus', async () => { const { remoteStatus } = await import('./remote'); return remoteStatus() })
   ipcMain.handle('grasp:revealInFiles', (_e, key: string) => {
     const root = join(homedir(), '.grasp')
     const file = key === 'mcp' ? 'mcp.json' : key === 'keybindings' ? 'keybindings.json' : key

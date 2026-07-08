@@ -178,6 +178,7 @@ export function App(): React.JSX.Element {
   const [showWfModal, setShowWfModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showRemote, setShowRemote] = useState(false)
+  const [remote, setRemote] = useState<{ host: string; user: string; cwd: string } | null>(null)
   const [showPalette, setShowPalette] = useState(false)
   // Esc stops a running agent (the standard escape hatch) — only when no overlay is open, so
   // it never fights the palette/settings/workflow modal. Separate from the keybinds effect so
@@ -568,6 +569,20 @@ export function App(): React.JSX.Element {
     newSession()
   }
 
+  // Remote SSH workspace (VS Code Remote-SSH): on connect the workspace switches to the
+  // remote home and the agent + editor + terminal route over the persistent ssh2 session.
+  function connectRemote(r: { host: string; user: string; cwd: string }): void {
+    setRemote(r)
+    setWorkspace(r.cwd)
+    newSession()
+  }
+  async function disconnectRemote(): Promise<void> {
+    await window.grasp.remoteDisconnect()
+    setRemote(null)
+    void window.grasp.defaultWorkspace().then((w) => setWorkspace(w))
+    newSession()
+  }
+
   function deleteSessionById(id: string): void {
     void window.grasp.deleteSession(id)
     setSessions((ss) => ss.filter((s) => s.id !== id))
@@ -578,7 +593,7 @@ export function App(): React.JSX.Element {
     <div className="flex h-full overflow-hidden bg-background">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
       {showWfModal && <WorkflowModal onCreate={createWorkflow} onClose={() => setShowWfModal(false)} />}
-      {showRemote && <RemoteConnect onClose={() => setShowRemote(false)} />}
+      {showRemote && <RemoteConnect onClose={() => setShowRemote(false)} onConnected={connectRemote} />}
       {showSettings && (
         <Settings theme={theme} onTheme={setTheme} onKeysChanged={refreshBackends} skills={skills} onSkillsChanged={refreshSkills} mcpServers={mcpServers} onMcpChanged={refreshMcpServers} plugins={plugins} onPluginsChanged={refreshPlugins} commands={commands} keybinds={keybinds} workspace={workspace} onClose={() => setShowSettings(false)} />
       )}
@@ -664,6 +679,19 @@ export function App(): React.JSX.Element {
           <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
             {/* chat */}
             <Panel defaultSize={54} minSize={28} className="min-w-0">
+              {remote && (
+                <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[12px]">
+                  <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent-blue" />
+                  <span className="font-medium text-accent-blue">SSH</span>
+                  <span className="text-foreground-subtle">
+                    <span className="font-mono text-foreground">{remote.user}@{remote.host}</span>
+                    <span className="mx-1.5 text-foreground-subtlest">·</span>
+                    <span className="font-mono">{remote.cwd}</span>
+                  </span>
+                  <span className="ml-auto text-foreground-subtlest">agent + editor run on this remote</span>
+                  <button className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-foreground-subtle transition-colors hover:text-foreground" onClick={() => void disconnectRemote()}>Disconnect</button>
+                </div>
+              )}
               <Conversation
                 transcript={transcript}
                 busy={busy}

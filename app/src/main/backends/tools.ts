@@ -11,8 +11,15 @@ import type { Emit } from './types'
 import type { IntroDoc } from '../../shared/types'
 import { McpRegistry } from './mcp'
 import { sshExec } from '../ssh'
+import { remoteStatus, remoteExec, remoteReadFile, remoteWriteFile } from '../remote'
 import { parse as parseYaml } from 'yaml'
 import { validateModel, checkModel, type BehaviorModel, type CaseRun } from '../../shared/model'
+
+// When a remote SSH session is active, the agent's file/shell tools route over it —
+// so the agent RUNS ON THE REMOTE. joinR keeps paths under the remote workspace.
+const joinR = (ws: string, rel: string): string =>
+  (`${ws.replace(/\/$/, '')}/${(rel || '').replace(/^\/+/, '')}`).replace(/\/+$/, '') || ws
+const remoteWs = (): string => (remoteStatus().cwd ?? '')
 
 // A workspace may be a CONTAINER of repos; repos own their files (.grasp/ — model,
 // recipe, scratch). grasp resolves the OWNING repo by walking up from the anchor (the
@@ -258,6 +265,10 @@ export const TOOLS: Tool[] = [
     description: 'Read a UTF-8 text file, relative to the workspace.',
     input_schema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
     async run(input, { workspace }) {
+      if (remoteStatus().active) {
+        try { return cap(await remoteReadFile(joinR(remoteWs(), input.path as string))) }
+        catch { return `no such file: ${input.path}` }
+      }
       const p = inside(workspace, input.path as string)
       if (!existsSync(p)) return `no such file: ${input.path}`
       return cap(readFileSync(p, 'utf-8'))
@@ -268,10 +279,16 @@ export const TOOLS: Tool[] = [
     description: 'Create or overwrite a UTF-8 text file, relative to the workspace.',
     input_schema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] },
     async run(input, { workspace }) {
+      const content = String(input.content ?? '')
+      if (remoteStatus().active) {
+        await remoteExec(`mkdir -p ${JSON.stringify(dirname(input.path as string))}`, remoteWs())
+        await remoteWriteFile(joinR(remoteWs(), input.path as string), content)
+        return `wrote ${input.path} (${content.length} bytes)`
+      }
       const p = inside(workspace, input.path as string)
       mkdirSync(dirname(p), { recursive: true }) // creating src/x.js must not fail on a fresh dir
-      writeFileSync(p, String(input.content ?? ''), 'utf-8')
-      return `wrote ${input.path} (${String(input.content ?? '').length} bytes)`
+      writeFileSync(p, content, 'utf-8')
+      return `wrote ${input.path} (${content.length} bytes)`
     }
   },
   {
@@ -293,12 +310,22 @@ export const TOOLS: Tool[] = [
       required: ['path', 'old_string', 'new_string']
     },
     async run(input, { workspace }) {
-      const p = inside(workspace, input.path as string)
-      if (!existsSync(p)) return `no such file: ${input.path} (edit_file cannot create files — use write_file)`
       const oldString = String(input.old_string ?? '')
       const newString = String(input.new_string ?? '')
       if (oldString === newString) return 'no change: old_string and new_string are identical.'
-      const original = readFileSync(p, 'utf-8')
+      let original: string
+      let writeBack: (s: string) => Promise<void>
+      if (remoteStatus().active) {
+        const rp = joinR(remoteWs(), input.path as string)
+        try { original = await remoteReadFile(rp) }
+        catch { return `no such file: ${input.path} (edit_file cannot create files — use write_file)` }
+        writeBack = async (s) => { await remoteWriteFile(rp, s) }
+      } else {
+        const p = inside(workspace, input.path as string)
+        if (!existsSync(p)) return `no such file: ${input.path} (edit_file cannot create files — use write_file)`
+        original = readFileSync(p, 'utf-8')
+        writeBack = async (s) => { writeFileSync(p, s, 'utf-8') }
+      }
       const occurrences = original.split(oldString).length - 1
       if (occurrences === 0) {
         return `could not edit ${input.path}: old_string not found. Your view of the file is stale — re-read it with read_file, then retry with the exact current text and indentation.`
@@ -309,7 +336,7 @@ export const TOOLS: Tool[] = [
       const updated = input.replace_all
         ? original.split(oldString).join(newString)
         : original.replace(oldString, newString)
-      writeFileSync(p, updated, 'utf-8')
+      await writeBack(updated)
       return `edited ${input.path} (${input.replace_all ? occurrences + ' replacements' : '1 replacement'})`
     }
   },
@@ -377,6 +404,10 @@ export const TOOLS: Tool[] = [
     description: 'List entries of a directory, relative to the workspace.',
     input_schema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
     async run(input, { workspace }) {
+      if (remoteStatus().active) {
+        const r = await remoteExec(`ls -1Ap ${JSON.stringify((input.path as string) || '.')}`, remoteWs(), 15_000)
+        return cap(r.stdout || r.stderr)
+      }
       const p = inside(workspace, (input.path as string) || '.')
       return readdirSync(p, { withFileTypes: true }).map((e) => (e.isDirectory() ? e.name + '/' : e.name)).join('\n')
     }
@@ -386,6 +417,10 @@ export const TOOLS: Tool[] = [
     description: 'Run a shell command in the workspace and return combined stdout/stderr.',
     input_schema: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] },
     run(input, { workspace }) {
+      if (remoteStatus().active) {
+        return remoteExec(String(input.command ?? ''), remoteWs(), 120_000).then((r) =>
+          cap(r.stdout + (r.stderr ? `\n${r.stderr}` : '')) + `\n[exit ${r.code}]`)
+      }
       return new Promise((res) => {
         const cp = spawn('bash', ['-lc', String(input.command ?? '')], { cwd: workspace, env: cleanEnv() })
         let out = ''

@@ -6,6 +6,7 @@
 // @ts-expect-error - see above
 import * as pty from '@lydell/node-pty'
 import type { WebContents } from 'electron'
+import { remoteStatus } from './remote'
 
 interface IPtyProc {
   write(data: string): void
@@ -25,11 +26,28 @@ const shell = (): string => process.env.SHELL || (process.platform === 'win32' ?
 
 export function createTerminal(sender: WebContents, id: string, cwd: string, cols: number, rows: number): void {
   killTerminal(id) // replace any stale terminal with this id
-  const proc = pty.spawn(shell(), [], {
+  // Remote SSH session active → the terminal IS a remote shell (cd'd into the workspace).
+  const st = remoteStatus()
+  let file: string
+  let args: string[]
+  let localCwd: string
+  if (st.active && st.user && st.host) {
+    file = 'ssh'
+    // Land a login shell in the remote workspace dir. -tt forces a pty.
+    const target = `${st.user}@${st.host}`
+    const dir = cwd || st.cwd || ''
+    args = dir ? ['-tt', target, `cd ${JSON.stringify(dir)} 2>/dev/null; exec $SHELL -l`] : ['-tt', target]
+    localCwd = process.cwd()
+  } else {
+    file = shell()
+    args = []
+    localCwd = cwd || process.env.GRASP_WORKSPACE || process.cwd()
+  }
+  const proc = pty.spawn(file, args, {
     name: 'xterm-color',
     cols: cols || 80,
     rows: rows || 24,
-    cwd: cwd || process.env.GRASP_WORKSPACE || process.cwd(),
+    cwd: localCwd,
     env: { ...process.env, TERM: 'xterm-256color', GIT_PAGER: 'cat', PAGER: 'cat' }
   }) as IPtyProc
   terms.set(id, { proc, sender })
