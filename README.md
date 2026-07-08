@@ -1,27 +1,23 @@
-# grasp — the post-editor
+# grasp
 
-A desktop review surface for a world where an **agent writes the code** and the **human owns what it *means***.
+A local-first desktop agent for a world where the machine writes the code and the human owns what it means.
 
-grasp comes in two layers:
-- **v1 — observe.** Instead of a text diff, grasp shows the **observed dataflow** — the real call tree, the actual values, and the A→B behavioral change of an edit — and ends in a neutral question (*"— intended?"*), **never a verdict**.
-- **v2 — judge, and remember.** A standing **behavior model** (`.grasp/model.yaml`) states what the human requires; grasp checks every change against it and renders a **Verification Report** — `conforms` / `violated` / `untested` / `novel`. Covered behavior conforms silently or violates loudly; only **novel** behavior asks. Adjudications are *remembered* — the human never re-judges the same behavior twice.
+Where other agents end a change at a text diff — which tokens moved — grasp ends it at the **observed dataflow**: the real call tree, the actual values, and the A→B behavioral change of the edit. A turn finishes on a question (*"— intended?"*) rather than a verdict, so you adjudicate behavior you can see instead of grading code you can't.
 
-Throughout, the rule is absolute: **the machine never asserts.** No "proven", "safe", "pass", "fixed", "bug". Every value is measured from a real run; the only judgments in the system are the human's, cached.
-
-> **Read [`docs/thesis.md`](docs/thesis.md)** (the v1 north star) and **[`docs/spec-v2.md`](docs/spec-v2.md)** (the v2 behavior-model spec) before non-trivial work.
+It is an Electron app: a multi-provider agent (10 backends), an IDE-class shell (editor, terminal, files, browser, git graph, repo wiki), an authoring surface (queue + steer, structured questions, compaction, prompt-enhance, fork), and a live behavioral instrument that re-observes your code as the agent works. Local-first: no telemetry, no accounts, keys in your OS keychain.
 
 ---
 
 ## The idea
 
-> An edit is not **shown** until its behavioral consequence is **surfaced.**
+> An edit isn't **shown** until its behavioral consequence is **surfaced.**
 
-Every value grasp displays is **measured from a real run** the agent captured, or absent. A tooling failure shows as `unobservable` (with a reason) — *never* a fabricated frame. A behavior-preserving edit reads *"same flow — not a pass"*; a fuzz sweep reads *"K diverged out of N"*, **never "safe"**.
+Every value grasp displays is measured from a real run the agent captured, or is absent. A tooling failure shows as `unobservable` (with a reason) instead of a fabricated frame. A turn ends on a question. A behavior-preserving edit reads *"same flow — not a pass"*; a fuzz sweep reads *"K diverged out of N"* instead of *"safe."*
 
-The non-negotiables:
-1. **Observed, never guessed.** The nodes are ground truth; the chat is not.
-2. **Facts, not verdicts.** No bug/risk/safe/pass/broken/fail — ever.
-3. **Legible by default.** Library plumbing is collapsed; *your* logic shows first.
+The ground rules:
+1. **Observed, not guessed.** The nodes are ground truth; the chat is not.
+2. **Facts, not verdicts.** No bug/risk/safe/pass/broken/fail labels.
+3. **Legible by default.** Library plumbing is collapsed; your logic shows first.
 4. **A single input proves nothing.** The honest A→B answer varies the input space.
 5. **No phantom change.** A diff against a side that could not be observed is dropped.
 
@@ -35,181 +31,118 @@ cd app && npm install
 npm run dev        # electron-vite dev (desktop app + HMR)
 ```
 
-Add a model key (one provider is enough to start):
-- **In-app:** click the key badge (top-right) → paste a key. Or **Settings → API keys**.
-- **Env (dev/CI):** `GRASP_API_KEY=… npm run dev`
-
-Then type a prompt: *"add a fizzbuzz() to lib.py and show me the flow."*
-
-### Build / run / check
+Add one model key — in-app (key badge, top-right, or Settings → API keys) or env (`GRASP_API_KEY=… npm run dev`). Then prompt it: *"add a `fizzbuzz()` to lib.py and show me the flow."*
 
 ```bash
-cd app
-npm run typecheck   # tsc --noEmit — THE gate; run before every commit
-npm run build       # build main/preload/renderer to app/out
-npm start           # electron-vite preview (run the built app)
-npm run validate    # headless v2 assertions against the real registry (17 checks)
-npm run demo:boss   # the boss demo (drives a full turn via the harness)
+npm run typecheck   # tsc --noEmit — the gate; run before every commit
+npm run build       # build main/preload/renderer → app/out
+npm start           # electron-vite preview
 ```
 
-There is no app unit-test suite — **`typecheck` + `npm run validate` are the gates.** UI changes are validated by rendering real data and screenshotting under a virtual framebuffer (or driving the in-app harness — see below).
+There is no app unit-test suite — `typecheck` is the gate. UI changes are validated by rendering real data and screenshotting.
 
 ---
 
-## The behavior model (v2)
+## Agents — 10 providers, one seam
 
-The durable, git-tracked statement of what the human requires of a codebase. It lives at the **owning repo's root** as `.grasp/model.yaml`:
+grasp is agent-agnostic. Each backend implements one contract and streams the same events, so the post-editor loop is the same no matter who drives. Pick one in the provider/model picker (composer footer).
 
-```yaml
-grasp_model_version: 1
-feature: tasks
-states:
-  task: [active, completed, deleted]
-rules:
-  - id: R1
-    text: only the owner may edit a task
-    origin: authored            # authored | ratified
-    check:                      # compiled, machine-checkable form (the claim DSL)
-      scenario: edit_task
-      where: { op: cmpf, path: actor.id, rel: '!=', other: task.owner_id }
-      expect: { status: rejected }
-  - id: R2
-    text: a deleted task can never be edited
-    origin: ratified            # sedimented from a real run the human stamped
-    ratified: 2026-07-07
-examples:
-  - label: owner edits own active task
-    scenario: edit_task
-    input: { actor: u1, task: { owner_id: u1, state: active } }
-    expect: { status: returned }
-```
-
-- **`states`** — the axes fuzz varies.
-- **`rules`** — the always/nevers. Each carries its human `text` + a compiled `check`. `origin: authored` (human wrote it) or `ratified` (derived from observation, human stamped it). Nobody has to write a complete spec.
-- **`examples`** — named scenarios that must keep holding; the sediment of adjudications.
-
-### The Verification Report (the primary surface)
-
-After any change, the human reads one row per rule and per example:
-
-```
-R1  only the owner may edit         conforms   (58 observed cases, 0 counterexamples)
-R2  deleted tasks cannot be edited  violated   (3 counterexamples — ratified 2026-07-07)
-E1  owner edits own active task     conforms
-—   novel: edit while completed now returns partial object — intended?
-```
-
-**Four words, closed and deterministic:**
-- **conforms** — no counterexample among the N observed cases. Always carries N. Never "safe".
-- **violated** — a counterexample to a rule the human authored or ratified; the citation names the rule.
-- **untested** — no observed case covers the rule this run.
-- **novel** — observed behavior not covered by any rule. The *only* category that ends in *"— intended?"*. Your answer **ratifies** it into the model (sediment) or triggers repair.
-
-The economics of "— intended?" invert: covered behavior is silent or loud; only novelty asks.
-
-### The loop
-```
-turn start   agent loads recipe (how to run) + model (what must hold)
-generate     the edit is produced TOWARD the model — rules are context
-check        scenarios derived from rules + states + examples; grasp recomputes every outcome
-report       conforms / violated / untested / novel
-adjudicate   only novel rows ask → "intended" ratifies; "not intended" → repair
-repair       violations invite SPEC PATCHING first (tighten/add a rule) — code change is the fallback
-```
-
----
-
-## Reading order (strictly layered)
-
-Each layer is one click from the evidence below it. No layer contains prose the layer below cannot substantiate.
-
-1. **Report** — rule × status × evidence count. The daily artifact.
-2. **Scenario row** — the outcome delta in domain words.
-3. **Claim card** — the checked generalization (`where` / `effect`, support, straddle).
-4. **Flow** — the call tree with lineage-rendered values. **The debugger** (all of v1 lives here: object deltas, references, plumbing collapse, the A→B `TraceDiff`, the differential `FuzzDiff`).
-5. **Source** — click-through from any frame.
-
----
-
-## Agents (pick your provider)
-
-grasp is agent-agnostic. Every backend implements one seam and streams the same events, so the loop is identical no matter which agent drives it.
-
-| Backend | What it is | Key |
+| Wire | Backend | Notes |
 |---|---|---|
-| **GLM** | Native Anthropic-Messages wire to GLM (default) | z.ai API key |
-| **Claude** | Native Anthropic API (Sonnet 5 / Opus 4.8 / Fable 5 / Haiku 4.5) — no CLI | `sk-ant-…` |
-| **Claude Code** | Drives the `claude` CLI (brings its own tools) | the CLI's own auth |
-| **OpenAI** | Any OpenAI-compatible chat endpoint | `sk-…` |
+| Anthropic Messages | **GLM** (default), **Claude** (Sonnet 5 / Opus 4.8 / Fable 5 / Haiku 4.5), **Moonshot / Kimi**, **DeepSeek**, **Qwen**, **Xiaomi MiMo**, **MiniMax**, **BigModel** (智谱) | one shared owned loop; full inspector + moat prompt |
+| OpenAI chat | **OpenAI** (or any compatible endpoint) | |
+| CLI | **Claude Code** | drives the `claude` CLI, brings its own tools |
 
-Set keys under **Settings → API keys** (encrypted via the OS keychain — never written in the clear).
+Keys live in Settings → API keys, encrypted via the OS keychain (`safeStorage`). Env overrides exist for dev/CI and are not persisted.
 
-### Agent modes
-- **Build** (auto) — the agent edits freely; grasp re-observes after each mutation.
+### Thought level
+Reasoning models expose a thought-level control in the composer (Off → Low → Medium → High → Max). grasp shapes the request per provider — Anthropic `thinking.budget_tokens`, OpenAI `reasoning.effort` — and raises `max_tokens` above the budget so the call doesn't fail.
+
+### Modes
+- **Build** (auto) — edits freely; grasp re-observes after each mutation.
 - **Ask** — pause for your approval before each workspace mutation or untrusted MCP tool.
-- **Plan** — read-only; the agent proposes a plan you approve before it touches anything.
+- **Plan** — read-only; the agent proposes a plan you approve, and may ask clarifying questions first.
 
 ---
 
 ## The interface
 
-- **Sidebar** — sessions (auto-saved, fork/rename/delete, last session restored on launch), projects, skills, workflows. Sort control, theme dots, and a project switcher live in the footer.
-- **Conversation** — markdown rendering with syntax-highlighted code blocks (copy/collapse), tool calls as clean cards, plan cards, approval gates, and nested subagent activity. The composer takes `@` for files/folders, `/` for commands, `$` for skills.
-- **Right pane** — the surfaces above (Report → … → Flow → Source), plus:
-  - **Editor** — a real CodeMirror editor: file tree, multi-tab, split view, side-by-side diff. Syntax-highlighted with a Zed-style One Dark palette.
-  - **Trajectory** — a request/response inspector for every model call the agent made: `#N · model · source · <time> · <duration>`, each expandable into Input / Reasoning / Tool call / Output / Tool result. Persists across restarts.
-  - **Browser** — an in-app webview pane.
-- **Terminal** — a real xterm dock in the workspace.
-- **Open in your editor** — a split button launches the workspace in **VS Code, Cursor, Zed, Trae, Sublime, JetBrains, Warp, Ghostty**, and more (auto-detected, with brand icons).
+```
+┌──────────┬──────────────────────────────────┬───────────────────────────┐
+│ Sidebar  │ Conversation                      │ Editor · Flow · Trajectory│
+│          │   the agent turn + tool cards      │ Browser · Git · Wiki      │
+│ sessions │   composer:                        │                           │
+│ projects │     @files  /commands  $skills     │  (the Flow pane is where  │
+│ skills   │     💭 thought  ✨ enhance          │   the observed dataflow   │
+│ workflows│     ⚡steer / queue while busy      │   lives — the core)       │
+├──────────┴──────────────────────────────────┴───────────────────────────┤
+│ Terminal dock (xterm)                                                    │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Conversation** — markdown + syntax-highlighted code blocks (copy/collapse), tool calls as cards, plan cards, approval gates, structured question cards, and nested subagent activity.
+- **Right pane — six tabs:**
+  - **Editor** — CodeMirror: file tree, multi-tab, split view, side-by-side diff, in the grasp palette.
+  - **Flow** — the observed dataflow: real call tree, A→B `TraceDiff`, differential `FuzzDiff`.
+  - **Trajectory** — a request/response inspector for every model call (`#N · model · source · time · duration`), expandable into Input / System / Reasoning / Tools / Output. Persists across restarts.
+  - **Browser** — in-app webview pane.
+  - **Git** — a lane-based commit graph (colored rails, merge connectors, branch-head chips) with safe actions (fetch / pull / push / stage / commit / branch / merge / rebase).
+  - **Wiki** — an AI-generated single-page repo doc (overview, structure, run, test, key entrypoints), persisted to `.grasp/wiki.md`; regenerate on demand.
+- **Terminal** — an xterm dock, themed to match.
+
+Open in your editor — the split button launches the workspace in VS Code, Cursor, Zed, Trae, Sublime, JetBrains, Warp, Ghostty, and more (auto-detected, brand icons).
 
 ---
 
-## The Flow (the v1 instrument — now the debugger layer)
+## The authoring surface
 
-The agent surfaces behavior through three pure, no-execution tools (large traces pass by **file path**, not inline):
+The composer is built for driving a running agent, not waiting on one:
+
+- **Queue + Steer** — keep typing while the agent runs. Enter queues a follow-up (sent when the turn ends); ⚡ Steer injects it into the in-flight turn at the next step.
+- **Elicitation** — when the agent must choose, it asks a structured question (radio options + your own answer) instead of guessing; a question card renders inline.
+- **Context compaction** — a token meter (used vs the model's context window) plus one-click Compact, which summarizes the conversation into a handover for the next turn.
+- **Prompt-enhance** — ✨ one-shot rewrites your prompt for clarity into the composer.
+- **Message fork** — branch the conversation at any of your messages to try a different direction (non-destructive; autosave keeps the original).
+
+---
+
+## The Flow (the core feature)
+
+The agent surfaces a flow through three pure, no-execution tools (large traces pass by file path, not inline):
 
 - **`grasp_flow`** — submit one observed `TraceDoc` (a real call tree of frames: args → calls → return/threw + source line + timing).
 - **`grasp_flow_diff`** — submit old + new; grasp renders the A→B change.
-- **`grasp_fuzz_diff`** — submit a `cases_file` of `{input, old, new}`; grasp diffs each pair and surfaces **only the inputs where behavior diverged**. In v2 this same machinery checks each rule.
+- **`grasp_fuzz_diff`** — submit a `cases_file` of `{input, old, new}`; grasp diffs each pair and surfaces only the inputs where behavior diverged.
 
-grasp **executes nothing itself** — the agent captures and submits; grasp validates, cross-tabulates, and renders.
+A bug that only breaks inputs you didn't try reads as "same flow" on the one input you picked — that's why the fuzz exists. After a mutating edit the agent is nudged to fuzz-diff before concluding. grasp executes nothing itself to produce these — the agent captures and submits; grasp validates and renders.
 
----
-
-## Test harness (automation)
-
-An **external agent or script can drive and inspect grasp** so the human never has to be the test rig. Two transports, one handler set:
-
-- **HTTP** on `127.0.0.1:$GRASP_TEST_PORT` (default `43117`) — `POST /event`, `POST /tool`, `POST /turn` (a full chat-equivalent turn), `POST /screenshot`, `GET /health`.
-- **File bridge** at `$GRASP_HARNESS_DIR` (default `<cwd>/.grasp-harness/`) — write `cmd.json {id, kind, payload}`, read `out-<id>.json`. For callers that can only reach the filesystem.
-
-Screenshots capture the real window to a PNG on disk, so *"does it look right"* is checkable without a human. **Dev-only:** active when the app is unpackaged, or `GRASP_TEST=1` in production. `npm run validate` and `npm run demo:boss` drive this.
+### The agent's toolbelt
+Files and shell (`read_file`, `write_file`, `edit_file`, `list_dir`, `run_bash`, remote `remote_bash`), `web_fetch` + `web_search` (no-key, DuckDuckGo), `explore` (a read-only research subagent), `Skill` (load a skill mid-turn), `goal` (a persistent objective tracker), `ApplyPatch` (Claude-Code-style multi-file patch), `task` (depth-1 delegation), `TodoWrite`/`TodoRead`, `ask_user` (elicitation), plus the three `grasp_*` submit tools.
 
 ---
 
 ## Extensibility
 
-Everything lives under `~/.grasp/` (reveal any surface via **Settings → ⋯**):
+Everything lives under `~/.grasp/` (reveal any surface via Settings → ⋯):
 
-- **Skills** — directory-format skills with progressive disclosure; enable/disable per workspace. Type `$` in the composer.
+- **Skills** — directory-format skills with progressive disclosure; enable/disable per workspace. (`$` in the composer, or the `Skill` tool.)
 - **Slash commands** — project or user commands; type `/`.
-- **MCP servers** — configure stdio MCP servers in `mcp.json`; their tools augment the agent (ask-mode gates untrusted ones).
+- **MCP servers** — config read from several sources so a workspace set up for any agent works as-is: `.grasp/mcp.json`, `.mcp.json`, `.claude/settings.json`, `.agents/mcp.json` (user + project). Stdio; ask-mode gates untrusted tools.
 - **Plugins** — `.grasp-plugin` packages bundling skills + MCP. Install from the marketplace or a URL.
+- **Memory files** — project instructions are read from `CLAUDE.md` / `AGENTS.md` at the root and nested (`.claude/CLAUDE.md`, `.agents/AGENTS.md`, `.zcode/AGENTS.md`).
 - **Keybindings** — file-driven, editable in `keybindings.json`.
 - **Workflows** — durable, ordered prompt-steps run one at a time against a carried conversation; resumes from the interrupted step after a restart.
 
 ### Remote
-**SSH** into a remote box and run the agent there (system SSH, strict host-key verification).
+SSH into a remote box and run the agent there (system SSH, strict host-key verification). Docker remote is stubbed for future work.
 
 ---
 
 ## Themes
 
-Two schemes, toggleable from the sidebar footer or **Settings → Appearance**:
-- **Dark** — deep-gray with a signature blue accent, full 16-color ANSI terminal palette, and semantic/git/diff colors.
-- **Light** — a matching light scheme.
+A four-layer OKLCH design system, three selectable schemes from the sidebar footer or Settings → Appearance: **Graphite** (default dark), **Carbon** (neutral-900 / sky), **Daylight** (light).
 
-The editor (One Dark), terminal, and code blocks all share one color system.
+One color system across the editor, terminal, code blocks, and the node-graph palette the Flow view renders in — so the call tree, skills, commands, subagents, and sessions each get their own lane color.
 
 ---
 
@@ -218,50 +151,47 @@ The editor (One Dark), terminal, and code blocks all share one color system.
 | Var | Default | Purpose |
 |---|---|---|
 | `GRASP_WORKSPACE` | `process.cwd()` | default agent workspace at boot |
-| `GRASP_API_KEY` | — | GLM key (dev/CI; in-memory, never persisted) |
-| `GRASP_MODEL_BASE` | `https://api.z.ai/api/anthropic` | GLM endpoint |
-| `GRASP_MODEL` / `GRASP_GLM_MODELS` | `glm-5.2` / `glm-5.2,glm-5.1,glm-4.6,glm-4.5-air` | GLM model + list |
-| `GRASP_ANTHROPIC_KEY` / `GRASP_CLAUDE_KEY` | — | Anthropic key (dev/CI) |
-| `GRASP_CLAUDE_BASE` | `https://api.anthropic.com` | Claude endpoint (or proxy) |
-| `GRASP_CLAUDE_MODEL` / `GRASP_CLAUDE_MODELS` | `claude-sonnet-5` / `claude-sonnet-5,claude-opus-4-8,claude-fable-5,claude-haiku-4-5-20251001` | Claude model + list |
-| `GRASP_OPENAI_KEY` | — | OpenAI key (dev/CI) |
-| `GRASP_OPENAI_BASE` / `GRASP_OPENAI_MODELS` | OpenAI defaults | OpenAI-compatible endpoint + model list |
-| `GRASP_TEST` | — | set `1` to enable the test harness in a packaged app |
-| `GRASP_TEST_PORT` | `43117` | harness HTTP port |
-| `GRASP_HARNESS_DIR` | `<cwd>/.grasp-harness` | harness file-bridge directory |
+| `GRASP_API_KEY` | — | GLM key (dev/CI; in-memory, not persisted) |
+| `GRASP_MODEL_BASE` / `GRASP_MODEL` / `GRASP_GLM_MODELS` | `https://api.z.ai/api/anthropic` / `glm-5.2` / `glm-5.2,…` | GLM endpoint + model list |
+| `GRASP_ANTHROPIC_KEY` / `GRASP_CLAUDE_*` | — / Anthropic defaults | Claude-native provider |
+| `GRASP_OPENAI_KEY` / `GRASP_OPENAI_BASE` / `GRASP_OPENAI_MODELS` | — / OpenAI defaults | OpenAI-compatible provider |
+| `GRASP_<ID>_MODELS` | built-in lists | override the model list for any provider (`MOONSHOT`, `DEEPSEEK`, `QWEN`, `XIAOMI`, `MINIMAX`, `BIGMODEL`) |
 
-Credentials set in-app are per-provider, encrypted with Electron `safeStorage` (OS keychain / libsecret / DPAPI). Env overrides are honored in-memory only.
+In-app credentials are per-provider, encrypted with Electron `safeStorage` (OS keychain / libsecret / DPAPI). Env overrides are honored in-memory only.
 
 ---
 
-## Architecture
+## Architecture (in one line)
 
-> **grasp = UI + nodes + skill. The agent is the compiler.**
+> grasp = UI + nodes + skill. The agent is the compiler.
 
 grasp core supplies three things:
-1. **The nodes** — the Trace protocol (`app/src/shared/trace.ts`): a `TraceDoc` is a real call tree. `validateTrace` rejects malformed submissions; a tooling failure is the `unobservable` field. In v2 the same protocol carries scenario/claim/rule objects (`app/src/shared/model.ts`).
-2. **The UI** — surfaces that render observed behavior + the verification report. It collapses frames the agent marks `meaningful:false` — grasp hardcodes no classifier; the agent supplies the meaning.
-3. **The agent seam** — `AgentBackend` (`app/src/main/backends/types.ts`): `run(turn, emit)` streams `AgentEvent`s. GLM and Claude share one Anthropic-Messages loop (`backends/anthropic.ts`, `makeAnthropicBackend`); OpenAI and the Claude Code CLI are separate.
+1. **The nodes** — the Trace protocol (`app/src/shared/trace.ts`): a `TraceDoc` is a real call tree. `validateTrace` rejects malformed submissions; a tooling failure is the `unobservable` field, not a fabricated frame.
+2. **The UI** — `FlowView` renders a `TraceDoc` as an interactive call tree, an A→B `TraceDiff`, and a differential `FuzzDiff`. It collapses frames the agent marks `meaningful:false` — grasp hardcodes no classifier; the agent supplies the meaning.
+3. **The agent seam** — `AgentBackend` (`app/src/main/backends/types.ts`): a small contract (`run(turn, emit)` streams `AgentEvent`s), implemented across two wires (Anthropic Messages + OpenAI chat) and the Claude-Code CLI.
 
-A new codebase costs **zero** grasp changes — the model + recipe live in the target repo, not in grasp; the agent absorbs the variation.
+A new codebase costs zero grasp changes — the agent absorbs the variation.
 
 ```
 app/
-  src/main/        agent dispatcher, backends (anthropic factory + glm/claude/
-                   claude-code/openai), vault, sessions, skills, plugins, mcp,
-                   launcher, ssh, terminal, checkpoint, testharness
-  src/renderer/    the shell: sidebar, conversation, FlowView + report surfaces,
-                   editor, trajectory, terminal
-  src/shared/      trace.ts + model.ts + types.ts (imported by both sides)
-docs/thesis.md     v1 north star — observed dataflow, the moat
-docs/spec-v2.md    v2 behavior-model spec — the durable judgment layer
+  src/main/        agent dispatcher, backends (glm/claude/claude-code/openai + 6 providers),
+                   vault, sessions, skills, plugins, mcp, launcher, ssh, git, wiki, web, terminal
+  src/renderer/    the shell: sidebar, conversation, FlowView, editor, trajectory, git graph, wiki
+  src/shared/      the Trace protocol + catalog + shared types (imported by both sides)
+docs/thesis.md     the anti-drift north star — read before non-trivial changes
 ```
+
+---
+
+## Scope
+
+grasp does not grade — it surfaces behavior and asks. It's local-first: no accounts, billing, telemetry, or auto-updater (see `docs/thesis.md`). It runs none of your code itself — the agent runs it and captures the flow; grasp validates and renders.
 
 ---
 
 ## Status
 
-v1 (observe) and v2 (judge + remember) are implemented and shipped. The desktop shell, four-provider agent, observed-dataflow instrument, model-trajectory inspector, verification report, and extensibility surface (skills/plugins/MCP/commands/keybindings/workflows) are all live.
+`0.1.0` — active development. The desktop shell, 10-provider agent, observed-dataflow instrument, model-trajectory inspector, git graph, repo wiki, the authoring surface, and the extensibility stack (skills/plugins/MCP/commands/keybindings/workflows) are all live.
 
 ## License
 
