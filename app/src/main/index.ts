@@ -28,6 +28,7 @@ import { loadMcpConfig, saveMcpServer, deleteMcpServer } from './backends/mcp'
 import { listPlugins, installPlugin, uninstallPlugin } from './plugins'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
 import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
+import { startTestHarness } from './testharness'
 import { listCommands } from './commands'
 import { loadKeybindings } from './keybinds'
 import { detectApps, launchApp } from './launcher'
@@ -69,6 +70,10 @@ app.whenReady().then(() => {
     return w
   })
   ensureDefaultSkills()
+  // Dev-only test harness: lets an external agent drive events/tools and capture real
+  // window screenshots, so the human is never the test rig (127.0.0.1 + file bridge).
+  if (!app.isPackaged || process.env.GRASP_TEST === '1')
+    startTestHarness(() => BrowserWindow.getAllWindows()[0] ?? null)
   ipcMain.handle('grasp:skills', (_e, workspace: string) => listSkills(workspace))
   ipcMain.handle('grasp:setSkillEnabled', (_e, name: string, enabled: boolean) => setSkillEnabled(name, enabled))
   ipcMain.handle('grasp:commands', (_e, workspace: string) => listCommands(workspace))

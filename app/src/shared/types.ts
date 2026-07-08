@@ -191,6 +191,17 @@ export interface TrajectoryCall {
   toolResults: TrajectoryToolResult[]
 }
 
+// The workspace introduction (spec-v2 first contact): agent submits how/flows/suggestion
+// as typed slots; grasp fills the rules section from model.yaml ITSELF and renders the
+// surface deterministically. Chat prose is never the introduction.
+export interface IntroDoc {
+  workspace: string
+  how: string
+  flows: { name: string; what: string }[]
+  rules: { id: string; text: string; status: 'staged' | 'uncompiled' | 'compiled' }[]
+  suggestion: string
+}
+
 // Streaming events from the agent loop (main -> renderer).
 export type AgentEvent =
   | { type: 'text'; text: string; parent?: string }
@@ -207,6 +218,7 @@ export type AgentEvent =
   | { type: 'trace'; trace: TraceDoc }
   | { type: 'trace_diff'; diff: TraceDiff }
   | { type: 'fuzz_diff'; fuzz: FuzzDiff }
+  | { type: 'intro'; intro: IntroDoc }
   | { type: 'plan'; text: string }
   | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
   | { type: 'usage'; input: number; output: number }

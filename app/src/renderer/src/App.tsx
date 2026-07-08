@@ -8,7 +8,7 @@ import { DataflowGraph } from './components/DataflowGraph'
 import { DataflowDiff } from './components/DataflowDiff'
 import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelHandle } from 'react-resizable-panels'
 import { FuzzView } from './components/FuzzView'
-import { FlowView, FlowDiffView, FuzzDiffView } from './components/FlowView'
+import { FlowView, FlowDiffView, FuzzDiffView, IntroView } from './components/FlowView'
 import { KeyGate } from './components/KeyGate'
 import { WorkflowModal, WorkflowPanel } from './components/Workflow'
 import { Settings } from './components/Settings'
@@ -18,7 +18,7 @@ import { TerminalDock } from './components/Terminal'
 import { FilesPane } from './components/Files'
 import { BrowserPane } from './components/Browser'
 import { TrajectoryInspector } from './components/TrajectoryInspector'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
+import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
 type Surface =
@@ -28,6 +28,7 @@ type Surface =
   | { kind: 'trace'; ix: number }
   | { kind: 'tracediff'; diff: TraceDiff }
   | { kind: 'fuzzdiff'; fuzz: FuzzDiff }
+  | { kind: 'intro'; intro: IntroDoc }
 
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
@@ -418,6 +419,20 @@ export function App(): React.JSX.Element {
     void window.grasp.defaultWorkspace().then((w) => setWorkspace((cur) => cur || w))
   }, [])
 
+  // Autoload: opening a repo pays tier 0 automatically — one scoped turn that reads the
+  // recipe/docs and reports observability rungs. Runs nothing, fires once per workspace
+  // per app session, only when a credential is ready, never over an existing transcript.
+  const booted = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!workspace || keyReady !== true || busy || transcript.length > 0) return
+    if (booted.current.has(workspace)) return
+    booted.current.add(workspace)
+    void send(
+      'Introduce this workspace to me as if I have never used grasp. Do tier 0 of the load-repo skill (read the recipe if present, else only the repo docs and manifests — run nothing). If no behavior model exists, bootstrap it per the behavior-model skill init: harvest stated always/nevers from the repo docs, witness-test them, stage them for my signature. Then tell me, in plain words and at most a dozen lines: how this repo runs, the 3-6 features you could show me the flow of (by name, not symbols), the staged rules awaiting my yes/no, and the one thing you suggest I do next. Then SUBMIT the introduction via grasp_intro (how / flows / suggestion — grasp adds the rules from model.yaml itself) and keep chat to a single line. No jargon, no rungs, no protocol talk.'
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace, keyReady, busy, transcript.length])
+
   // Click an input operand -> fuzz the input (schema inferred from the observed inputs)
   // -> surface the edge cases. Fuses flow + fuzz into one interactive object.
   async function vary(g: GraphModel): Promise<void> {
@@ -490,10 +505,12 @@ export function App(): React.JSX.Element {
         setTraces((ts) => {
           const next = [...ts, e.trace]
           setSurface({ kind: 'trace', ix: next.length - 1 })
+          setRightTab('flow')
           return next
         })
-      else if (e.type === 'trace_diff') setSurface({ kind: 'tracediff', diff: e.diff })
-      else if (e.type === 'fuzz_diff') setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz })
+      else if (e.type === 'trace_diff') { setSurface({ kind: 'tracediff', diff: e.diff }); setRightTab('flow') }
+      else if (e.type === 'fuzz_diff') { setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz }); setRightTab('flow') }
+      else if (e.type === 'intro') { setSurface({ kind: 'intro', intro: e.intro }); setRightTab('flow') }
       else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
@@ -739,11 +756,14 @@ export function App(): React.JSX.Element {
                   {surface?.kind === 'fuzzdiff' ? (
                     <FuzzDiffView
                       fuzz={surface.fuzz}
+                      onAdjudicate={(p) => void send(p)}
                       onOpenSource={(file) => {
                         setRightTab('editor')
                         void window.grasp.readFile(workspace, file)
                       }}
                     />
+                  ) : surface?.kind === 'intro' ? (
+                    <IntroView intro={surface.intro} onPickFlow={(name) => void send(`Show the real Flow of: ${name}`)} />
                   ) : surface?.kind === 'tracediff' ? (
                     <FlowDiffView
                       diff={surface.diff}

@@ -5,6 +5,7 @@
 import { getKey } from '../vault'
 import {
   MUTATING_TOOLS,
+  EDIT_TOOLS,
   PLAN_SYSTEM,
   PLAN_TOOL_NAMES,
   SUBAGENT_SYSTEM,
@@ -22,7 +23,6 @@ import type { AgentBackend, BackendTurn, Emit } from './types'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
 const MODELS = (process.env.GRASP_OPENAI_MODELS ?? 'gpt-5.2,gpt-5.1,gpt-4.1').split(',').map((s) => s.trim()).filter(Boolean)
-const MAX_STEPS = 40
 
 type ToolCall = { id: string; function: { name: string; arguments: string } }
 type Msg = { role: string; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string }
@@ -114,7 +114,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
     const sub: Msg[] = [{ role: 'user', content: prompt }]
     let finalText = ''
-    for (let s = 0; s < 10; s++) {
+    for (let s = 0; ; s++) {
       const sr = await callModel(model, sub, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
       if (!sr.ok || !sr.msg) return `subagent error: ${sr.error}`
       sub.push(sr.msg)
@@ -140,12 +140,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         sub.push({ role: 'tool', tool_call_id: tc.id, content: out })
       }
     }
-    return finalText || '(subagent reached step limit)'
+    return finalText || '(subagent ended without a final message)'
   }
 
   let turnTokens = 0
   let fuzzNudged = false
-  for (let step = 0; step < MAX_STEPS; step++) {
+  for (let step = 0; ; step++) {
     if (turn.signal?.aborted) {
       emit({ type: 'done', note: 'stopped by you' })
       return { messages }
@@ -227,7 +227,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       }
       emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
-      if (MUTATING_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
+      if (EDIT_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
       if (name === 'grasp_fuzz_diff' || name === 'grasp_flow_diff') diffed = true
     }
 
@@ -240,8 +240,6 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
     }
     if (turn.flowAuto !== false) await liveSurface(workspace, mutated, emit)
   }
-  emit({ type: 'done', note: 'reached step limit' })
-  return { messages }
 }
 
 export const openaiBackend: AgentBackend = {

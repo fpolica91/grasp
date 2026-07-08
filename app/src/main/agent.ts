@@ -23,8 +23,15 @@ export function listBackends(): { id: string; label: string; models: string[]; o
   return BACKENDS.map((b) => ({ id: b.id, label: b.label, models: b.models, ...b.available() }))
 }
 
+// Anything with isDestroyed/send can drive a turn — the window's WebContents, or the
+// test harness's collector. Structural, so the chat UI and the endpoint share one path.
+export interface TurnSender {
+  isDestroyed(): boolean
+  send(channel: string, ...args: unknown[]): void
+}
+
 export async function runAgent(
-  sender: WebContents,
+  sender: TurnSender,
   params: {
     workspace: string
     prompt: string

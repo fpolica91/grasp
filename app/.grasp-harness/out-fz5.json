@@ -1,0 +1,264 @@
+{
+  "ok": true,
+  "output": "Varied 4 inputs; behavior diverged on 2. Each divergence below is an observed fact for you to adjudicate — grasp does not call it a bug. Checked 11 rules against 4 observed cases: 0 conform, 0 violated, 11 untested. 2 novel changes await adjudication. Conformance counts observed cases only — it is not proof over all inputs. Questions: boss fixture now returned \"role updated\" (was threw ForbiddenException: denied) — intended? | boss fixture now returned \"saga enqueued\" (was threw ZodError: denied) — intended?",
+  "events": [
+    {
+      "type": "fuzz_diff",
+      "fuzz": {
+        "entry": "boss fixture (UI validation)",
+        "oldRef": "fixture",
+        "newRef": "fixture",
+        "tried": 4,
+        "diverged": 2,
+        "dropped": 0,
+        "cases": [
+          {
+            "label": "role change without authorization check",
+            "input": {
+              "actor": {
+                "role": "member"
+              },
+              "target": {
+                "role": "member"
+              },
+              "newRole": "admin"
+            },
+            "diff": {
+              "entry": "boss fixture",
+              "oldRef": "fixture",
+              "newRef": "fixture",
+              "changedCount": 0,
+              "empty": false,
+              "frames": [],
+              "rootChange": {
+                "old": "threw ForbiddenException: denied",
+                "new": "returned \"role updated\""
+              },
+              "questions": [
+                "boss fixture now returned \"role updated\" (was threw ForbiddenException: denied) — intended?"
+              ]
+            }
+          },
+          {
+            "label": "saga payload skips schema parse",
+            "input": {
+              "device_id": "d-002",
+              "boot_device": "pxe",
+              "extra": "unvalidated"
+            },
+            "diff": {
+              "entry": "boss fixture",
+              "oldRef": "fixture",
+              "newRef": "fixture",
+              "changedCount": 0,
+              "empty": false,
+              "frames": [],
+              "rootChange": {
+                "old": "threw ZodError: denied",
+                "new": "returned \"saga enqueued\""
+              },
+              "questions": [
+                "boss fixture now returned \"saga enqueued\" (was threw ZodError: denied) — intended?"
+              ]
+            }
+          }
+        ],
+        "outcomes": [
+          {
+            "label": "role change by an org admin",
+            "scenario": "privileged_role_change",
+            "input": {
+              "actor": {
+                "role": "admin"
+              },
+              "target": {
+                "role": "member"
+              },
+              "newRole": "owner"
+            },
+            "same": true,
+            "old": "threw ForbiddenException: denied",
+            "new": "threw ForbiddenException: denied"
+          },
+          {
+            "label": "role change without authorization check",
+            "scenario": "privileged_role_change",
+            "input": {
+              "actor": {
+                "role": "member"
+              },
+              "target": {
+                "role": "member"
+              },
+              "newRole": "admin"
+            },
+            "same": false,
+            "old": "threw ForbiddenException: denied",
+            "new": "returned \"role updated\""
+          },
+          {
+            "label": "provision with valid payload",
+            "scenario": "provision_device",
+            "input": {
+              "device_id": "d-001",
+              "boot_device": "pxe"
+            },
+            "same": true,
+            "old": "returned \"saga enqueued\"",
+            "new": "returned \"saga enqueued\""
+          },
+          {
+            "label": "saga payload skips schema parse",
+            "scenario": "provision_device",
+            "input": {
+              "device_id": "d-002",
+              "boot_device": "pxe",
+              "extra": "unvalidated"
+            },
+            "same": false,
+            "old": "threw ZodError: denied",
+            "new": "returned \"saga enqueued\""
+          }
+        ],
+        "scope": "Varied 4 inputs; behavior diverged on 2. Each divergence below is an observed fact for you to adjudicate — grasp does not call it a bug.",
+        "questions": [
+          "boss fixture now returned \"role updated\" (was threw ForbiddenException: denied) — intended?",
+          "boss fixture now returned \"saga enqueued\" (was threw ZodError: denied) — intended?"
+        ],
+        "claim": null,
+        "axes": null,
+        "report": {
+          "feature": "brokkr-bare-metal-orchestration",
+          "rows": [
+            {
+              "id": "auth-guard-preserves-ban-check",
+              "text": "Auth guard changes must preserve the rejectIfBanned() ban-status check.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "blocked-http-methods-return-405",
+              "text": "Unsupported HTTP methods (TRACE/TRACK) must be rejected with 405 by global middleware before they reach route handlers.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "cors-explicit-origins",
+              "text": "CORS must configure explicit origins with credentials, never wildcard.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "destructive-ops-audit-logged",
+              "text": "Destructive/privileged operations must call contextService.buildAuditPayload() and log it.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "external-data-zod-validated",
+              "text": "Data from Redis, BullMQ job payloads, and JSON.parse() results must be parsed through a Zod schema before use.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "guard-verifies-org-membership",
+              "text": "The auth guard must verify org membership via findOrganizationMember before populating request context.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "no-mass-assignment",
+              "text": "Never spread ...body into Prisma create/update. Pick explicit fields only.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "privileged-ops-require-role-check",
+              "text": "Privileged operations must call contextService.requireRole() before executing.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "public-endpoints-have-alt-guard",
+              "text": "@Public() endpoints that access data must have an alternative guard (e.g. MonitoringApiKeyGuard).",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "role-changes-assert-hierarchy",
+              "text": "Role changes must call assertRoleChangeAllowed() from role-hierarchy.ts to prevent privilege escalation.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            },
+            {
+              "id": "session-restricted-ops-reject-apikey",
+              "text": "Session-restricted operations (MFA setup, password change) must reject API key auth via contextService.identity.authType.",
+              "origin": "authored",
+              "status": "untested",
+              "covered": 0,
+              "note": "staged — awaiting your confirmation in model.yaml; not enforced",
+              "counterexamples": []
+            }
+          ],
+          "novel": [
+            {
+              "label": "role change without authorization check",
+              "scenario": "privileged_role_change",
+              "input": {
+                "actor": {
+                  "role": "member"
+                },
+                "target": {
+                  "role": "member"
+                },
+                "newRole": "admin"
+              },
+              "change": "boss fixture now returned \"role updated\" (was threw ForbiddenException: denied)"
+            },
+            {
+              "label": "saga payload skips schema parse",
+              "scenario": "provision_device",
+              "input": {
+                "device_id": "d-002",
+                "boot_device": "pxe",
+                "extra": "unvalidated"
+              },
+              "change": "boss fixture now returned \"saga enqueued\" (was threw ZodError: denied)"
+            }
+          ],
+          "scope": "Checked 11 rules against 4 observed cases: 0 conform, 0 violated, 11 untested. 2 novel changes await adjudication. Conformance counts observed cases only — it is not proof over all inputs."
+        }
+      }
+    }
+  ]
+}

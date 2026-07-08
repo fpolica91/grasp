@@ -361,6 +361,16 @@ export function Conversation(props: {
   function submit(): void {
     const t = input.trim()
     if (!t || props.busy) return
+    if (typedCmd && t.startsWith('/')) {
+      // Never send a raw template: a command that needs arguments does not submit
+      // without them (the hint row explains), and $ARGUMENTS/$N are substituted here.
+      if (typedCmd.hasArgs && !typedCmd.args) return
+      stickBottom.current = true
+      props.onSend(expandCommand(typedCmd.cmd, typedCmd.args))
+      setInput('')
+      setSlashIx(0)
+      return
+    }
     stickBottom.current = true
     props.onSend(t)
     setInput('')
@@ -376,6 +386,26 @@ export function Conversation(props: {
   ].slice(0, 8)
   const slashCur = slashItems.length ? Math.min(slashIx, slashItems.length - 1) : -1
 
+  // A typed command ("/flow src/x.ts:fn") closes the menu at the first space; from there the
+  // command expands at submit time. Templates with $ARGUMENTS/$N never reach the agent raw.
+  const typedCmd = (() => {
+    const m = /^\/([\w-]+)(\s+([\s\S]*))?$/.exec(input)
+    if (!m) return null
+    const cmd = props.commands.find((c) => c.name === m[1])
+    if (!cmd) return null
+    return { cmd, args: (m[3] ?? '').trim(), hasArgs: /\$ARGUMENTS|\$\d/.test(cmd.body) }
+  })()
+
+  function expandCommand(c: { body: string; skills?: string }, args: string): string {
+    const words = args ? args.split(/\s+/) : []
+    const body = c.body
+      .replace(/\$ARGUMENTS/g, args)
+      .replace(/\$(\d)/g, (_s, d: string) => words[Number(d) - 1] ?? '')
+      .replace(/ {2,}/g, ' ')
+      .trim()
+    return c.skills ? `Use the "${c.skills}" skill, then follow these instructions:\n\n${body}` : body
+  }
+
   function sendBody(b: string): void {
     if (props.busy) return
     stickBottom.current = true
@@ -385,9 +415,11 @@ export function Conversation(props: {
   }
   function pickSlash(item: (typeof slashItems)[number]): void {
     if (item.kind === 'skill') { sendBody(`Use the "${item.name}" skill.`); return }
+    // Needs arguments -> stay in slash form and wait for them (expansion happens at submit);
+    // no arguments -> expand and send immediately.
+    if (item.hasArgs) { setInput('/' + item.name + ' '); return }
     const prefix = item.skill ? `Use the "${item.skill}" skill, then follow these instructions:\n\n` : ''
-    if (item.hasArgs) setInput(prefix + item.body)
-    else sendBody(prefix + item.body.replace(/\$ARGUMENTS/g, '').replace(/\$\d+/g, '').replace(/ {2,}/g, ' ').trim())
+    sendBody(prefix + item.body.replace(/\$ARGUMENTS/g, '').replace(/\$\d+/g, '').replace(/ {2,}/g, ' ').trim())
   }
 
   const activeLabel = props.backends.find((b) => b.id === props.backend)?.label ?? props.backend
@@ -537,8 +569,13 @@ export function Conversation(props: {
       {/* Composer */}
       <div className="shrink-0 px-5 pb-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="relative flex flex-col gap-3 rounded-2xl border border-border bg-input p-3 transition-colors focus-within:border-border-hover focus-within:shadow-[0_0_0_1px_var(--color-border-hover)]">
+          {slashItems.length === 0 && typedCmd && typedCmd.hasArgs && !typedCmd.args && (
+            <div className="absolute bottom-full left-0 right-0 z-20 mb-1.5 rounded-xl border border-border bg-popover px-3 py-2 text-[12px] text-foreground-subtle shadow-2xl">
+              <span className="font-semibold text-foreground">/{typedCmd.cmd.name}</span> needs a target — a feature or a function, then Enter (e.g. \u201cshare-link encoding\u201d or src/file.ts:fn). {typedCmd.cmd.description}
+            </div>
+          )}
           {slashItems.length > 0 && (
-            <div className="absolute -top-1 left-0 right-0 bottom-full z-20 mb-1.5 max-h-[260px] overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-2xl">
+            <div className="absolute bottom-full left-0 right-0 z-20 mb-1.5 max-h-[260px] overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-2xl">
               {slashItems.map((it, i) => (
                 <button
                   key={it.kind + '|' + it.name}

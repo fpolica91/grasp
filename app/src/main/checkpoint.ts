@@ -17,9 +17,11 @@ function git(cwd: string, ...args: string[]): { code: number; out: string } {
 export function checkpointWorkspace(workspace: string, label: string): { committed: boolean } {
   if (!workspace) return { committed: false }
   try {
-    if (!existsSync(join(workspace, '.git'))) {
-      if (git(workspace, 'init', '-q').code !== 0) return { committed: false }
-    }
+    // OWNERSHIP LAW: grasp never creates a repo where none exists. A workspace without
+    // .git is either a plain project (the human's call to init) or a CONTAINER of repos —
+    // and a container owns nothing, checkpoints included. (This guard exists because a
+    // checkpoint once git-init'd a container and committed its child repos into it.)
+    if (!existsSync(join(workspace, '.git'))) return { committed: false }
     const dirty = git(workspace, 'status', '--porcelain')
     if (dirty.code !== 0 || !dirty.out.trim()) return { committed: false }
     git(workspace, 'add', '-A')

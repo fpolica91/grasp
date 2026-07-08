@@ -26,20 +26,22 @@ three tracer patches and still produced noise). So grasp core supplies exactly t
 2. **The UI** — `app/src/renderer/src/components/FlowView.tsx` renders a `TraceDoc` as an interactive
    call tree, an A→B `TraceDiff`, and a differential `FuzzDiff`. It collapses frames the agent marks
    `meaningful:false` — **grasp hardcodes no classifier; the agent supplies the meaning.**
-3. **The skill** — `trace-flow` / `fuzz-diff` (seeded from `app/src/main/skills.ts`): the agent's
+3. **The skill** — `load-repo` / `trace-flow` / `fuzz-diff` (seeded from `app/src/main/skills.ts`): the agent's
    playbook. It reads the repo (README/AGENTS.md/CLAUDE.md), installs deps, runs the real entrypoint,
    captures the flow, and **submits nodes**. grasp validates and renders.
 
 The agent surfaces a flow through three pure, no-execution tools (`app/src/main/backends/tools.ts`):
 `grasp_flow` (submit one `TraceDoc`), `grasp_flow_diff` (submit old+new for the A→B change), and
-`grasp_fuzz_diff` (submit a `cases_file` of `{input, old, new}` — grasp diffs each pair and surfaces
-only the inputs where behavior diverged). Large traces are passed by **file path**, not inline.
+`grasp_fuzz_diff` (submit a `cases_file` — a bare array of `{input, old, new}` or `{cases, claim?, axes?}`; grasp diffs each pair itself, surfaces only the inputs where behavior diverged, drops pairs with an unobservable side, verifies the declared axes against the cases, and CHECKS the optional claim `{where: Pred, effect}` per case — rendering consistent / mismatched / untested / enumeration, never trusting the agent’s word). Large traces are passed by **file path**, not inline.
 
 **Consequence to protect:** a new codebase must cost **zero** grasp changes. If you find yourself
 editing a tracer to make a repo work, that is the smell that the architecture broke — the agent
-absorbs that variation. Reference tracers (`app/resources/tracers/{py_trace.py,js_trace,go_trace}`)
-are **skill assets** seeded to `~/.grasp/skills/tracers` for the agent to run and *adapt* — grasp
-never spawns them.
+absorbs that variation. There are NO shipped tracers — a tracer is an *output*, not an asset:
+the trace-flow skill is a derivation method (host the probe inside the repo's own runner; match
+granularity to the question; native runtime channels before source rewriting; canary, then
+observe) and the agent derives a disposable harness per repo, cached by method in the recipe.
+Shipping per-language tracers — even as adaptable assets — anchored the agent to stale
+toolchains; that mistake is retired twice now.
 
 ### Legacy that still exists on disk (do not be misled)
 
@@ -134,6 +136,15 @@ and confirm the moat visually (no verdict words, plumbing collapsed, `unobservab
 | `GRASP_WORKSPACE` | `process.cwd()` | default agent workspace at boot |
 
 ## Working conventions
+
+- **Name capabilities, never tools.** In skills, prompts, docs, and core checks: write "the
+  repo's own test runner", "the runtime's native debug channel", "the dev environment the repo
+  declares" — never package managers, task runners, container tools, test frameworks, or
+  language names as guidance. A named tool anchors the agent to today's ecosystem and demands
+  an edit when the ecosystem moves; *the name of the tool persists*. This is the shipped-tracer
+  failure generalized to prose — it is retired there and must not regrow in text. Sanctioned
+  names: doc-discovery files (README, AGENTS.md, CLAUDE.md), git (grasp's own substrate), and
+  wire-format field values.
 
 - **Match the Trace protocol on both sides.** `shared/trace.ts` is imported by main (`tools.ts`)
   and renderer (`FlowView.tsx`, `App.tsx`). Change a shape in one place → the other must follow.

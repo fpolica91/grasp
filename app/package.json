@@ -1,7 +1,7 @@
 {
   "name": "grasp",
   "version": "0.1.0",
-  "description": "grasp — the post-editor. An agentic desktop where you adjudicate observed behavior, not diffs.",
+  "description": "grasp \u2014 the post-editor. An agentic desktop where you adjudicate observed behavior, not diffs.",
   "main": "./out/main/index.js",
   "author": "Fabricio Policarpo",
   "license": "MIT",
@@ -10,7 +10,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "validate": "node scripts/api-harness.mjs",
+    "demo:boss": "node scripts/boss-demo.mjs"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",
@@ -30,7 +32,8 @@
     "react-resizable-panels": "^2.1.7",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
-    "tailwindcss": "^4.3.2"
+    "tailwindcss": "^4.3.2",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

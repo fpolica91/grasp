@@ -10,6 +10,7 @@
 import { getKey } from '../vault'
 import {
   MUTATING_TOOLS,
+  EDIT_TOOLS,
   PLAN_SYSTEM,
   PLAN_TOOL_NAMES,
   SUBAGENT_SYSTEM,
@@ -25,7 +26,6 @@ import { requestApproval } from '../approvals'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 
-const MAX_STEPS = 40
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
 
@@ -161,7 +161,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
       const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
       const subMessages: unknown[] = [{ role: 'user', content: prompt }]
       let finalText = ''
-      for (let s = 0; s < 10; s++) {
+      for (let s = 0; ; s++) {
         const sr = await callModel(model, subMessages, withProjectContext(workspace, SUBAGENT_SYSTEM), SUBAGENT_TOOLS)
         if (!sr.ok) return `subagent error: ${sr.error}`
         const blocks = sr.content ?? []
@@ -184,13 +184,13 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         }
         subMessages.push({ role: 'user', content: subResults })
       }
-      return finalText || '(subagent reached step limit)'
+      return finalText || '(subagent ended without a final message)'
     }
 
     let turnTokens = 0
     let fuzzNudged = false
     let shownMessages = 0
-    for (let step = 0; step < MAX_STEPS; step++) {
+    for (let step = 0; ; step++) {
       if (turn.signal?.aborted) {
         emit({ type: 'done', note: 'stopped by you' })
         return { messages }
@@ -292,7 +292,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
       }
 
-      const mutatedNow = toolUses.some((t) => t.name && MUTATING_TOOLS.has(t.name))
+      const mutatedNow = toolUses.some((t) => t.name && EDIT_TOOLS.has(t.name))
       const diffedNow = toolUses.some((t) => t.name === 'grasp_fuzz_diff' || t.name === 'grasp_flow_diff')
       if (mutatedNow && !diffedNow && !fuzzNudged && results.length > 0) {
         fuzzNudged = true
@@ -313,8 +313,6 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
       emit({ type: 'trajectory_call', call: trajCall })
       shownMessages = messages.length
     }
-    emit({ type: 'done', note: 'reached step limit' })
-    return { messages }
   }
 
   return {

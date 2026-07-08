@@ -5,11 +5,51 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
-import { validateTrace, diffTraces, buildFuzzDiff, type TraceDoc, type FuzzCase } from '../../shared/trace'
+import { validateTrace, validateObservation, diffTraces, buildFuzzDiff, validateClaim, validateAxes, type TraceDoc, type FuzzCase, type FuzzClaim, type FuzzAxes } from '../../shared/trace'
 import { listSkills, readSkill, skillsListing } from '../skills'
 import type { Emit } from './types'
+import type { IntroDoc } from '../../shared/types'
 import { McpRegistry } from './mcp'
 import { sshExec } from '../ssh'
+import { parse as parseYaml } from 'yaml'
+import { validateModel, checkModel, type BehaviorModel, type CaseRun } from '../../shared/model'
+
+// A workspace may be a CONTAINER of repos; repos own their files (.grasp/ — model,
+// recipe, scratch). grasp resolves the OWNING repo by walking up from the anchor (the
+// file it was handed) to the nearest git root, never above the workspace. No anchor and
+// no git at the workspace = a container: nothing is read or written there, ever.
+function resolveRepoRoot(workspace: string, anchor?: string): { home: string; container: boolean } {
+  const ws = resolve(workspace || '.')
+  let dir = anchor ? dirname(resolve(anchor)) : ws
+  if (!dir.startsWith(ws)) dir = ws
+  for (;;) {
+    if (existsSync(join(dir, '.git'))) return { home: dir, container: false }
+    if (dir === ws) break
+    const parent = dirname(dir)
+    if (!parent.startsWith(ws) || parent === dir) break
+    dir = parent
+  }
+  return { home: ws, container: !existsSync(join(ws, '.git')) }
+}
+
+// Load the workspace behavior model (spec-v2 §1.1). Returns the model, a note (invalid
+// model — surfaced, never silently ignored), or nothing (no model file: pre-v2 workspace).
+function loadModel(workspace: string, anchor?: string): { model?: BehaviorModel; note?: string; home: string } {
+  const { home, container } = resolveRepoRoot(workspace, anchor)
+  if (container)
+    return { home, note: 'this workspace is a CONTAINER of repos (no git root here) — models live per-repo at each repo root; run against files inside a repo.' }
+  const p = join(home, '.grasp', 'model.yaml')
+  if (!existsSync(p)) return { home }
+  let parsed: unknown
+  try {
+    parsed = parseYaml(readFileSync(p, 'utf-8'))
+  } catch (e) {
+    return { home, note: `model.yaml is not valid YAML: ${e instanceof Error ? e.message : String(e)} — rules were NOT checked.` }
+  }
+  const err = validateModel(parsed)
+  if (err) return { home, note: `model.yaml rejected: ${err} — rules were NOT checked.` }
+  return { home, model: parsed as BehaviorModel }
+}
 
 function resolvePath(workspace: string, p: string): string {
   return p.startsWith('/') ? p : join(workspace || '.', p)
@@ -17,6 +57,19 @@ function resolvePath(workspace: string, p: string): string {
 
 
 const OUT_CAP = 8000
+
+// The agent's shell must see the USER'S environment, not grasp's own launch chain. An Electron
+// app started via `npm run dev` carries npm_config_* / npm_lifecycle_* / NODE_ENV / NODE_OPTIONS
+// into every child process, silently changing how npm/node behave inside the workspace
+// (observed: an inherited omit=dev made a repo's devDependencies uninstallable and cost a turn
+// its step budget). The compiler must be invisible to the target: strip the debris, keep the
+// user's real environment (PATH, HOME, shell config via bash -l).
+const ENV_DEBRIS = /^(npm_|NODE_ENV$|NODE_OPTIONS$|INIT_CWD$|ELECTRON_|VITE_|ORIGINAL_XDG_)/i
+function cleanEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {}
+  for (const [k, v] of Object.entries(process.env)) if (!ENV_DEBRIS.test(k)) env[k] = v
+  return env
+}
 
 export const SYSTEM = [
   'You are grasp, a coding agent inside the post-editor. You edit code with the file and',
@@ -30,24 +83,44 @@ export const SYSTEM = [
   '  grasp_flow_diff (edited existing code — the A→B change) on the entrypoint. For an edit to EXISTING',
   '  logic, prefer grasp_fuzz_diff — it varies the input space and surfaces any input where old vs new',
   '  diverge, so a bug that only breaks inputs you did not try is not missed. This is your PRIMARY way to show a',
-  '  change did what you intended — do it proactively, not only when asked.',
-  '• NEVER verify by writing an ad-hoc test script and running it through run_bash (e.g.',
-  "  `node -e ...`, a throwaway test.py, a harness file). That runs the code but leaves grasp's",
+  '  change did what you intended — do it proactively, not only when asked. When a sweep diverges,',
+  '  CHARACTERIZE it: resubmit the cases_file as {cases, claim: {where, effect}, axes} — grasp checks',
+  '  the claim against every observed case and renders the checked contract delta (consistent /',
+  '  mismatched / untested / enumeration). Generate cases STRADDLING your boundary to falsify your',
+  '  own claim before submitting; an unchecked claim is never rendered.',
+  '• NEVER verify by writing an ad-hoc test script and running it through run_bash (a one-off',
+  "  inline script, a throwaway harness file). That runs the code but leaves grasp's",
   '  dataflow rail BLIND — the human sees nothing. An ad-hoc harness is a failure, not a shortcut.',
-  '• They work across languages (Python, JS/TS, Go, Java, C#, C++). Entrypoint form:',
-  '  module.func (py/js/ts), path/file.go:Func, Class.method (java), Namespace.Class.Method (c#).',
-  '  grasp auto-detects the language from repo files; if a repo has no marker (e.g. a bare .js',
-  '  module and no package.json), pass the `language` argument explicitly (py/js/ts/go/java/csharp/cpp).',
-  '• If the code is UI/DOM-coupled with no directly-callable entrypoint (a frontend handler, a',
-  '  React component), SEPARATE the core logic into a plain callable function in its own module',
-  '  and observe THAT and submit via grasp_flow. Do not shrug and reach for run_bash — extract, then trace.',
+  '• They work across languages. Entrypoint form: a file path plus symbol (path/to/file.ext:symbol)',
+  '  or module.symbol. grasp auto-detects the language from repo files; when a repo has no clear',
+  '  marker, pass the `language` argument explicitly.',
+  '• The default Flow for an APPLICATION repo comes from the RUNNING APP: start it the way the',
+  '  human would (its own dev command), drive the REAL feature surface (route, URL, endpoint,',
+  '  CLI) with a REAL input (README example, fixture, recorded payload), attach via the native',
+  '  runtime channel. A test-runner probe is a FALLBACK for logic with no runnable surface and',
+  '  must be declared as such in the `how` field. Never silently fabricate an input when a real',
+  '  one exists.',
+  '• If the logic is UI/DOM-coupled, observe it IN the running app first. Extract it into a',
+  '  plain callable module only when the app cannot be driven or the question needs input',
+  '  variation (fuzz) — and extraction is a REFACTOR, not a copy: rewire the call site so the',
+  '  observed code IS the shipped code. Do not shrug and reach for run_bash: run, attach, observe.',
   '• run_bash is for genuinely non-observable steps only: installing deps, starting a server,',
   '  a build. When you use it to RUN logic because you think there is no entrypoint, stop and',
   '  extract an entrypoint first.',
+  '• If .grasp/model.yaml exists, it is the human\'s standing judgment: generate edits TOWARD it,',
+  '  label every fuzz case with scenario names its rules quantify over, and if a request contradicts',
+  '  a ratified rule, surface the contradiction BEFORE editing (behavior-model skill). When the human',
+  '  answers "intended" to novel behavior, stage the ratification — never enforce your own judgment.',
+  '• On a workspace you have not observed before, load the load-repo skill FIRST: read .grasp/RECIPE.md',
+  '  if present — it is cached knowledge of how this repo runs; trust it per rung, verify with one cheap',
+  '  probe — and pay observability lazily: climb only the rung the task demands (runnable → traceable →',
+  '  diffable → fuzzable → characterizable), then record what you learned back into the recipe.',
   '',
   '• Prefer edit_file over write_file for changes to existing files — it rewrites only the',
   '  snippet you specify, so it is safer; use write_file to create a file or replace it entirely.',
-  '  Use TodoWrite to plan any task with three or more steps.',
+  '  Use TodoWrite to plan any task with three or more steps. Batch INDEPENDENT tool calls into',
+  '  ONE turn (multiple tool_use blocks): read several files at once, run unrelated commands',
+  '  together. One call per turn wastes a full model round-trip each time.',
   '',
   'Present exactly what grasp_flow/grasp_flow_diff surface and end in the neutral question they',
   'give you; the human adjudicates against business rules only they know. Never render a verdict.'
@@ -66,6 +139,9 @@ export const PLAN_SYSTEM =
 // ASK MODE: these tools change the workspace, so they pause for human approval. They are also
 // the set that triggers liveSurface (a code change should re-run the observed dataflow).
 export const MUTATING_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', 'run_bash', 'remote_bash'])
+// The fuzz reminder fires only on ACTUAL file edits — run_bash may mutate, but treating every
+// shell command (grep, ls, npm install) as "you changed code" spams false reminders (observed).
+export const EDIT_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit'])
 
 // A subagent runner: run a focused sub-task and return its final text. Events it emits
 // are tagged with the parent task's id so the UI nests them.
@@ -311,7 +387,7 @@ export const TOOLS: Tool[] = [
     input_schema: { type: 'object', properties: { command: { type: 'string' } }, required: ['command'] },
     run(input, { workspace }) {
       return new Promise((res) => {
-        const cp = spawn('bash', ['-lc', String(input.command ?? '')], { cwd: workspace })
+        const cp = spawn('bash', ['-lc', String(input.command ?? '')], { cwd: workspace, env: cleanEnv() })
         let out = ''
         cp.stdout.on('data', (d) => (out += d))
         cp.stderr.on('data', (d) => (out += d))
@@ -355,7 +431,7 @@ export const TOOLS: Tool[] = [
       type: 'object',
       properties: {
         trace: { type: 'string', description: 'a Trace v1 JSON document inline' },
-        trace_file: { type: 'string', description: 'OR a path to a file containing the Trace v1 JSON (preferred for large traces)' }
+        trace_file: { type: 'string', description: 'OR a path to a file containing the Trace v1 JSON (preferred for large traces; write scratch under .grasp/tmp/)' }
       }
     },
     async run(input, { workspace, emit }) {
@@ -367,6 +443,8 @@ export const TOOLS: Tool[] = [
       try { parsed = JSON.parse(raw) } catch (e) { return `trace is not valid JSON: ${(e as Error).message}` }
       const err = validateTrace(parsed)
       if (err) return `trace rejected: ${err}. Fix the Trace v1 shape and resubmit (see the trace-flow skill).`
+      const obsErr = validateObservation(parsed as TraceDoc)
+      if (obsErr) return `trace rejected: ${obsErr}`
       const trace = parsed as TraceDoc
       trace.createdAt = Date.now()
       emit({ type: 'trace', trace })
@@ -388,8 +466,8 @@ export const TOOLS: Tool[] = [
       properties: {
         old: { type: 'string', description: 'Trace v1 JSON (inline) of the OLD code' },
         new: { type: 'string', description: 'Trace v1 JSON (inline) of the NEW code' },
-        old_file: { type: 'string', description: 'OR a path to the OLD trace JSON (preferred)' },
-        new_file: { type: 'string', description: 'OR a path to the NEW trace JSON (preferred)' }
+        old_file: { type: 'string', description: 'OR a path to the OLD trace JSON (preferred; keep scratch in .grasp/tmp/)' },
+        new_file: { type: 'string', description: 'OR a path to the NEW trace JSON (preferred; keep scratch in .grasp/tmp/)' }
       }
     },
     async run(input, { workspace, emit }) {
@@ -401,6 +479,8 @@ export const TOOLS: Tool[] = [
       } catch (e) { return `could not read/parse a trace: ${(e as Error).message}` }
       const bad = validateTrace(oldT) || validateTrace(newT)
       if (bad) return `trace rejected: ${bad}. Fix the Trace v1 shape (see the trace-flow skill).`
+      const badObs = validateObservation(oldT as TraceDoc) || validateObservation(newT as TraceDoc)
+      if (badObs) return `trace rejected: ${badObs}`
       const diff = diffTraces(oldT as TraceDoc, newT as TraceDoc)
       emit({ type: 'trace_diff', diff })
       if (diff.empty) return `no behavioral change surfaced for ${diff.entry} on this input.`
@@ -414,33 +494,137 @@ export const TOOLS: Tool[] = [
       'input proves nothing about inputs you did not try; this varies the input space and surfaces ' +
       'EVERY input where the OLD and NEW code diverge. YOU (the agent) generate a spread of inputs ' +
       '(valid, boundary, malformed, wrong-type, missing — seed it deterministically), trace the SAME ' +
-      'input on old and new for each, and write a JSON array of {input, old, new} (each old/new a ' +
-      'Trace v1 doc) to a file; grasp diffs every pair and renders only the divergences with an honest ' +
-      'scope statement (N tried, K diverged). See the fuzz-diff skill. grasp never calls a change safe.',
+      'input on old and new for each, and write the cases to a JSON file: either a bare array of ' +
+      '{input, old, new} (each old/new a Trace v1 doc), or {cases: [...], claim?, axes?}. claim is your ' +
+      'PROPOSED characterization of the divergence — {where: <Pred over the input>, effect: {old?: ' +
+      '{status, threwType, returns}, new?: {...}}} — grasp CHECKS it per case against the divergence it ' +
+      'computed itself and renders consistent / mismatched (counterexamples) / untested (no straddle) / ' +
+      'enumeration (no compression). Pred ops: cmp {path, rel, value}, cmpf {path, rel, other} (field vs field), and/or, not, has, ' +
+      'type, len — max 24 nodes; propose the boundary from the diverged inputs, then add STRADDLING ' +
+      'cases to falsify yourself before submitting. axes declares what the spread varied vs held ' +
+      'constant ({varied: [{path, note?}], held: [{path}]}); grasp verifies both against the cases. ' +
+      'Pairs with an unobservable side are dropped, never rendered as change. grasp diffs every pair ' +
+      'and renders only the divergences with an honest scope statement (N tried, K diverged). See the ' +
+      'fuzz-diff skill. grasp never calls a change safe.',
     input_schema: {
       type: 'object',
       properties: {
         entry: { type: 'string', description: 'what was exercised (e.g. src/auth.ts:login)' },
-        cases_file: { type: 'string', description: 'path to a JSON array of {input, old, new} (old/new are Trace v1 docs)' }
+        cases_file: { type: 'string', description: 'path to the cases JSON — bare array of {input, old, new} or {cases, claim?, axes?}; write it under .grasp/tmp/' }
       },
       required: ['entry', 'cases_file']
     },
     async run(input, { workspace, emit }) {
-      let arr: unknown
-      try { arr = JSON.parse(readFileSync(resolvePath(workspace, String(input.cases_file)), 'utf-8')) }
+      let parsed: unknown
+      try { parsed = JSON.parse(readFileSync(resolvePath(workspace, String(input.cases_file)), 'utf-8')) }
       catch (e) { return `could not read/parse cases_file: ${(e as Error).message}` }
-      if (!Array.isArray(arr)) return 'cases_file must contain a JSON array of {input, old, new}'
+      let rawCases: unknown = parsed
+      let claim: FuzzClaim | undefined
+      let axes: FuzzAxes | undefined
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const o = parsed as Record<string, unknown>
+        rawCases = o.cases
+        // A malformed claim/axes is REFUSED, not silently ignored — grasp renders checked claims only.
+        if (o.claim !== undefined) {
+          const ce = validateClaim(o.claim)
+          if (ce) return `claim rejected: ${ce}. Fix the claim (or omit it) and resubmit.`
+          claim = o.claim as FuzzClaim
+        }
+        if (o.axes !== undefined) {
+          const ae = validateAxes(o.axes)
+          if (ae) return `axes rejected: ${ae}. Fix the axes (or omit them) and resubmit.`
+          axes = o.axes as FuzzAxes
+        }
+      }
+      if (!Array.isArray(rawCases)) return 'cases_file must be a JSON array of {input, old, new}, or {cases: [...], claim?, axes?}'
       const cases: FuzzCase[] = []
       let rejected = 0
-      for (const c of arr as Record<string, unknown>[]) {
+      for (const c of rawCases as Record<string, unknown>[]) {
         if (validateTrace(c.old) || validateTrace(c.new)) { rejected++; continue }
-        cases.push({ input: c.input, old: c.old as TraceDoc, new: c.new as TraceDoc })
+        cases.push({
+          label: typeof c.label === 'string' ? c.label : undefined,
+          scenario: typeof c.scenario === 'string' ? c.scenario : undefined,
+          input: c.input,
+          old: c.old as TraceDoc,
+          new: c.new as TraceDoc
+        })
       }
       if (cases.length === 0) return `no valid cases (${rejected} rejected). Each case needs valid Trace v1 old & new (see the fuzz-diff skill).`
-      const fuzz = buildFuzzDiff(String(input.entry), cases)
+      const fuzz = buildFuzzDiff(String(input.entry), cases, claim, axes)
+      // Behavior model (spec-v2): check every rule against these observed cases. grasp
+      // recomputes divergence itself; "violated" replays the human's own ratified judgment.
+      const { model, note: modelNote } = loadModel(workspace, resolvePath(workspace, String(input.cases_file)))
+      if (model) {
+        const runs: CaseRun[] = cases
+          .filter((c) => c.old.status !== 'unobservable' && c.new.status !== 'unobservable')
+          .map((c) => ({ label: c.label, scenario: c.scenario, input: c.input, newT: c.new, diverged: !diffTraces(c.old, c.new).empty }))
+        const novelChanges = new Map<number, string>()
+        runs.forEach((r, i) => {
+          if (!r.diverged) return
+          const d = cases.find((c) => c.input === r.input)
+          if (d) novelChanges.set(i, diffTraces(d.old, d.new).questions[0]?.replace(' — intended?', '') ?? 'behavior diverged')
+        })
+        fuzz.report = checkModel(model, runs, novelChanges)
+        const uncovered = (model.rules ?? [])
+          .filter((r) => r.check && !r.staged)
+          .filter((r) => fuzz.report?.rows.find((row) => row.id === r.id)?.status === 'untested')
+        if (uncovered.length)
+          fuzz.report.scope += ` COVERAGE GAP: compiled rule${uncovered.length === 1 ? '' : 's'} ${uncovered
+            .map((r) => `${r.id} (scenario ${r.check?.scenario})`)
+            .join(', ')} had no covering cases — generate scenarios that exercise them.`
+      } else {
+        fuzz.report = null
+      }
       emit({ type: 'fuzz_diff', fuzz })
       const note = rejected ? ` (${rejected} case(s) rejected as invalid Trace v1)` : ''
-      return `${fuzz.scope}${note}` + (fuzz.diverged ? ` Questions: ${fuzz.questions.slice(0,4).join(' | ')}` : '')
+      const claimNote = fuzz.claim ? ` ${fuzz.claim.summary}` : ''
+      const axesNote = fuzz.axes && fuzz.axes.issues.length ? ` Axes: ${fuzz.axes.issues.join('; ')}.` : ''
+      const reportNote = fuzz.report ? ` ${fuzz.report.scope}` : modelNote ? ` ${modelNote}` : ''
+      return `${fuzz.scope}${note}${claimNote}${axesNote}${reportNote}` + (fuzz.diverged ? ` Questions: ${fuzz.questions.slice(0,4).join(' | ')}` : '')
+    }
+  },
+  {
+    name: 'grasp_intro',
+    description:
+      'Render the workspace INTRODUCTION as a deterministic surface (first contact / the start ' +
+      'command). Submit typed slots only: how (plain words, how this repo runs, <=600 chars), flows ' +
+      '(1-8 entries {name <=60, what <=160} — features by NAME the human could ask to see), and ' +
+      'suggestion (<=240 chars, the one next step). grasp itself appends the behavior-model rules ' +
+      'section from .grasp/model.yaml — do NOT restate rules. After submitting, keep chat to one line.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        how: { type: 'string' },
+        flows: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, what: { type: 'string' } }, required: ['name', 'what'] } },
+        suggestion: { type: 'string' }
+      },
+      required: ['how', 'flows', 'suggestion']
+    },
+    async run(input, { workspace, emit }) {
+      const how = String(input.how ?? '').trim()
+      const suggestion = String(input.suggestion ?? '').trim()
+      const flowsRaw = Array.isArray(input.flows) ? (input.flows as { name?: unknown; what?: unknown }[]) : []
+      if (!how || how.length > 600) return 'intro rejected: how must be 1-600 chars of plain words.'
+      if (!suggestion || suggestion.length > 240) return 'intro rejected: suggestion must be 1-240 chars.'
+      if (flowsRaw.length < 1 || flowsRaw.length > 8) return 'intro rejected: flows must have 1-8 entries {name, what}.'
+      const flows: { name: string; what: string }[] = []
+      for (const f of flowsRaw) {
+        const name = String(f.name ?? '').trim()
+        const what = String(f.what ?? '').trim()
+        if (!name || name.length > 60) return 'intro rejected: each flow name must be 1-60 chars (a feature name, not a symbol).'
+        if (!what || what.length > 160) return 'intro rejected: each flow what must be 1-160 chars.'
+        flows.push({ name, what })
+      }
+      // The rules section comes from the model file, read by grasp — never the agent's restatement.
+      const { model, note, home } = loadModel(workspace)
+      const rules = (model?.rules ?? []).map((r) => ({
+        id: r.id,
+        text: r.text,
+        status: (r.staged ? 'staged' : r.check ? 'compiled' : 'uncompiled') as 'staged' | 'uncompiled' | 'compiled'
+      }))
+      const intro: IntroDoc = { workspace: home, how, flows, rules, suggestion }
+      emit({ type: 'intro', intro })
+      return `introduction rendered (${flows.length} flows, ${rules.length} rules from model.yaml${note ? ` — NOTE: ${note}` : model ? '' : ' — no model file yet'}). Keep chat to one line.`
     }
   },
   {

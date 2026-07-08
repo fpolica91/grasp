@@ -1,0 +1,4799 @@
+{
+ "cases": [
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 0,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo0",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 0,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":0,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"100.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "0"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"100.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"100.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo1",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 0,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":0,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"100.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "0"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"100.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"100.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 10,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo2",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 10,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":10,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"90.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "10"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"90.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"90.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo3",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 10,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":10,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"90.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "10"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"90.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"90.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 20,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo4",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 20,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":20,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"80.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "20"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"80.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"80.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo5",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 20,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":20,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"80.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "20"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"80.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"80.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 30,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo6",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 30,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":30,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"70.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "30"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"70.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"70.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo7",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 30,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":30,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"70.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "30"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"70.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"70.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 40,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo8",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 40,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":40,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"60.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "40"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"60.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"60.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo9",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 40,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":40,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"60.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "40"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"60.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"60.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 50,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo10",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 50,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":50,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"50.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "50"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"50.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"50.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo11",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 50,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":50,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"50.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "50"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"50.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"50.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 60,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo12",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 60,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":60,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"40.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "60"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"40.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"40.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo13",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 60,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":60,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"40.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "60"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"40.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"40.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 70,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo14",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 70,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":70,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"30.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "70"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"30.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"30.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo15",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 70,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":70,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"30.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "70"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"30.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"30.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 80,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo16",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 80,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":80,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"20.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "80"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"20.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"20.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo17",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 80,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":80,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"20.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "80"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"20.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"20.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 90,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo18",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 90,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":90,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"10.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "90"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"10.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"10.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo19",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 90,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":90,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"10.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "90"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"10.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"10.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 100,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo20",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 100,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":100,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "100"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo21",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 100,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":100,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "100"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 110,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo22",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 110,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":110,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "110"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo23",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 110,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":110,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "110"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 120,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo24",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 120,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":120,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "120"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo25",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 120,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":120,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "120"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 130,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo26",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 130,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":130,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "130"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo27",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 130,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":130,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "130"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 140,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo28",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 140,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":140,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "140"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo29",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 140,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":140,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "140"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 150,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo30",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 150,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":150,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "150"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo31",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 150,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":150,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "150"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 160,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo32",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 160,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":160,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "160"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo33",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 160,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":160,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "160"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 170,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo34",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 170,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":170,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "170"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo35",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 170,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":170,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "170"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 180,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo36",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 180,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":180,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "180"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo37",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 180,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":180,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "180"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 190,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo38",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 190,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":190,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "190"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo39",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 190,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":190,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "190"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 200,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo40",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 200,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":200,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "200"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo41",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 200,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":200,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "200"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 100.01,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo42",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 100.01,
+     "currency": "USD"
+    },
+    "status": "threw",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":100.01,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "100.01"
+       }
+      ],
+      "ret": null,
+      "threw": {
+       "type": "ValueError",
+       "message": "credit exceeds subtotal"
+      },
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": null,
+    "threw": {
+     "type": "ValueError",
+     "message": "credit exceeds subtotal"
+    },
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo43",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 100.01,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":100.01,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "100.01"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.00\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.00\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  },
+  {
+   "input": {
+    "subtotal": 100,
+    "credit": 99.99,
+    "currency": "USD"
+   },
+   "old": {
+    "grasp_trace_version": "1",
+    "id": "demo44",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "a1f09c2",
+    "input": {
+     "subtotal": 100,
+     "credit": 99.99,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":99.99,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.01\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "99.99"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.01\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.01\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   },
+   "new": {
+    "grasp_trace_version": "1",
+    "id": "demo45",
+    "createdAt": 0,
+    "entry": "pricing.compute_total",
+    "language": "python",
+    "how": "demo fixture (synthetic — for exercising the surface, not a real observation)",
+    "gitRef": "worktree",
+    "input": {
+     "subtotal": 100,
+     "credit": 99.99,
+     "currency": "USD"
+    },
+    "status": "returned",
+    "frames": [
+     {
+      "id": "f0",
+      "parent": null,
+      "seq": 0,
+      "depth": 0,
+      "fn": "compute_total",
+      "file": "checkout.py",
+      "line": 18,
+      "callLine": null,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{\"subtotal\":100,\"credit\":99.99,\"currency\":\"USD\"}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.01\""
+      },
+      "threw": null,
+      "durMs": 2.1,
+      "language": "python"
+     },
+     {
+      "id": "f1",
+      "parent": "f0",
+      "seq": 1,
+      "depth": 1,
+      "fn": "apply_credit",
+      "file": "credits.py",
+      "line": 41,
+      "callLine": 22,
+      "args": [
+       {
+        "name": "subtotal",
+        "repr": "100"
+       },
+       {
+        "name": "credit",
+        "repr": "99.99"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "\"0.01\""
+      },
+      "threw": null,
+      "durMs": 0.4,
+      "language": "python"
+     },
+     {
+      "id": "f2",
+      "parent": "f0",
+      "seq": 2,
+      "depth": 1,
+      "fn": "validate_cart",
+      "file": "cart.py",
+      "line": 12,
+      "callLine": 19,
+      "args": [
+       {
+        "name": "cart",
+        "repr": "{…}"
+       }
+      ],
+      "ret": {
+       "name": "return",
+       "repr": "ok"
+      },
+      "threw": null,
+      "durMs": 0.1,
+      "language": "python",
+      "meaningful": false
+     }
+    ],
+    "ret": {
+     "name": "return",
+     "repr": "\"0.01\""
+    },
+    "threw": null,
+    "durationMs": 2.1,
+    "stdout": "",
+    "stderr": "",
+    "unobservable": null
+   }
+  }
+ ],
+ "claim": {
+  "where": {
+   "op": "cmpf",
+   "path": "credit",
+   "rel": ">",
+   "other": "subtotal"
+  },
+  "effect": {
+   "old": {
+    "status": "threw",
+    "threwType": "ValueError"
+   },
+   "new": {
+    "status": "returned",
+    "returns": "\"0.00\""
+   }
+  }
+ },
+ "axes": {
+  "varied": [
+   {
+    "path": "credit",
+    "note": "[0, 200] + straddle ±0.01"
+   }
+  ],
+  "held": [
+   {
+    "path": "subtotal"
+   },
+   {
+    "path": "currency"
+   }
+  ]
+ }
+}
