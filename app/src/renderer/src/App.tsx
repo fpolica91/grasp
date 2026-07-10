@@ -80,7 +80,7 @@ export function App(): React.JSX.Element {
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
-  const [editorMode, setEditorMode] = useState(false)
+  const [editorMode, setEditorMode] = useState(() => localStorage.getItem('grasp-editor-mode') === 'on')
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(260)
@@ -112,6 +112,7 @@ export function App(): React.JSX.Element {
   }
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
+  const conversationRef = useRef<ImperativePanelHandle>(null)
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
   const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'): void => {
     const p = rightRef.current
@@ -133,8 +134,14 @@ export function App(): React.JSX.Element {
     p.isCollapsed() ? p.expand() : p.collapse()
   }
   // Editor mode: swap the layout to editor-forward (editor large, chat as a side panel).
+  // Uses imperative panel resize — NO remount, NO state loss. Toggle persists in localStorage.
   const toggleEditorMode = (): void => {
-    setEditorMode((e) => { const next = !e; if (next) setRightTab('editor'); return next })
+    const next = !editorMode
+    setEditorMode(next)
+    localStorage.setItem('grasp-editor-mode', next ? 'on' : 'off')
+    if (next) setRightTab('editor')
+    conversationRef.current?.resize(next ? 32 : 54)
+    rightRef.current?.resize(next ? 68 : 46)
   }
   // When the agent surfaces a Flow/trace, flip the right pane to Flow AND expand it if the
   // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
@@ -804,9 +811,9 @@ export function App(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col bg-background">
       <PanelGroup direction="vertical" className="min-h-0 flex-1" autoSaveId="grasp-vert">
         <Panel defaultSize={72} minSize={30}>
-          <PanelGroup direction="horizontal" autoSaveId={editorMode ? 'grasp-horz-editor' : 'grasp-horz'} key={editorMode ? 'editor-layout' : 'chat-layout'}>
+          <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
             {/* chat */}
-            <Panel defaultSize={editorMode ? 32 : 54} minSize={20} className="min-w-0">
+            <Panel defaultSize={editorMode ? 32 : 54} minSize={20} ref={conversationRef} className="min-w-0">
               {remote && (
                 <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[12px]">
                   <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent-blue" />
