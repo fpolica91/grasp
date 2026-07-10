@@ -101,7 +101,7 @@ export function App(): React.JSX.Element {
     else localStorage.removeItem('grasp-thought')
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
-  const [mapLens, setMapLens] = useState<'symbols' | 'walk'>('symbols') // Codemap tab: symbol map | trace walk
+  const [flowLens, setFlowLens] = useState<'tree' | 'walk'>('tree') // Flow tab: the call tree | the walk narrative
   const [walkIx, setWalkIx] = useState<number | null>(null)
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [persona, setPersona] = useState<'agent' | 'editor'>(() => (localStorage.getItem('grasp-persona') === 'editor' ? 'editor' : 'agent'))
@@ -1056,23 +1056,8 @@ export function App(): React.JSX.Element {
                 <div className={`absolute inset-0 ${rightTab === 'wiki' ? 'visible' : 'hidden'}`}>
                   <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
                 </div>
-                <div className={`absolute inset-0 flex flex-col ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
-                  {walkAnchors.length > 0 && (
-                    <div className="flex shrink-0 items-center border-b border-border px-3 py-1">
-                      <span className="text-[11px] text-foreground-subtlest">the map of the code — and the walked path through it</span>
-                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
-                        <button className={`rounded px-2 py-0.5 transition-colors ${mapLens === 'symbols' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMapLens('symbols')}>Symbols</button>
-                        <button className={`rounded px-2 py-0.5 transition-colors ${mapLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMapLens('walk')}>Walk</button>
-                      </span>
-                    </div>
-                  )}
-                  <div className="min-h-0 flex-1 overflow-hidden">
-                    {mapLens === 'walk' && walkAnchors.length > 0 && surface?.kind === 'trace' && traces[surface.ix] ? (
-                      <FlowWalk trace={traces[surface.ix]} anchors={walkAnchors} currentIx={walkIx} onSelect={tourTo} workspace={workspace} />
-                    ) : (
-                      <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
-                    )}
-                  </div>
+                <div className={`absolute inset-0 ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
+                  <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
                 </div>                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />
                 </div>
@@ -1085,6 +1070,12 @@ export function App(): React.JSX.Element {
                     <button className="rounded-md bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
+                    {surface?.kind === 'trace' && (
+                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'tree' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('tree')}>Tree</button>
+                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('walk')}>Walk</button>
+                      </span>
+                    )}
 
                   </div>
                   {flowNote && <div className="shrink-0 border-b border-border px-3 py-1 text-[12px] text-foreground-subtlest">{flowNote}</div>}
@@ -1113,7 +1104,11 @@ export function App(): React.JSX.Element {
                           ))}
                         </div>
                       )}
-                      <FlowView trace={traces[surface.ix]} onOpenSource={openSource} />
+                      {flowLens === 'walk' ? (
+                        <FlowWalk trace={traces[surface.ix]} anchors={walkAnchors} currentIx={walkIx} onSelect={tourTo} workspace={workspace} />
+                      ) : (
+                        <FlowView trace={traces[surface.ix]} onOpenSource={openSource} />
+                      )}
                     </>
                   ) : surface?.kind === 'diff' ? (
                     <DataflowDiff diff={surface.diff} />
