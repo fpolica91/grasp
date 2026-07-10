@@ -14,7 +14,8 @@ export const DEFAULT_KEYBINDINGS: Record<string, string> = {
   'toggle-terminal': 'ctrl+`',
   'toggle-sidebar': 'mod+b',
   'toggle-side-pane': 'mod+l',
-  'editor-persona': 'mod+g'
+  'editor-persona': 'mod+g',
+  'quick-open': 'mod+p'
 }
 
 export function loadKeybindings(): Record<string, string> {

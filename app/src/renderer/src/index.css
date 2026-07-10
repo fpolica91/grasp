@@ -383,3 +383,10 @@ body { font-family: var(--font-sans); background: var(--color-background); color
 }
 .cm-walk-pill-nav button:disabled { opacity: 0.35; cursor: default; }
 .cm-walk-pill-nav button:not(:disabled):hover { filter: brightness(1.15); }
+
+/* ——— Git gutter: added / changed / removed vs HEAD (Files.tsx gitGutterExt) ——— */
+.cm-git-gutterCol { width: 6px; }
+.cm-git-mark { display: block; width: 3px; height: 100%; min-height: 13px; margin-left: 1px; border-radius: 2px; }
+.cm-git-mark-added { background: var(--color-git-added); }
+.cm-git-mark-changed { background: var(--color-git-modified); }
+.cm-git-mark-removed { height: 0; min-height: 0; margin-left: 0; border-left: 5px solid var(--color-git-deleted); border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; margin-top: 10px; }

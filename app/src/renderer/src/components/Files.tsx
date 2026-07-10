@@ -1,7 +1,7 @@
 // The editor pane: a workspace file tree + a multi-file editor with tabs and split view.
 // Each open file is a tab; the editor can split side-by-side. CodeMirror with ZCode theme.
 // Migrated to Tailwind v4 utilities.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorView, basicSetup } from 'codemirror'
 import { Compartment, EditorState, type Extension, type Text } from '@codemirror/state'
@@ -9,6 +9,22 @@ import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import { python } from '@codemirror/lang-python'
 import { javascript } from '@codemirror/lang-javascript'
+import { css as cssLang } from '@codemirror/lang-css'
+import { html as htmlLang } from '@codemirror/lang-html'
+import { json as jsonLang } from '@codemirror/lang-json'
+import { markdown as mdLang } from '@codemirror/lang-markdown'
+import { yaml as yamlLang } from '@codemirror/lang-yaml'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { sql } from '@codemirror/lang-sql'
+import { xml as xmlLang } from '@codemirror/lang-xml'
+import { php } from '@codemirror/lang-php'
+import { StreamLanguage } from '@codemirror/language'
+import { shell as shellMode } from '@codemirror/legacy-modes/mode/shell'
+import { toml as tomlMode } from '@codemirror/legacy-modes/mode/toml'
+import { dockerFile as dockerMode } from '@codemirror/legacy-modes/mode/dockerfile'
 import { MergeView } from '@codemirror/merge'
 import { Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view'
 import type { TreeNode } from '../../../shared/types'
@@ -17,9 +33,29 @@ import type { WalkAnchor } from './FlowWalk'
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
 
 function langFor(path: string): Extension {
-  if (path.endsWith('.py')) return python()
-  if (/\.(jsx|tsx|ts|js|mjs|cjs)$/.test(path)) return javascript({ typescript: /\.tsx?$/.test(path), jsx: /x$/.test(path) })
-  return []
+  const name = (path.split('/').pop() ?? '').toLowerCase()
+  if (name === 'dockerfile' || name.startsWith('dockerfile.')) return StreamLanguage.define(dockerMode)
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : ''
+  switch (ext) {
+    case 'py': return python()
+    case 'js': case 'jsx': case 'ts': case 'tsx': case 'mjs': case 'cjs':
+      return javascript({ typescript: ext.startsWith('ts'), jsx: ext.endsWith('x') })
+    case 'css': case 'scss': case 'less': return cssLang()
+    case 'html': case 'htm': case 'vue': case 'svelte': return htmlLang()
+    case 'json': case 'jsonc': case 'map': return jsonLang()
+    case 'md': case 'markdown': case 'mdx': return mdLang()
+    case 'yml': case 'yaml': return yamlLang()
+    case 'rs': return rust()
+    case 'go': return go()
+    case 'java': case 'kt': case 'kts': return java()
+    case 'c': case 'h': case 'cc': case 'cpp': case 'hpp': case 'm': case 'mm': return cpp()
+    case 'sql': return sql()
+    case 'xml': case 'svg': case 'plist': return xmlLang()
+    case 'php': return php()
+    case 'sh': case 'bash': case 'zsh': return StreamLanguage.define(shellMode)
+    case 'toml': return StreamLanguage.define(tomlMode)
+    default: return []
+  }
 }
 
 // Zed-inspired syntax palette (One Dark — the theme Zed ships) mapped to lezer tags.
@@ -126,6 +162,29 @@ class TourPillWidget extends WidgetType {
   }
 }
 
+// ——— Git gutter: added / changed / removed marks vs HEAD (from the repo's own diff).
+class GitMark extends GutterMarker {
+  constructor(private kind: 'added' | 'changed' | 'removed') { super() }
+  eq(o: GitMark): boolean { return o.kind === this.kind }
+  toDOM(): Node {
+    const s = document.createElement('span')
+    s.className = `cm-git-mark cm-git-mark-${this.kind}`
+    return s
+  }
+}
+
+function gitGutterExt(marks: { line: number; kind: 'added' | 'changed' | 'removed' }[]): Extension {
+  if (!marks.length) return []
+  const byLine = new Map(marks.map((m) => [m.line, m.kind]))
+  return gutter({
+    class: 'cm-git-gutterCol',
+    lineMarker: (view, block) => {
+      const k = byLine.get(view.state.doc.lineAt(block.from).number)
+      return k ? new GitMark(k) : null
+    }
+  })
+}
+
 interface EditorWalk { anchors: WalkAnchor[]; currentIx: number | null; total: number; onTour: (ix: number) => void }
 
 function walkExtensions(doc: Text, walk: EditorWalk | undefined): Extension {
@@ -154,6 +213,18 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
   const viewRef = useRef<EditorView | MergeView | null>(null)
   const docRef = useRef('')
   const [walkComp] = useState(() => new Compartment())
+  const [gitComp] = useState(() => new Compartment())
+  const programmaticRef = useRef(false) // suppress dirty on programmatic doc swaps
+  const dirtyRef = useRef(false)
+  const markDirty = (b: boolean): void => {
+    dirtyRef.current = b
+    setDirty(b)
+  }
+  const refreshGit = (v: EditorView): void => {
+    void window.grasp.changedLines(workspace, file).then((r) => {
+      if (viewRef.current === v && r.ok) v.dispatch({ effects: gitComp.reconfigure(gitGutterExt(r.marks ?? [])) })
+    })
+  }
   const revealRef = useRef(reveal)
   revealRef.current = reveal
   const walkRef = useRef(walk)
@@ -184,18 +255,22 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
         const r = await window.grasp.readFile(workspace, file)
         if (disposed) return
         docRef.current = r.content ?? ''
-        setDirty(false)
+        markDirty(false)
         host.innerHTML = ''
         const v = new EditorView({
           parent: host,
           doc: docRef.current,
-          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, walkComp.of([]), EditorView.updateListener.of((u) => {
-            if (u.docChanged) { docRef.current = u.state.doc.toString(); setDirty(true) }
+          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, walkComp.of([]), gitComp.of([]), EditorView.updateListener.of((u) => {
+            if (u.docChanged) {
+              docRef.current = u.state.doc.toString()
+              if (!programmaticRef.current) markDirty(true)
+            }
           })]
         })
         viewRef.current = v
         v.dispatch({ effects: walkComp.reconfigure(walkExtensions(v.state.doc, walkRef.current)) })
         applyReveal(v)
+        refreshGit(v)
       }
     }
     void build()
@@ -216,9 +291,33 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reveal?.nonce])
 
+  // Auto-reload when the AGENT edits this file (grasp:file-changed from the tool loop).
+  // A dirty buffer is never clobbered — the human's unsaved edit wins.
+  useEffect(() => {
+    const onChanged = (e: Event): void => {
+      const d = (e as CustomEvent).detail as { file?: unknown } | undefined
+      if (!d || d.file !== file || mode !== 'edit' || dirtyRef.current) return
+      void window.grasp.readFile(workspace, file).then((r) => {
+        const v = viewRef.current
+        if (typeof r.content !== 'string' || !v || !(v instanceof EditorView) || dirtyRef.current) return
+        if (v.state.doc.toString() === r.content) return
+        programmaticRef.current = true
+        docRef.current = r.content
+        v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: r.content } })
+        programmaticRef.current = false
+        refreshGit(v)
+      })
+    }
+    window.addEventListener('grasp:file-changed', onChanged)
+    return () => window.removeEventListener('grasp:file-changed', onChanged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, mode, workspace])
+
   const save = async (): Promise<void> => {
     await window.grasp.writeFile(workspace, file, docRef.current)
-    setDirty(false)
+    markDirty(false)
+    const v = viewRef.current
+    if (v instanceof EditorView) refreshGit(v)
   }
 
   useEffect(() => {
@@ -325,6 +424,108 @@ function Tree({ nodes, selected, onOpen }: { nodes: TreeNode[]; selected: string
   return <div className="flex flex-col gap-px py-1">{render(nodes, 0)}</div>
 }
 
+// Find in files — the repo's own grep over IPC; rows jump via the open-source bridge.
+function SearchPanel({ workspace }: { workspace: string }): React.JSX.Element {
+  const [q, setQ] = useState('')
+  const [hits, setHits] = useState<{ file: string; line: number; text: string }[] | null>(null)
+  const [truncated, setTruncated] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const seq = useRef(0)
+  useEffect(() => {
+    const query = q.trim()
+    if (query.length < 2) {
+      setHits(null)
+      return
+    }
+    const my = ++seq.current
+    const t = setTimeout(() => {
+      setBusy(true)
+      void window.grasp.searchText(workspace, query).then((r) => {
+        if (seq.current !== my) return
+        setBusy(false)
+        setHits(r.ok ? r.hits ?? [] : [])
+        setTruncated(!!r.truncated)
+      })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [q, workspace])
+  const open = (file: string, line: number): void => {
+    window.dispatchEvent(new CustomEvent('grasp:open-source', { detail: { file, line } }))
+  }
+  const grouped = useMemo(() => {
+    const m = new Map<string, { line: number; text: string }[]>()
+    for (const h of hits ?? []) {
+      const a = m.get(h.file) ?? []
+      a.push(h)
+      m.set(h.file, a)
+    }
+    return [...m.entries()]
+  }, [hits])
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="px-2 pb-1.5">
+        <input className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none placeholder:text-foreground-subtlest" placeholder="Search in files…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
+        {busy && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">searching…</div>}
+        {!busy && hits !== null && hits.length === 0 && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">no matches</div>}
+        {grouped.map(([file, rows]) => (
+          <div key={file} className="mb-1.5">
+            <div className="truncate px-1 py-0.5 font-mono text-[10.5px] font-semibold text-foreground-subtle" title={file}>{file}</div>
+            {rows.map((r, i) => (
+              <button key={i} className="flex w-full items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-surface-hover" onClick={() => open(file, r.line)}>
+                <span className="shrink-0 font-mono text-[10px] text-foreground-subtlest">{r.line}</span>
+                <span className="truncate font-mono text-[11px] text-foreground-subtle">{r.text.trim()}</span>
+              </button>
+            ))}
+          </div>
+        ))}
+        {truncated && <div className="px-2 py-1 text-[11px] italic text-foreground-subtlest">results capped — refine the query</div>}
+      </div>
+    </div>
+  )
+}
+
+// Outline — the active file's real declarations (regex-extracted, no model).
+function OutlinePanel({ workspace, file }: { workspace: string; file: string }): React.JSX.Element {
+  const [symbols, setSymbols] = useState<{ name: string; kind: string; line: number }[]>([])
+  useEffect(() => {
+    if (!file) {
+      setSymbols([])
+      return
+    }
+    let dead = false
+    const load = (): void => {
+      void window.grasp.fileSymbols(workspace, file).then((r) => {
+        if (!dead) setSymbols(r.ok ? r.symbols ?? [] : [])
+      })
+    }
+    load()
+    const onChanged = (e: Event): void => {
+      if (((e as CustomEvent).detail as { file?: unknown } | undefined)?.file === file) load()
+    }
+    window.addEventListener('grasp:file-changed', onChanged)
+    return () => {
+      dead = true
+      window.removeEventListener('grasp:file-changed', onChanged)
+    }
+  }, [workspace, file])
+  if (!file) return <div className="px-3 py-2 text-[11px] text-foreground-subtlest">open a file to see its outline</div>
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
+      <div className="truncate px-1 py-1 font-mono text-[10.5px] font-semibold text-foreground-subtle" title={file}>{file.split('/').pop()}</div>
+      {symbols.length === 0 && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">no symbols found</div>}
+      {symbols.map((s, i) => (
+        <button key={i} className="flex w-full items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-surface-hover" onClick={() => window.dispatchEvent(new CustomEvent('grasp:open-source', { detail: { file, line: s.line } }))}>
+          <span className="w-14 shrink-0 truncate text-right font-mono text-[9.5px] uppercase text-foreground-subtlest">{s.kind}</span>
+          <span className="truncate font-mono text-[11.5px] text-foreground">{s.name}</span>
+          <span className="ml-auto shrink-0 font-mono text-[9.5px] text-foreground-subtlest">{s.line}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function FilesPane({ workspace, active, walk }: { workspace: string; active: boolean; walk?: { anchors: WalkAnchor[]; currentIx: number | null; onTour: (ix: number) => void } }): React.JSX.Element {
   const [tree, setTree] = useState<TreeNode[]>([])
   const [open, setOpen] = useState<string[]>([])
@@ -344,6 +545,7 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
     setLeft(p)
   }
   const [reveal, setReveal] = useState<{ file: string; line: number | null; nonce: number } | null>(null)
+  const [leftTab, setLeftTab] = useState<'files' | 'search' | 'outline'>('files')
   // The open-at-line bridge: FlowView / the Walk / anything else dispatches
   // 'grasp:open-source' {file, line}; every mounted FilesPane opens the file and
   // reveals the line — so the jump works in whichever persona is showing.
@@ -373,21 +575,31 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
 
   return (
     <div className="flex h-full">
-      {/* File tree */}
-      <div className="flex w-[200px] shrink-0 flex-col border-r border-border bg-background">
-        <div className="flex items-center px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">files</span>
-          <button
-            className="ml-auto flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
-            onClick={loadTree}
-            title="refresh"
-          >
-            ↻
-          </button>
+      {/* Left rail: Files / Search / Outline */}
+      <div className="flex w-[220px] shrink-0 flex-col border-r border-border bg-background">
+        <div className="flex items-center gap-0.5 px-2 py-1.5">
+          {(['files', 'search', 'outline'] as const).map((t) => (
+            <button key={t} className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
+              {t}
+            </button>
+          ))}
+          {leftTab === 'files' && (
+            <button
+              className="ml-auto flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+              onClick={loadTree}
+              title="refresh"
+            >
+              ↻
+            </button>
+          )}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
-          <Tree nodes={tree} selected={left} onOpen={openFile} />
-        </div>
+        {leftTab === 'files' && (
+          <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
+            <Tree nodes={tree} selected={left} onOpen={openFile} />
+          </div>
+        )}
+        {leftTab === 'search' && <SearchPanel workspace={workspace} />}
+        {leftTab === 'outline' && <OutlinePanel workspace={workspace} file={left} />}
       </div>
       {/* Editors */}
       <div className="flex min-w-0 flex-1 flex-col bg-background">

@@ -4,7 +4,7 @@
 // This is the grasp equivalent of Devin/Codeium's LSP-derived codemap — without
 // shipping a language server. Instant (synchronous), accurate to the source.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, extname } from 'node:path'
+import { join, relative, resolve, extname } from 'node:path'
 import type { CodeMap, CodeDir, CodeFile, CodeSymbol } from '../shared/types'
 
 const SKIP = new Set(['node_modules', '.git', 'dist', 'out', 'build', '.venv', 'venv', '__pycache__', '.next', '.cache', '.worktrees', '.corpus', '.grasp', '.idea', '.devenv', 'target', 'vendor'])
@@ -52,7 +52,7 @@ function langKey(ext: string): string | undefined {
   return map[ext]
 }
 
-function extractSymbols(filePath: string, content: string): CodeSymbol[] {
+function extractSymbols(filePath: string, content: string, cap = MAX_SYMBOLS_PER_FILE): CodeSymbol[] {
   const key = langKey(extname(filePath))
   if (!key) return []
   const patterns = LANG_PATTERNS[key]
@@ -62,7 +62,7 @@ function extractSymbols(filePath: string, content: string): CodeSymbol[] {
   for (const { kind, re } of patterns) {
     re.lastIndex = 0
     let m: RegExpExecArray | null
-    while ((m = re.exec(content)) && symbols.length < MAX_SYMBOLS_PER_FILE) {
+    while ((m = re.exec(content)) && symbols.length < cap) {
       const name = m[1]
       if (!name || name.length < 2 || seen.has(name)) continue
       seen.add(name)
@@ -109,4 +109,19 @@ export function generateCodeMap(workspace: string): CodeMap {
   symbolCount = 0
   const tree = buildTree(workspace, workspace, 0)
   return { ok: true, tree, fileCount, symbolCount }
+}
+
+// One file's symbols, in line order — the editor's Outline pane. Same regex
+// extraction as the map (real declarations, no model), higher cap.
+export function fileSymbols(workspace: string, rel: string): { ok: boolean; symbols?: CodeSymbol[]; error?: string } {
+  try {
+    const ws = resolve(workspace)
+    const abs = join(ws, rel)
+    if (!abs.startsWith(ws)) return { ok: false, error: 'path escapes the workspace' }
+    if (!existsSync(abs)) return { ok: false, error: 'not found' }
+    const symbols = extractSymbols(abs, readFileSync(abs, 'utf-8'), 200).sort((a, b) => a.line - b.line)
+    return { ok: true, symbols }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }

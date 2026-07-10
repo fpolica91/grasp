@@ -402,6 +402,9 @@ export interface GraspApi {
   readFile(workspace: string, rel: string): Promise<{ ok: boolean; content?: string; error?: string }>
   writeFile(workspace: string, rel: string, content: string): Promise<{ ok: boolean; error?: string }>
   fileDiff(workspace: string, rel: string): Promise<{ ok: boolean; old: string; new: string; error?: string }>
+  searchText(workspace: string, query: string): Promise<{ ok: boolean; hits?: { file: string; line: number; text: string }[]; truncated?: boolean; error?: string }>
+  changedLines(workspace: string, rel: string): Promise<{ ok: boolean; marks?: { line: number; kind: 'added' | 'changed' | 'removed' }[]; error?: string }>
+  fileSymbols(workspace: string, rel: string): Promise<{ ok: boolean; symbols?: CodeSymbol[]; error?: string }>
   gitGraph(workspace: string): Promise<GitGraph>
   gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
   wikiRead(workspace: string): Promise<RepoWiki>

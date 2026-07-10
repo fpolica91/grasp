@@ -22,6 +22,7 @@ import { GitGraphPane } from './components/GitGraph'
 import { WikiPane } from './components/Wiki'
 import { CodemapPane } from './components/Codemap'
 import { FlowWalk, walkAnchorsOf, type WalkAnchor } from './components/FlowWalk'
+import { QuickOpen } from './components/QuickOpen'
 import type { AgentEvent, BackendInfo, FlowStatus, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
 import type { ThoughtLevel } from '../../shared/catalog'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
@@ -241,7 +242,8 @@ export function App(): React.JSX.Element {
       'toggle-terminal': () => (persona === 'editor' ? toggleEdTerm() : toggleBottom()),
       'toggle-sidebar': () => setSidebarOpen((s) => !s),
       'toggle-side-pane': () => (persona === 'editor' ? toggleEdDock() : toggleRight()),
-      'editor-persona': togglePersona
+      'editor-persona': togglePersona,
+      'quick-open': () => setShowQuickOpen(true)
     }
     const onKey = (e: KeyboardEvent): void => {
       for (const [action, chord] of Object.entries(keybinds)) {
@@ -282,6 +284,7 @@ export function App(): React.JSX.Element {
   const [showRemote, setShowRemote] = useState(false)
   const [remote, setRemote] = useState<{ host: string; user: string; cwd: string } | null>(null)
   const [showPalette, setShowPalette] = useState(false)
+  const [showQuickOpen, setShowQuickOpen] = useState(false)
   // Esc stops a running agent (the standard escape hatch) — only when no overlay is open, so
   // it never fights the palette/settings/workflow modal. Separate from the keybinds effect so
   // it can reference these overlay states (declared just above) cleanly.
@@ -302,6 +305,7 @@ export function App(): React.JSX.Element {
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const history = useRef<unknown[]>([])
   const taskRef = useRef<{ phases: string[] } | null>(null) // the Task loop pipeline (verify → review)
+  const editPaths = useRef(new Map<string, string>()) // tool_use id → edited path (auto-reload)
   const wfCancelRef = useRef(false)
   useEffect(() => {
     if (workspace) {
@@ -600,10 +604,19 @@ export function App(): React.JSX.Element {
         })
       else if (e.type === 'text_end')
         setTranscript((t) => (t.some((it) => it.streaming) ? t.map((it) => (it.streaming ? { ...it, streaming: false } : it)) : t))
-      else if (e.type === 'tool_use')
+      else if (e.type === 'tool_use') {
+        // Remember which file an edit tool touches; on its result, tell open buffers.
+        const p = (e.input as { path?: unknown } | undefined)?.path
+        if ((e.name === 'write_file' || e.name === 'edit_file' || e.name === 'notebook_edit') && typeof p === 'string') editPaths.current.set(e.id, p)
         setTranscript((t) => [...t, { id: e.id, role: 'tool', name: e.name, input: e.input, status: 'running', parent: e.parent }])
-      else if (e.type === 'tool_result')
+      } else if (e.type === 'tool_result') {
+        const edited = editPaths.current.get(e.id)
+        if (edited) {
+          editPaths.current.delete(e.id)
+          window.dispatchEvent(new CustomEvent('grasp:file-changed', { detail: { file: edited } }))
+        }
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, output: e.output, status: 'done' } : it)))
+      }
       else if (e.type === 'trajectory_call') setCalls((cs) => [...cs, e.call])
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
@@ -867,6 +880,7 @@ export function App(): React.JSX.Element {
             { id: 'view-sidebar', group: 'View', label: 'Toggle sidebar', hint: '⌘B', run: () => setSidebarOpen((s) => !s) },
             { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
             { id: 'switch-persona', group: 'View', label: 'Switch persona — Agent ⇄ Editor', hint: '⌘G', run: togglePersona },
+            { id: 'quick-open', group: 'View', label: 'Go to file…', hint: '⌘P', run: () => setShowQuickOpen(true) },
             ...skills.filter((s) => s.enabled).map(
               (s): Command => ({
                 id: 'skill-' + s.name,
@@ -893,6 +907,16 @@ export function App(): React.JSX.Element {
               (s): Command => ({ id: 'sess-' + s.id, group: 'Session', label: s.title, run: () => loadSession(s.id) })
             )
           ]}
+        />
+      )}
+      {showQuickOpen && (
+        <QuickOpen
+          workspace={workspace}
+          onClose={() => setShowQuickOpen(false)}
+          onPick={(f) => {
+            setShowQuickOpen(false)
+            openSource(f, null)
+          }}
         />
       )}
 

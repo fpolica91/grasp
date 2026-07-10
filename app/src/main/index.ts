@@ -21,7 +21,7 @@ import { oneShot } from './oneshot'
 import { gitGraph, gitAction, gitDiff } from './git'
 import { readWiki, generateWiki } from './wiki'
 import { loadHooks } from './hooks'
-import { generateCodeMap } from './codemap'
+import { generateCodeMap, fileSymbols } from './codemap'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent, steerAgent } from './agent'
 import { hasKey, setKey } from './vault'
@@ -38,7 +38,7 @@ import { listCommands } from './commands'
 import { loadKeybindings } from './keybinds'
 import { detectApps, launchApp } from './launcher'
 import { createTerminal, writeTerminal, resizeTerminal, killTerminal } from './terminal'
-import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff } from './files'
+import { listTree, readWorkspaceFile, writeWorkspaceFile, fileDiff, searchWorkspace, changedLines } from './files'
 import type { AgentTurn, ChatMessage, FuzzParams, ObserveParams, SessionRecord, WorkflowRecord } from '../shared/types'
 
 function createWindow(): void {
@@ -183,6 +183,9 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:readFile', (_e, workspace: string, rel: string) => readWorkspaceFile(workspace, rel))
   ipcMain.handle('grasp:writeFile', (_e, workspace: string, rel: string, content: string) => writeWorkspaceFile(workspace, rel, content))
   ipcMain.handle('grasp:fileDiff', (_e, workspace: string, rel: string) => fileDiff(workspace, rel))
+  ipcMain.handle('grasp:searchText', (_e, workspace: string, query: string) => searchWorkspace(workspace, query))
+  ipcMain.handle('grasp:changedLines', (_e, workspace: string, rel: string) => changedLines(workspace, rel))
+  ipcMain.handle('grasp:fileSymbols', (_e, workspace: string, rel: string) => fileSymbols(workspace, rel))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
