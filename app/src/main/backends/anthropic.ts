@@ -26,6 +26,7 @@ import { requestApproval } from '../approvals'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
+import { preToolUseGate, fireHooks, summarizeHookOutputs } from '../hooks'
 
 
 type AnyBlock = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown>; [k: string]: unknown }
@@ -284,6 +285,14 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         const tool = tools.find((t) => t.name === tu.name)
         emit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
         let output = ''
+        // Lifecycle hook: PreToolUse — a hook may BLOCK the tool (deny).
+        const gate = tu.name ? preToolUseGate(workspace, tu.name, tu.input ?? {}) : { blocked: false, reason: '' }
+        if (gate.blocked) {
+          output = `blocked by hook: ${gate.reason}`
+          emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
+          continue
+        }
         const isMcpTool = !TOOLS.find((t) => t.name === tu.name) && !!tools.find((t) => t.name === tu.name)
         if (turn.mode === 'ask' && tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool)) {
           const ok = await requestApproval(emit, tu.name, tu.input ?? {})
@@ -301,6 +310,9 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         }
         emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
+        // Lifecycle hook: PostToolUse — surface output (e.g. a linter run).
+        const postOut = summarizeHookOutputs(fireHooks({ workspace, event: 'PostToolUse', tool: tu.name, input: tu.input }))
+        if (postOut) emit({ type: 'hook', event: 'PostToolUse', tool: tu.name, output: postOut })
       }
 
       const mutatedNow = toolUses.some((t) => t.name && EDIT_TOOLS.has(t.name))

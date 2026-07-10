@@ -18,6 +18,9 @@ export interface ElicitOption {
   description?: string
 }
 
+// Flow status — the phase a task is in (the end-to-end loop spine).
+export type FlowStatus = 'idle' | 'planning' | 'awaiting-approval' | 'executing' | 'done' | 'failed'
+
 // Git Graph: the commit history shown in the right pane.
 export interface GitCommit {
   hash: string
@@ -256,6 +259,7 @@ export type AgentEvent =
   | { type: 'fuzz_diff'; fuzz: FuzzDiff }
   | { type: 'intro'; intro: IntroDoc }
   | { type: 'plan'; text: string }
+  | { type: 'hook'; event: string; tool?: string; output: string }
   | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
   | { type: 'elicitation_request'; id: string; header?: string; question: string; options: ElicitOption[]; multiSelect?: boolean; source?: string }
   | { type: 'usage'; input: number; output: number }
@@ -395,6 +399,10 @@ export interface GraspApi {
   gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
   wikiRead(workspace: string): Promise<RepoWiki>
   wikiGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
+  hooks(workspace: string): Promise<{ event: string; match?: string; command: string; timeout?: number }[]>
+  codemapRead(workspace: string): Promise<RepoWiki>
+  codemapGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
+  gitDiff(workspace: string): Promise<{ ok: boolean; diff?: string; error?: string }>
 }
 
 export interface TreeNode {

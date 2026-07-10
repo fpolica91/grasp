@@ -71,8 +71,12 @@ const api: GraspApi = {
   fileDiff: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileDiff', workspace, rel),
   gitGraph: (workspace: string) => ipcRenderer.invoke('grasp:gitGraph', workspace),
   gitAction: (workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string) => ipcRenderer.invoke('grasp:gitAction', workspace, op, arg),
+  gitDiff: (workspace: string) => ipcRenderer.invoke('grasp:gitDiff', workspace),
   wikiRead: (workspace: string) => ipcRenderer.invoke('grasp:wikiRead', workspace),
-  wikiGenerate: (workspace: string, backend: string, model?: string) => ipcRenderer.invoke('grasp:wikiGenerate', workspace, backend, model)
+  wikiGenerate: (workspace: string, backend: string, model?: string) => ipcRenderer.invoke('grasp:wikiGenerate', workspace, backend, model),
+  hooks: (workspace: string) => ipcRenderer.invoke('grasp:hooks', workspace),
+  codemapRead: (workspace: string) => ipcRenderer.invoke('grasp:codemapRead', workspace),
+  codemapGenerate: (workspace: string, backend: string, model?: string) => ipcRenderer.invoke('grasp:codemapGenerate', workspace, backend, model)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

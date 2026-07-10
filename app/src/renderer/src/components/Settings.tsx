@@ -27,7 +27,8 @@ const SECTIONS = [
   { id: 'marketplace', label: 'Marketplace' }, { id: 'keys', label: 'API keys' },
   { id: 'appearance', label: 'Appearance' }, { id: 'skills', label: 'Skills' },
   { id: 'mcp', label: 'MCP servers' }, { id: 'plugins', label: 'Plugins' },
-  { id: 'commands', label: 'Commands' }, { id: 'keybindings', label: 'Keybindings' }
+  { id: 'commands', label: 'Commands' }, { id: 'keybindings', label: 'Keybindings' },
+  { id: 'hooks', label: 'Hooks' }
 ] as const
 type Section = (typeof SECTIONS)[number]['id']
 
@@ -84,6 +85,8 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
   const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])
   const [pluginUrl, setPluginUrl] = useState(''); const [pluginMsg, setPluginMsg] = useState('')
   useEffect(() => { if (section === 'mcp' && props.workspace) void window.grasp.mcpStatus(props.workspace).then(setMcpStatusList) }, [section, props.workspace, props.mcpServers])
+  const [hooksList, setHooksList] = useState<{ event: string; match?: string; command: string; timeout?: number }[]>([])
+  useEffect(() => { if (section === 'hooks' && props.workspace) void window.grasp.hooks(props.workspace).then(setHooksList) }, [section, props.workspace])
 
   const revealBtn = (key: string): React.JSX.Element => (
     <button className="ml-2 border-0 bg-transparent text-[11px] text-foreground-subtlest underline underline-offset-2 transition-colors hover:text-foreground" onClick={() => void window.grasp.revealInFiles(key)}>reveal in files</button>
@@ -279,6 +282,27 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                     </Card>
                   ))}
                 </div>
+              </div>
+            )}
+            {/* Hooks */}
+            {section === 'hooks' && (
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Hooks</div>
+                {note(<>Run shell commands at lifecycle events. Edit <code className={codeCls}>~/.grasp/hooks.json</code> or <code className={codeCls}>.grasp/hooks.json</code> in the project. Events: <code className={codeCls}>UserPromptSubmit</code>, <code className={codeCls}>PreToolUse</code> (may deny a tool), <code className={codeCls}>PostToolUse</code>, <code className={codeCls}>Stop</code>. Each command receives a JSON context on stdin.</>)}
+                {hooksList.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No hooks configured.</div> : (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {hooksList.map((h, i) => (
+                      <Card key={i}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold text-foreground">{h.event}</span>
+                          {h.match && <span className="rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{h.match}</span>}
+                          {h.timeout != null && <span className="ml-auto rounded-full bg-tag px-1.5 text-[10px] text-foreground-subtlest">{h.timeout}s</span>}
+                        </div>
+                        <div className="truncate text-[12.5px] text-foreground-subtlest font-mono">{h.command}</div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

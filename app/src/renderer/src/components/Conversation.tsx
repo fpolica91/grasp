@@ -7,12 +7,12 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js/lib/common'
 import { EditorIcon } from './editor-icons'
-import type { BackendInfo, SlashCommand } from '../../../shared/types'
+import type { BackendInfo, SlashCommand, FlowStatus } from '../../../shared/types'
 import { THOUGHT_LABEL, hasReasoning, lookupModel, type ThoughtLevel } from '../../../shared/catalog'
 
 export interface TranscriptItem {
   id?: string
-  role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval' | 'elicitation'
+  role: 'user' | 'assistant' | 'tool' | 'plan' | 'approval' | 'elicitation' | 'hook'
   text?: string
   thinking?: string
   thinkingMs?: number
@@ -28,6 +28,7 @@ export interface TranscriptItem {
   elicit?: { id: string; header?: string; question: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
   elicitAnswer?: string | null
   histLen?: number // backend-history length captured when this user turn was sent (for Fork)
+  hook?: { event: string; tool?: string; output: string } // a lifecycle-hook output line
 }
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
@@ -396,7 +397,9 @@ export function Conversation(props: {
   budget: string
   onBudget: (v: string) => void
   onCompact?: () => void
+  onCheck?: () => void
   onForkUser?: (index: number) => void
+  flowStatus?: FlowStatus
   onBackend: (id: string) => void
   onModel: (m: string) => void
   thoughtLevel?: ThoughtLevel
@@ -533,6 +536,16 @@ export function Conversation(props: {
 
   const renderItem = (it: TranscriptItem, i: number, isLast = false): React.JSX.Element => {
     if (it.role === 'plan') return <PlanCard key={i} text={it.text ?? ''} latest={isLast} busy={props.busy} onApprove={props.onApprovePlan} />
+    if (it.role === 'hook') {
+      const h = it.hook
+      return (
+        <div key={i} className="flex w-full justify-center">
+          <span className="max-w-full truncate rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-foreground-subtle" title={h?.output}>
+            <span className="text-foreground-subtlest">hook {h?.event}{h?.tool ? ` · ${h.tool}` : ''}:</span> {h?.output}
+          </span>
+        </div>
+      )
+    }
     if (it.role === 'approval') return <ApprovalCard key={it.id ?? i} it={it} onDecide={props.onDecideApproval} />
     if (it.role === 'elicitation') return <ElicitationCard key={it.elicit?.id ?? i} it={it} onDecide={props.onDecideElicitation} />
     if (it.role === 'tool') {
@@ -658,6 +671,24 @@ export function Conversation(props: {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 9h4V4M20 9h-4V4M4 15h4v5M20 15h-4v5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
+        {props.onCheck && (
+          <button type="button" onClick={props.onCheck} disabled={props.busy} className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Lifeguard — check uncommitted changes for concerns">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3l8 3v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-3z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        )}
+        {(() => {
+          const fs = props.flowStatus
+          if (!fs || fs === 'idle') return null
+          const map: Record<string, { label: string; cls: string }> = {
+            planning: { label: 'Planning', cls: 'bg-warning/20 text-warning' },
+            'awaiting-approval': { label: 'Review plan', cls: 'bg-accent-blue/20 text-foreground animate-pulse' },
+            executing: { label: 'Executing', cls: 'bg-success/20 text-success animate-pulse' },
+            done: { label: 'Done', cls: 'bg-tag text-foreground-subtle' },
+            failed: { label: 'Failed', cls: 'bg-destructive/20 text-destructive' }
+          }
+          const m = map[fs] ?? { label: fs, cls: 'bg-tag text-foreground-subtle' }
+          return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`} title={`Flow: ${fs}`}>{m.label}</span>
+        })()}
         <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
           <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
           <span className="min-w-0 truncate">{activeLabel} · {props.model}</span>

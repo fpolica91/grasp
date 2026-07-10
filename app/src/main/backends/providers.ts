@@ -18,7 +18,7 @@ interface ProviderCfg {
   keyEnvNote: string
 }
 
-const PROVIDERS: ProviderCfg[] = [
+export const PROVIDERS: ProviderCfg[] = [
   {
     id: 'moonshot',
     label: 'Moonshot',

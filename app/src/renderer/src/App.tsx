@@ -20,7 +20,8 @@ import { BrowserPane } from './components/Browser'
 import { TrajectoryInspector } from './components/TrajectoryInspector'
 import { GitGraphPane } from './components/GitGraph'
 import { WikiPane } from './components/Wiki'
-import type { AgentEvent, BackendInfo, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
+import { CodemapPane } from './components/Codemap'
+import type { AgentEvent, BackendInfo, FlowStatus, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
 import type { ThoughtLevel } from '../../shared/catalog'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
 
@@ -40,6 +41,7 @@ export function App(): React.JSX.Element {
   const [surface, setSurface] = useState<Surface | null>(null)
   const [traces, setTraces] = useState<TraceDoc[]>([])
   const [busy, setBusy] = useState(false)
+  const [flowStatus, setFlowStatus] = useState<FlowStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [keyReady, setKeyReady] = useState<boolean | null>(null)
   const [varying, setVarying] = useState(false)
@@ -76,7 +78,7 @@ export function App(): React.JSX.Element {
     if (l) localStorage.setItem('grasp-thought', l)
     else localStorage.removeItem('grasp-thought')
   }
-  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'>('flow')
+  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -110,7 +112,7 @@ export function App(): React.JSX.Element {
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
-  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'): void => {
+  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'): void => {
     const p = rightRef.current
     if (!p) return
     if (!p.isCollapsed() && rightTab === tab) p.collapse()
@@ -539,20 +541,23 @@ export function App(): React.JSX.Element {
       else if (e.type === 'trace_diff') { setSurface({ kind: 'tracediff', diff: e.diff }); setRightTab('flow') }
       else if (e.type === 'fuzz_diff') { setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz }); setRightTab('flow') }
       else if (e.type === 'intro') { setSurface({ kind: 'intro', intro: e.intro }); setRightTab('flow') }
-      else if (e.type === 'plan') setTranscript((t) => [...t, { role: 'plan', text: e.text }])
+      else if (e.type === 'plan') { setTranscript((t) => [...t, { role: 'plan', text: e.text }]); setFlowStatus('awaiting-approval') }
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
       else if (e.type === 'elicitation_request')
         setTranscript((t) => [...t, { role: 'elicitation', elicit: { id: e.id, header: e.header, question: e.question, options: e.options, multiSelect: e.multiSelect } }])
       else if (e.type === 'usage') setTokens((n) => n + e.input + e.output)
+      else if (e.type === 'hook') setTranscript((t) => [...t, { role: 'hook', hook: { event: e.event, tool: e.tool, output: e.output } }])
       else if (e.type === 'done') {
         setBusy(false)
+        setFlowStatus('done')
         setTranscript((t) => t.map((it) => (it.streaming ? { ...it, streaming: false } : it)))
         if (e.note) setTranscript((t) => [...t, { role: 'assistant', text: `_${e.note}_` }])
       }
       else if (e.type === 'error') {
         setError(e.error)
         setBusy(false)
+        setFlowStatus('failed')
         setTranscript((t) => t.map((it) => (it.streaming ? { ...it, streaming: false } : it)))
       }
     })
@@ -562,6 +567,7 @@ export function App(): React.JSX.Element {
     if (busy) return
     setError(null)
     setBusy(true)
+    setFlowStatus((modeOverride ?? agentMode) === 'plan' ? 'planning' : 'executing')
     setTranscript((t) => [...t, { role: 'user', text: prompt, histLen: history.current.length }])
     const b = parseInt(budget, 10)
     const res = await window.grasp.agent({
@@ -602,6 +608,21 @@ export function App(): React.JSX.Element {
     setTokens(0)
   }
 
+  // Lifeguard: on-demand "check changes" — diff vs HEAD, then a one-shot review that
+  // surfaces factual concerns as neutral questions (no verdicts — on-thesis).
+  async function checkChanges(): Promise<void> {
+    if (busy) return
+    const d = await window.grasp.gitDiff(workspace)
+    if (!d.ok) { setError(d.error ?? 'git diff failed'); return }
+    if (!d.diff) { setError('No uncommitted changes to check.'); return }
+    setBusy(true)
+    const sys = "You review a code diff for a coding agent (Lifeguard). Surface ONLY factual, observable concerns a reader should verify — as neutral questions, each ending in '?'. Example: 'the loop now skips index 0 — intended?'. Do NOT use verdict words (bug/risk/safe/pass/broken/fail). If nothing is worth asking about, reply exactly 'No concerns surfaced.' No preamble — just the bulleted questions."
+    const res = await window.grasp.oneShot({ backend, model, system: sys, user: d.diff, maxTokens: 1024 })
+    setBusy(false)
+    if (!res.ok || !res.text) { setError(res.error ?? 'check failed'); return }
+    setTranscript((t) => [...t, { role: 'assistant', text: `**Lifeguard — change check**\n\n${res.text}` }])
+  }
+
   // Fork: branch the conversation at a user message — a new session carrying the context
   // up to that prompt (the turn's pre-history) and the transcript through it. The current
   // session is preserved by the autosave effect; this just spins a fresh id for the branch.
@@ -629,6 +650,7 @@ export function App(): React.JSX.Element {
   // Approving a plan executes it as a normal (build) turn — the plan text becomes the brief.
   function approvePlan(text: string): void {
     setAgentMode('auto')
+    setFlowStatus('executing')
     void send(`Execute this approved plan exactly as written. Do not re-plan.\n\n${text}`, 'auto')
   }
 
@@ -639,6 +661,7 @@ export function App(): React.JSX.Element {
     setCalls([])
     setSurface(null)
     setError(null)
+    setFlowStatus('idle')
   }
 
   function switchProject(path: string): void {
@@ -778,10 +801,12 @@ export function App(): React.JSX.Element {
                 backend={backend}
                 model={model}
                 mode={agentMode}
+                flowStatus={flowStatus}
                 tokens={tokens}
                 budget={budget}
                 onBudget={setBudget}
                 onCompact={compactConversation}
+                onCheck={checkChanges}
                 onForkUser={forkFromUser}
                 onBackend={pickBackend}
                 onModel={setModel}
@@ -840,6 +865,7 @@ export function App(): React.JSX.Element {
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'git' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('git')}>Git</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'wiki' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('wiki')}>Wiki</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'codemap' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('codemap')}>Codemap</button>
                 {surface && (
                   <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground-subtlest">
                     <span className="size-1.5 animate-pulse rounded-full bg-foreground" />
@@ -860,6 +886,9 @@ export function App(): React.JSX.Element {
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'wiki' ? 'visible' : 'hidden'}`}>
                   <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
+                </div>
+                <div className={`absolute inset-0 ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
+                  <CodemapPane workspace={workspace} backend={backend} model={model} active={rightTab === 'codemap'} />
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />

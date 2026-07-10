@@ -73,3 +73,12 @@ export function gitAction(
     default: return { ok: false, out: `unknown action: ${op}` }
   }
 }
+
+/** Working-tree diff vs HEAD (staged + unstaged), capped for a model review. Empty string = clean tree. */
+export function gitDiff(workspace: string): { ok: boolean; diff?: string; error?: string } {
+  if (!workspace || !existsSync(join(workspace, '.git'))) return { ok: false, error: 'not a git repo' }
+  const r = git(workspace, 'diff', 'HEAD', '--no-color')
+  if (r.code !== 0) return { ok: false, error: r.out.slice(0, 200) || 'git diff failed' }
+  const diff = r.out.trim()
+  return { ok: true, diff: diff.slice(0, 12000) }
+}

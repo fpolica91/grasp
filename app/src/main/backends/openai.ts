@@ -21,6 +21,7 @@ import { requestApproval } from '../approvals'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
+import { preToolUseGate, fireHooks, summarizeHookOutputs } from '../hooks'
 
 const BASE = process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1'
 const MODELS = (process.env.GRASP_OPENAI_MODELS ?? 'gpt-5.2,gpt-5.1,gpt-4.1').split(',').map((s) => s.trim()).filter(Boolean)
@@ -228,6 +229,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         const ok = await requestApproval(emit, name, input)
         if (!ok) output = 'skipped — you denied this action.'
       }
+      // Lifecycle hook: PreToolUse — final pre-execution authority; may BLOCK the tool.
+      const gate = preToolUseGate(workspace, name, input)
+      if (gate.blocked) output = `blocked by hook: ${gate.reason}`
       if (!output) {
         try {
           output = tool ? await tool.run(input, { workspace, emit, toolId: tc.id, subagent }) : `unknown tool: ${name}`
@@ -236,6 +240,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         }
       }
       emit({ type: 'tool_result', id: tc.id, name, summary: output.split('\n')[0].slice(0, 120), output: output.slice(0, 6000) })
+      // Lifecycle hook: PostToolUse — surface output (e.g. a linter run).
+      const postOut = summarizeHookOutputs(fireHooks({ workspace, event: 'PostToolUse', tool: name, input }))
+      if (postOut) emit({ type: 'hook', event: 'PostToolUse', tool: name, output: postOut })
       messages.push({ role: 'tool', tool_call_id: tc.id, content: output })
       if (EDIT_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
       if (name === 'grasp_fuzz_diff' || name === 'grasp_flow_diff') diffed = true

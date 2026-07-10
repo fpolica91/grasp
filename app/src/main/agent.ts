@@ -11,6 +11,7 @@ import { providerBackends } from './backends/providers'
 import { checkpointWorkspace } from './checkpoint'
 import type { AgentBackend, Emit } from './backends/types'
 import type { ThoughtLevel } from '../shared/catalog'
+import { fireHooks, summarizeHookOutputs } from './hooks'
 
 const BACKENDS: AgentBackend[] = [glmBackend, claudeBackend, claudeCodeBackend, openaiBackend, ...providerBackends]
 
@@ -79,6 +80,9 @@ export async function runAgent(
   steerQueue.length = 0 // fresh steer queue per turn
 
   let result: { messages: unknown[] }
+  // Lifecycle hook: UserPromptSubmit fires before the turn runs (output surfaced in chat).
+  const pre = summarizeHookOutputs(fireHooks({ workspace, event: 'UserPromptSubmit', prompt: params.prompt }))
+  if (pre) emit({ type: 'hook', event: 'UserPromptSubmit', output: pre })
   try {
     result = await backend.run(
       {
@@ -101,5 +105,8 @@ export async function runAgent(
   }
 
   if (params.mode !== 'plan') checkpointWorkspace(workspace, params.prompt.slice(0, 60))
+  // Lifecycle hook: Stop fires after the turn settles.
+  const post = summarizeHookOutputs(fireHooks({ workspace, event: 'Stop' }))
+  if (post) emit({ type: 'hook', event: 'Stop', output: post })
   return result
 }

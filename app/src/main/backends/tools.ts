@@ -3,7 +3,7 @@
 // they run code FOR REAL and surface observed dataflow into the UI. Claude Code
 // brings its own tools, so it does not use this registry (but shares liveSurface).
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, unlinkSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, readdirSync, mkdirSync, unlinkSync, rmSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { validateTrace, validateObservation, diffTraces, buildFuzzDiff, validateClaim, validateAxes, type TraceDoc, type FuzzCase, type FuzzClaim, type FuzzAxes } from '../../shared/trace'
 import { listSkills, readSkill, skillsListing } from '../skills'
@@ -14,6 +14,8 @@ import { McpRegistry } from './mcp'
 import { sshExec } from '../ssh'
 import { remoteStatus, remoteExec, remoteReadFile, remoteWriteFile } from '../remote'
 import { parse as parseYaml } from 'yaml'
+import { fetchText, searchWeb } from '../web'
+import { sandboxEnabled, sandboxAvailable, sandboxNetwork, writeProfile } from '../sandbox'
 import { validateModel, checkModel, type BehaviorModel, type CaseRun } from '../../shared/model'
 
 // When a remote SSH session is active, the agent's file/shell tools route over it —
@@ -495,12 +497,24 @@ export const TOOLS: Tool[] = [
           cap(r.stdout + (r.stderr ? `\n${r.stderr}` : '')) + `\n[exit ${r.code}]`)
       }
       return new Promise((res) => {
-        const cp = spawn('bash', ['-lc', String(input.command ?? '')], { cwd: workspace, env: cleanEnv() })
+        // OS sandbox: when enabled, wrap in macOS seatbelt (fail-closed if unavailable).
+        const sb = sandboxEnabled()
+        let argv: string[]
+        let profile: string | null = null
+        if (sb) {
+          if (!sandboxAvailable()) { res('error: GRASP_SANDBOX=1 set but sandbox-exec is unavailable here — refusing to run unsandboxed (fail-closed). Set GRASP_SANDBOX=0 or run on macOS.'); return }
+          profile = writeProfile(workspace || '.', sandboxNetwork())
+          argv = ['sandbox-exec', '-f', profile, '--', 'bash', '-lc', String(input.command ?? '')]
+        } else {
+          argv = ['bash', '-lc', String(input.command ?? '')]
+        }
+        const cp = spawn(argv[0], argv.slice(1), { cwd: workspace || undefined, env: cleanEnv() })
         let out = ''
+        const cleanup = (): void => { if (profile) { try { rmSync(profile) } catch { /* ignore */ } } }
         cp.stdout.on('data', (d) => (out += d))
         cp.stderr.on('data', (d) => (out += d))
-        cp.on('error', (e) => res(`error: ${e.message}`))
-        cp.on('close', (code) => res(cap(out) + `\n[exit ${code}]`))
+        cp.on('error', (e) => { cleanup(); res(`error: ${e.message}`) })
+        cp.on('close', (code) => { cleanup(); res(cap(out) + `\n[exit ${code}]`) })
       })
     }
   },
@@ -589,6 +603,14 @@ export const TOOLS: Tool[] = [
       if (bad) return `trace rejected: ${bad}. Fix the Trace v1 shape (see the trace-flow skill).`
       const badObs = validateObservation(oldT as TraceDoc) || validateObservation(newT as TraceDoc)
       if (badObs) return `trace rejected: ${badObs}`
+      // moat invariant #5 (no phantom change): a diff against a side that could not be
+      // observed is never rendered — mirror the fuzz path, which drops these for the same reason.
+      const oldDoc = oldT as TraceDoc
+      const newDoc = newT as TraceDoc
+      if (oldDoc.status === 'unobservable' || newDoc.status === 'unobservable') {
+        const side = oldDoc.status === 'unobservable' ? 'old' : 'new'
+        return `The ${side} side of this A→B diff could not be observed (unobservable). grasp never renders a diff against an unobservable side — surface the observable side with grasp_flow, or observe both the old and new refs with the same input and resubmit.`
+      }
       const diff = diffTraces(oldT as TraceDoc, newT as TraceDoc)
       emit({ type: 'trace_diff', diff })
       if (diff.empty) return `no behavioral change surfaced for ${diff.entry} on this input.`

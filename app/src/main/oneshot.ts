@@ -3,22 +3,27 @@
 // composer text). Reuses the active backend's wire + key so it works with whatever the
 // user has configured. Deliberately tiny — no tools, no streaming, no trajectory.
 import { getKey } from './vault'
+import { PROVIDERS } from './backends/providers'
 
 type Wire = 'anthropic' | 'openai'
 interface BackendCfg {
   wire: Wire
   base: string
-  key: 'glm' | 'anthropic' | 'openai'
+  key: string
   defaultModel: string
 }
 
 function cfgFor(backend: string): BackendCfg {
+  // Layer B providers: anthropic wire, per-provider base + vault key (the provider id).
+  const p = PROVIDERS.find((x) => x.id === backend)
+  if (p) return { wire: 'anthropic', base: p.base, key: p.id, defaultModel: p.defaultModel }
   switch (backend) {
     case 'openai':
       return { wire: 'openai', base: process.env.GRASP_OPENAI_BASE ?? 'https://api.openai.com/v1', key: 'openai', defaultModel: 'gpt-5.2' }
     case 'claude':
+    case 'claude-code': // the CLI backend — route one-shot calls to the Claude API
       return { wire: 'anthropic', base: 'https://api.anthropic.com', key: 'anthropic', defaultModel: 'claude-haiku-4-5-20251001' }
-    default:
+    default: // glm
       return { wire: 'anthropic', base: process.env.GRASP_MODEL_BASE ?? 'https://api.z.ai/api/anthropic', key: 'glm', defaultModel: 'glm-4.6' }
   }
 }
