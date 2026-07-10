@@ -34,6 +34,26 @@ type Surface =
   | { kind: 'fuzzdiff'; fuzz: FuzzDiff }
   | { kind: 'intro'; intro: IntroDoc }
 
+// The persona pill — grasp's two identities in one segmented control (Devin-style).
+// Agent: the conversation-first shell. Editor: the full-window editor workspace.
+function PersonaPill({ persona, onSwitch }: { persona: 'agent' | 'editor'; onSwitch: (p: 'agent' | 'editor') => void }): React.JSX.Element {
+  const seg = (id: 'agent' | 'editor', label: string): React.JSX.Element => (
+    <button
+      key={id}
+      className={`rounded-md px-2.5 py-0.5 text-[12px] font-medium transition-colors ${persona === id ? 'bg-background text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`}
+      onClick={() => onSwitch(id)}
+    >
+      {label}
+    </button>
+  )
+  return (
+    <span className="flex items-center rounded-lg bg-tag p-0.5" title="Switch persona (⌘G)">
+      {seg('agent', 'Agent')}
+      {seg('editor', 'Editor')}
+    </span>
+  )
+}
+
 export function App(): React.JSX.Element {
   const [workspace, setWorkspace] = useState('')
   const [transcript, setTranscript] = useState<TranscriptItem[]>([])
@@ -80,7 +100,7 @@ export function App(): React.JSX.Element {
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
-  const [editorMode, setEditorMode] = useState(() => localStorage.getItem('grasp-editor-mode') === 'on')
+  const [persona, setPersona] = useState<'agent' | 'editor'>(() => (localStorage.getItem('grasp-persona') === 'editor' ? 'editor' : 'agent'))
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(260)
@@ -133,16 +153,13 @@ export function App(): React.JSX.Element {
     if (!p) return
     p.isCollapsed() ? p.expand() : p.collapse()
   }
-  // Editor mode: swap the layout to editor-forward (editor large, chat as a side panel).
-  // Uses imperative panel resize — NO remount, NO state loss. Toggle persists in localStorage.
-  const toggleEditorMode = (): void => {
-    const next = !editorMode
-    setEditorMode(next)
-    localStorage.setItem('grasp-editor-mode', next ? 'on' : 'off')
-    if (next) setRightTab('editor')
-    conversationRef.current?.resize(next ? 32 : 54)
-    rightRef.current?.resize(next ? 68 : 46)
-  }
+  // Persona flip (Agent ⇄ Editor) — the inversion. Two full-window layouts, BOTH stay
+  // mounted (display toggle only): the conversation, terminals, and open editor tabs all
+  // survive a round trip. Persisted; ⌘G ('editor-persona' in keybindings) flips it.
+  const togglePersona = (): void => setPersona((p) => (p === 'agent' ? 'editor' : 'agent'))
+  useEffect(() => {
+    localStorage.setItem('grasp-persona', persona)
+  }, [persona])
   // When the agent surfaces a Flow/trace, flip the right pane to Flow AND expand it if the
   // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
   useEffect(() => {
@@ -177,7 +194,8 @@ export function App(): React.JSX.Element {
       'command-palette': () => setShowPalette((p) => !p),
       'toggle-terminal': toggleBottom,
       'toggle-sidebar': () => setSidebarOpen((s) => !s),
-      'toggle-side-pane': toggleRight
+      'toggle-side-pane': toggleRight,
+      'editor-persona': togglePersona
     }
     const onKey = (e: KeyboardEvent): void => {
       for (const [action, chord] of Object.entries(keybinds)) {
@@ -744,6 +762,7 @@ export function App(): React.JSX.Element {
             { id: 'view-terminal', group: 'View', label: 'Toggle terminal', hint: '⌃`', run: toggleBottom },
             { id: 'view-sidebar', group: 'View', label: 'Toggle sidebar', hint: '⌘B', run: () => setSidebarOpen((s) => !s) },
             { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
+            { id: 'switch-persona', group: 'View', label: 'Switch persona — Agent ⇄ Editor', hint: '⌘G', run: togglePersona },
             ...skills.filter((s) => s.enabled).map(
               (s): Command => ({
                 id: 'skill-' + s.name,
@@ -773,6 +792,9 @@ export function App(): React.JSX.Element {
         />
       )}
 
+      {/* AGENT persona — the whole current grasp shell, untouched. Hidden (never
+          unmounted) while the Editor persona is active, so everything survives. */}
+      <div className={`min-w-0 flex-1 ${persona === 'agent' ? 'flex' : 'hidden'}`}>
       {sidebarOpen && (
         <div className="flex shrink-0 flex-col h-full border-r border-border overflow-hidden" style={{ width: effectiveSidebarWidth }}>
           <Sidebar
@@ -813,7 +835,7 @@ export function App(): React.JSX.Element {
         <Panel defaultSize={72} minSize={30}>
           <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
             {/* chat */}
-            <Panel defaultSize={editorMode ? 32 : 54} minSize={20} ref={conversationRef} className="min-w-0">
+            <Panel defaultSize={54} minSize={20} ref={conversationRef} className="min-w-0">
               {remote && (
                 <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[12px]">
                   <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent-blue" />
@@ -884,7 +906,7 @@ export function App(): React.JSX.Element {
             {/* editor / flow / browser — the tall side pane */}
             <Panel
               ref={rightRef}
-              defaultSize={editorMode ? 68 : 46}
+              defaultSize={46}
               minSize={22}
               collapsible
               collapsedSize={0}
@@ -893,6 +915,9 @@ export function App(): React.JSX.Element {
               className="flex min-h-0 flex-col bg-panel"
             >
               <div className="flex shrink-0 items-center gap-0.5 border-b border-border bg-panel px-3 pt-1.5">
+                <span className="mb-1 mr-2 shrink-0">
+                  <PersonaPill persona={persona} onSwitch={setPersona} />
+                </span>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'editor' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('editor')}>Editor</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'flow' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('flow')}>Flow</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'trajectory' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('trajectory')}>Trajectory</button>
@@ -906,7 +931,6 @@ export function App(): React.JSX.Element {
                     live
                   </span>
                 )}
-                <button className={`border-0 bg-transparent px-1.5 py-0.5 text-[14px] transition-colors hover:text-foreground ${editorMode ? 'text-accent-blue' : 'text-foreground-subtlest'}`} onClick={toggleEditorMode} title="Editor mode — editor forward, chat alongside"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.7" /><path d="M9 4v16" stroke="currentColor" strokeWidth="1.7" /></svg></button>
                 <button className="ml-auto border-0 bg-transparent px-1.5 py-0.5 text-[14px] text-foreground-subtlest transition-colors hover:text-foreground" onClick={toggleRight} title="Close side pane (⌘\)">✕</button>
               </div>
               <div className="relative min-h-0 flex-1">
@@ -1067,6 +1091,24 @@ export function App(): React.JSX.Element {
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke="currentColor" strokeWidth="1.7" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.4" /></svg>
         </button>
+      </div>
+      </div>
+
+      {/* EDITOR persona — the inversion: a full-window editor workspace in the same
+          window. Its FilesPane is persona-owned; the flip is instant, nothing unmounts. */}
+      <div className={`min-w-0 flex-1 flex-col ${persona === 'editor' ? 'flex' : 'hidden'}`}>
+        <div className="flex h-10 shrink-0 items-center gap-3 border-b border-border bg-panel px-3" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
+          <span style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <PersonaPill persona={persona} onSwitch={setPersona} />
+          </span>
+          <span className="truncate font-mono text-[12px] text-foreground-subtle" title={workspace}>
+            {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
+          </span>
+          <span className="ml-auto font-mono text-[11px] text-foreground-subtlest" title="Switch persona">⌘G</span>
+        </div>
+        <div className="min-h-0 flex-1">
+          <FilesPane workspace={workspace} active={persona === 'editor'} />
+        </div>
       </div>
     </div>
   )
