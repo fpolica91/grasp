@@ -71,7 +71,7 @@ export function App(): React.JSX.Element {
   const [backends, setBackends] = useState<BackendInfo[]>([])
   const [backend, setBackend] = useState('glm')
   const [model, setModel] = useState('')
-  const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan'>('auto')
+  const [agentMode, setAgentMode] = useState<'auto' | 'ask' | 'plan' | 'task'>('auto')
   const [thoughtLevel, setThoughtLevelState] = useState<ThoughtLevel | undefined>(() => (localStorage.getItem('grasp-thought') as ThoughtLevel) || undefined)
   const setThoughtLevel = (l: ThoughtLevel | undefined): void => {
     setThoughtLevelState(l)
@@ -225,6 +225,7 @@ export function App(): React.JSX.Element {
   const [plugins, setPlugins] = useState<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>([])
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const history = useRef<unknown[]>([])
+  const taskRef = useRef<{ phases: string[] } | null>(null) // the Task loop pipeline (verify → review)
   const wfCancelRef = useRef(false)
   useEffect(() => {
     if (workspace) {
@@ -550,7 +551,7 @@ export function App(): React.JSX.Element {
       else if (e.type === 'hook') setTranscript((t) => [...t, { role: 'hook', hook: { event: e.event, tool: e.tool, output: e.output } }])
       else if (e.type === 'done') {
         setBusy(false)
-        setFlowStatus('done')
+        if (!taskRef.current) setFlowStatus('done') // during a Task, keep flowStatus so the pipeline advances
         setTranscript((t) => t.map((it) => (it.streaming ? { ...it, streaming: false } : it)))
         if (e.note) setTranscript((t) => [...t, { role: 'assistant', text: `_${e.note}_` }])
       }
@@ -567,17 +568,24 @@ export function App(): React.JSX.Element {
     if (busy) return
     setError(null)
     setBusy(true)
-    setFlowStatus((modeOverride ?? agentMode) === 'plan' ? 'planning' : 'executing')
-    setTranscript((t) => [...t, { role: 'user', text: prompt, histLen: history.current.length }])
+    const chosen = modeOverride ?? agentMode
+    const isTask = chosen === 'task'
+    if (isTask) taskRef.current = { phases: ['verify', 'review'] }
+    const turnMode: 'auto' | 'ask' | 'plan' = isTask ? 'plan' : chosen
+    const turnPrompt = isTask
+      ? `TASK OBJECTIVE: ${prompt}\n\nYou are running as a Task with a completion criterion. First, PRODUCE A CONCRETE PLAN: the implementation steps, AND the command that will VERIFY it works (tests / lint / typecheck). Define what "done" means. Do NOT implement yet — plan only.`
+      : prompt
+    setFlowStatus(turnMode === 'plan' ? 'planning' : 'executing')
+    setTranscript((t) => [...t, { role: 'user', text: isTask ? `📋 ${prompt}` : prompt, histLen: history.current.length }])
     const b = parseInt(budget, 10)
     const res = await window.grasp.agent({
       workspace,
-      prompt,
+      prompt: turnPrompt,
       history: history.current,
       backend,
       model,
       thoughtLevel,
-      mode: modeOverride ?? agentMode,
+      mode: turnMode,
       budget: Number.isFinite(b) && b > 0 ? b : undefined,
       flowAuto
     })
@@ -640,12 +648,26 @@ export function App(): React.JSX.Element {
 
   // Drain the queue when a turn goes idle — send one follow-up per idle transition.
   useEffect(() => {
-    if (busy) return
+    if (busy || taskRef.current) return // don't interleave with a Task pipeline
     let next: string | undefined
     setQueue((q) => { if (q.length) { next = q[0]; return q.slice(1) } return q })
     if (next !== undefined) void send(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy])
+
+  // The Task loop: after each EXECUTING turn (implement, then verify), advance the pipeline.
+  // verify = run the repo's tests + fix until green; review = Lifeguard check-changes.
+  const VERIFY_PROMPT = "VERIFY the change you just made. Discover the repo's test command (package.json \"scripts.test\", Makefile, pyproject [tool.pytest], Cargo test, go test, etc.) and run it, plus lint and typecheck if they exist. If anything fails, FIX it and re-run — up to 3 rounds. Then report the final state plainly: GREEN, or exactly what still fails. Do not claim success if a check failed."
+  useEffect(() => {
+    if (busy || flowStatus !== 'executing') return
+    const t = taskRef.current
+    if (!t) return
+    if (!t.phases.length) { taskRef.current = null; setFlowStatus('done'); return }
+    const next = t.phases.shift()
+    if (next === 'verify') void send(VERIFY_PROMPT, 'auto')
+    else if (next === 'review') void checkChanges()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, flowStatus])
 
   // Approving a plan executes it as a normal (build) turn — the plan text becomes the brief.
   function approvePlan(text: string): void {

@@ -4,6 +4,7 @@
 // user has configured. Deliberately tiny — no tools, no streaming, no trajectory.
 import { getKey } from './vault'
 import { PROVIDERS } from './backends/providers'
+import { parseSSE } from './backends/sse'
 
 type Wire = 'anthropic' | 'openai'
 interface BackendCfg {
@@ -44,24 +45,34 @@ export async function oneShot(opts: OneShotOpts): Promise<{ ok: boolean; text?: 
   const maxTokens = opts.maxTokens ?? 1024
   try {
     if (cfg.wire === 'anthropic') {
+      // STREAM + reassemble — some Anthropic-compat endpoints (GLM) hang on stream:false.
       const res = await fetch(`${cfg.base}/v1/messages`, {
         method: 'POST',
+        signal: AbortSignal.timeout(120000),
         headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model, max_tokens: maxTokens, system: opts.system, messages: [{ role: 'user', content: opts.user }], stream: false })
+        body: JSON.stringify({ model, max_tokens: maxTokens, system: opts.system, messages: [{ role: 'user', content: opts.user }], stream: true })
       })
-      if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}` }
-      const j = (await res.json()) as { content?: { type: string; text?: string }[] }
-      const text = (j.content ?? []).filter((b) => b.type === 'text').map((b) => b.text ?? '').join('\n')
+      if (!res.ok || !res.body) return { ok: false, error: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}` }
+      let text = ''
+      await parseSSE(res.body, (ev) => {
+        const delta = (ev as { delta?: { text?: string } }).delta
+        if (delta?.text) text += delta.text
+      })
       return { ok: true, text }
     }
     const res = await fetch(`${cfg.base}/chat/completions`, {
       method: 'POST',
+      signal: AbortSignal.timeout(120000),
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'system', content: opts.system }, { role: 'user', content: opts.user }], stream: false })
+      body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'system', content: opts.system }, { role: 'user', content: opts.user }], stream: true })
     })
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}` }
-    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] }
-    return { ok: true, text: j.choices?.[0]?.message?.content ?? '' }
+    if (!res.ok || !res.body) return { ok: false, error: `HTTP ${res.status}: ${(await res.text()).slice(0, 160)}` }
+    let text = ''
+    await parseSSE(res.body, (ev) => {
+      const choice = (ev as { choices?: { delta?: { content?: string } }[] }).choices?.[0]
+      if (choice?.delta?.content) text += choice.delta.content
+    })
+    return { ok: true, text }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }

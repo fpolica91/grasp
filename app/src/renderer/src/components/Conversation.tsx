@@ -392,7 +392,7 @@ export function Conversation(props: {
   backends: BackendInfo[]
   backend: string
   model: string
-  mode: 'auto' | 'ask' | 'plan'
+  mode: 'auto' | 'ask' | 'plan' | 'task'
   tokens: number
   budget: string
   onBudget: (v: string) => void
@@ -404,7 +404,7 @@ export function Conversation(props: {
   onModel: (m: string) => void
   thoughtLevel?: ThoughtLevel
   onThoughtLevel?: (l: ThoughtLevel | undefined) => void
-  onMode: (m: 'auto' | 'ask' | 'plan') => void
+  onMode: (m: 'auto' | 'ask' | 'plan' | 'task') => void
   onApprovePlan: (text: string) => void
   onDecideApproval: (id: string, ok: boolean) => void
   onDecideElicitation?: (id: string, answer: string | null) => void
@@ -779,6 +779,7 @@ export function Conversation(props: {
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'auto' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('auto')}>Build</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'ask' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('ask')}>Ask</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'plan' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('plan')}>Plan</button>
+              <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'task' ? 'bg-accent-blue text-white font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('task')} title="Task: run the full loop — plan → approve → implement → verify (tests) → review">Task</button>
             </span>
             <button type="button" onClick={enhance} disabled={!input.trim() || enhancing || props.busy} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Enhance prompt — rewrite for clarity">
               {enhancing
