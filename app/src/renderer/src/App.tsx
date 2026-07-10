@@ -877,7 +877,7 @@ export function App(): React.JSX.Element {
             {/* editor / flow / browser — the tall side pane */}
             <Panel
               ref={rightRef}
-              defaultSize={46}
+              defaultSize={editorMode ? 68 : 46}
               minSize={22}
               collapsible
               collapsedSize={0}
@@ -899,6 +899,7 @@ export function App(): React.JSX.Element {
                     live
                   </span>
                 )}
+                <button className={`border-0 bg-transparent px-1.5 py-0.5 text-[14px] transition-colors hover:text-foreground ${editorMode ? 'text-accent-blue' : 'text-foreground-subtlest'}`} onClick={toggleEditorMode} title="Editor mode — editor forward, chat alongside"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.7" /><path d="M9 4v16" stroke="currentColor" strokeWidth="1.7" /></svg></button>
                 <button className="ml-auto border-0 bg-transparent px-1.5 py-0.5 text-[14px] text-foreground-subtlest transition-colors hover:text-foreground" onClick={toggleRight} title="Close side pane (⌘\)">✕</button>
               </div>
               <div className="relative min-h-0 flex-1">
