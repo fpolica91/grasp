@@ -32,3 +32,25 @@ export function checkpointWorkspace(workspace: string, label: string): { committ
     return { committed: false }
   }
 }
+
+// The current baseline commit — "state before this turn" once the pre-turn
+// checkpoint has run (committed or already-clean). null outside a git repo.
+export function headSha(workspace: string): string | null {
+  if (!workspace || !existsSync(join(workspace, '.git'))) return null
+  const r = git(workspace, 'rev-parse', 'HEAD')
+  return r.code === 0 ? r.out.trim().slice(0, 40) : null
+}
+
+// Revert the workspace to a prior baseline. SAFETY: the current state is committed
+// first and its sha returned — the revert itself is always recoverable, and the
+// chat reports the recovery sha as a fact. Ownership law applies (no .git → refuse).
+export function revertToCheckpoint(workspace: string, sha: string): { ok: boolean; safeSha?: string; error?: string } {
+  if (!workspace || !existsSync(join(workspace, '.git'))) return { ok: false, error: 'not a git repository' }
+  if (!/^[0-9a-f]{7,40}$/i.test(sha)) return { ok: false, error: 'malformed checkpoint sha' }
+  if (git(workspace, 'cat-file', '-e', `${sha}^{commit}`).code !== 0) return { ok: false, error: 'unknown checkpoint commit' }
+  checkpointWorkspace(workspace, 'state before revert (recovery point)')
+  const safeSha = headSha(workspace) ?? undefined
+  const r = git(workspace, 'reset', '--hard', sha)
+  if (r.code !== 0) return { ok: false, error: r.out.slice(0, 300) }
+  return { ok: true, safeSha }
+}

@@ -28,6 +28,7 @@ export interface TranscriptItem {
   elicit?: { id: string; header?: string; question: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
   elicitAnswer?: string | null
   histLen?: number // backend-history length captured when this user turn was sent (for Fork)
+  checkpointSha?: string // the turn's pre-edit baseline commit (for Revert)
   hook?: { event: string; tool?: string; output: string } // a lifecycle-hook output line
 }
 
@@ -399,6 +400,7 @@ export function Conversation(props: {
   onCompact?: () => void
   onCheck?: () => void
   onForkUser?: (index: number) => void
+  onRevertUser?: (index: number) => void
   flowStatus?: FlowStatus
   onBackend: (id: string) => void
   onModel: (m: string) => void
@@ -424,6 +426,7 @@ export function Conversation(props: {
   workspace?: string
 }): React.JSX.Element {
   const [input, setInput] = useState('')
+  const [armRevert, setArmRevert] = useState<number | null>(null) // two-click revert confirm
   const [slashIx, setSlashIx] = useState(0)
   const [enhancing, setEnhancing] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
@@ -566,12 +569,30 @@ export function Conversation(props: {
           <div className="flex max-w-[576px] flex-col rounded-xl rounded-tr-sm border border-border bg-surface px-4 py-3 text-[13px] text-foreground">
             {it.text}
           </div>
-          {props.onForkUser && it.histLen !== undefined && (
-            <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:bg-surface-hover hover:text-foreground-subtle group-hover/msguser:opacity-100" onClick={() => props.onForkUser?.(i)} title="Fork from here — branch the conversation at your message">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 3v6a3 3 0 0 0 3 3h6M18 21v-6a3 3 0 0 0-3-3H9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="3" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="21" r="2.4" stroke="currentColor" strokeWidth="1.7" /></svg>
-              Fork
-            </button>
-          )}
+          <span className="flex items-center gap-1">
+            {props.onForkUser && it.histLen !== undefined && (
+              <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:bg-surface-hover hover:text-foreground-subtle group-hover/msguser:opacity-100" onClick={() => props.onForkUser?.(i)} title="Fork from here — branch the conversation at your message">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 3v6a3 3 0 0 0 3 3h6M18 21v-6a3 3 0 0 0-3-3H9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="3" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="21" r="2.4" stroke="currentColor" strokeWidth="1.7" /></svg>
+                Fork
+              </button>
+            )}
+            {props.onRevertUser && it.checkpointSha && (
+              <button
+                className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] transition-opacity group-hover/msguser:opacity-100 ${armRevert === i ? 'bg-destructive/15 text-destructive opacity-100' : 'text-foreground-subtlest opacity-0 hover:bg-surface-hover hover:text-foreground-subtle'}`}
+                onClick={() => {
+                  if (armRevert === i) {
+                    setArmRevert(null)
+                    props.onRevertUser?.(i)
+                  } else setArmRevert(i)
+                }}
+                onMouseLeave={() => setArmRevert((a) => (a === i ? null : a))}
+                title="Revert — reset the workspace files to the state before this step and rewind the chat (a recovery checkpoint is committed first)"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                {armRevert === i ? 'reset files + chat — sure?' : 'Revert'}
+              </button>
+            )}
+          </span>
         </div>
       )
     return (

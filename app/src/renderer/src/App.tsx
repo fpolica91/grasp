@@ -101,7 +101,7 @@ export function App(): React.JSX.Element {
     else localStorage.removeItem('grasp-thought')
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
-  const [flowLens, setFlowLens] = useState<'tree' | 'walk'>('tree')
+  const [mapLens, setMapLens] = useState<'symbols' | 'walk'>('symbols') // Codemap tab: symbol map | trace walk
   const [walkIx, setWalkIx] = useState<number | null>(null)
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [persona, setPersona] = useState<'agent' | 'editor'>(() => (localStorage.getItem('grasp-persona') === 'editor' ? 'editor' : 'agent'))
@@ -618,6 +618,17 @@ export function App(): React.JSX.Element {
         setTranscript((t) => t.map((it) => (it.id === e.id ? { ...it, summary: e.summary, output: e.output, status: 'done' } : it)))
       }
       else if (e.type === 'trajectory_call') setCalls((cs) => [...cs, e.call])
+      else if (e.type === 'checkpoint')
+        // Pin the baseline to the user message that started THIS turn — it is the last
+        // item exactly then. Never scan back: a headless/steered turn must not stamp an
+        // older bubble.
+        setTranscript((t) => {
+          const last = t[t.length - 1]
+          if (!last || last.role !== 'user' || last.checkpointSha) return t
+          const c = t.slice()
+          c[c.length - 1] = { ...last, checkpointSha: e.sha }
+          return c
+        })
       else if (e.type === 'dataflow') setSurface({ kind: 'flow', graph: e.graph })
       else if (e.type === 'dataflow_diff') setSurface({ kind: 'diff', diff: e.diff })
       else if (e.type === 'fuzz') setSurface({ kind: 'fuzz', report: e.report })
@@ -720,6 +731,27 @@ export function App(): React.JSX.Element {
     setTranscript((t) => [...t, { role: 'assistant', text: `**Lifeguard — change check**\n\n${res.text}` }])
   }
 
+  // Revert: reset the workspace files to the state before a step (its pre-turn
+  // baseline commit) and rewind the chat to that point. A recovery checkpoint is
+  // committed first and reported as a fact — the revert itself is always undoable.
+  async function revertToStep(index: number): Promise<void> {
+    const it = transcript[index]
+    if (busy || !it || it.role !== 'user' || !it.checkpointSha) return
+    const sha = it.checkpointSha
+    const r = await window.grasp.revertTo(workspace, sha)
+    if (!r.ok) {
+      setError(r.error ?? 'revert failed')
+      return
+    }
+    if (it.histLen != null) history.current = history.current.slice(0, it.histLen)
+    setTranscript((t) => [
+      ...t.slice(0, index),
+      { role: 'assistant', text: `⟲ **Reverted** the workspace to the state before this step (\`${sha.slice(0, 7)}\`).${r.safeSha ? ` The pre-revert state is committed as \`${r.safeSha.slice(0, 7)}\` — recover with \`git reset --hard ${r.safeSha.slice(0, 7)}\`.` : ''}` }
+    ])
+    setSurface(null)
+    window.dispatchEvent(new CustomEvent('grasp:workspace-reverted'))
+  }
+
   // Fork: branch the conversation at a user message — a new session carrying the context
   // up to that prompt (the turn's pre-history) and the transcript through it. The current
   // session is preserved by the autosave effect; this just spins a fresh id for the branch.
@@ -820,6 +852,7 @@ export function App(): React.JSX.Element {
                 onCompact={compactConversation}
                 onCheck={checkChanges}
                 onForkUser={forkFromUser}
+                onRevertUser={(i) => void revertToStep(i)}
                 onBackend={pickBackend}
                 onModel={setModel}
                 thoughtLevel={thoughtLevel}
@@ -1012,7 +1045,7 @@ export function App(): React.JSX.Element {
               </div>
               <div className="relative min-h-0 flex-1">
                 <div className={`absolute inset-0 ${rightTab === 'editor' ? 'visible' : 'hidden'}`}>
-                  <FilesPane workspace={workspace} active={rightTab === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} />
+                  <FilesPane workspace={workspace} active={rightTab === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} trace={surface?.kind === 'trace' ? traces[surface.ix] ?? null : null} />
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
@@ -1023,8 +1056,23 @@ export function App(): React.JSX.Element {
                 <div className={`absolute inset-0 ${rightTab === 'wiki' ? 'visible' : 'hidden'}`}>
                   <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
                 </div>
-                <div className={`absolute inset-0 ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
-                  <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
+                <div className={`absolute inset-0 flex flex-col ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
+                  {walkAnchors.length > 0 && (
+                    <div className="flex shrink-0 items-center border-b border-border px-3 py-1">
+                      <span className="text-[11px] text-foreground-subtlest">the map of the code — and the walked path through it</span>
+                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+                        <button className={`rounded px-2 py-0.5 transition-colors ${mapLens === 'symbols' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMapLens('symbols')}>Symbols</button>
+                        <button className={`rounded px-2 py-0.5 transition-colors ${mapLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMapLens('walk')}>Walk</button>
+                      </span>
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    {mapLens === 'walk' && walkAnchors.length > 0 && surface?.kind === 'trace' && traces[surface.ix] ? (
+                      <FlowWalk trace={traces[surface.ix]} anchors={walkAnchors} currentIx={walkIx} onSelect={tourTo} workspace={workspace} />
+                    ) : (
+                      <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
+                    )}
+                  </div>
                 </div>                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />
                 </div>
@@ -1037,12 +1085,7 @@ export function App(): React.JSX.Element {
                     <button className="rounded-md bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
-                    {surface?.kind === 'trace' && (
-                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
-                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'tree' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('tree')}>Tree</button>
-                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('walk')}>Walk</button>
-                      </span>
-                    )}
+
                   </div>
                   {flowNote && <div className="shrink-0 border-b border-border px-3 py-1 text-[12px] text-foreground-subtlest">{flowNote}</div>}
                   <div className="min-h-0 flex-1 overflow-hidden">
@@ -1070,11 +1113,7 @@ export function App(): React.JSX.Element {
                           ))}
                         </div>
                       )}
-                      {flowLens === 'walk' ? (
-                        <FlowWalk trace={traces[surface.ix]} anchors={walkAnchors} currentIx={walkIx} onSelect={tourTo} workspace={workspace} />
-                      ) : (
-                        <FlowView trace={traces[surface.ix]} onOpenSource={openSource} />
-                      )}
+                      <FlowView trace={traces[surface.ix]} onOpenSource={openSource} />
                     </>
                   ) : surface?.kind === 'diff' ? (
                     <DataflowDiff diff={surface.diff} />
@@ -1185,7 +1224,7 @@ export function App(): React.JSX.Element {
           <Panel defaultSize={74} minSize={30}>
             <PanelGroup direction="horizontal" autoSaveId="grasp-editor-horz">
               <Panel defaultSize={70} minSize={30} className="min-w-0">
-                <FilesPane workspace={workspace} active={persona === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} />
+                <FilesPane workspace={workspace} active={persona === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} trace={surface?.kind === 'trace' ? traces[surface.ix] ?? null : null} />
               </Panel>
               <PanelResizeHandle className="w-px shrink-0 bg-border" />
               {/* the agent, docked — the same conversation in editor chrome (⌘L toggles) */}

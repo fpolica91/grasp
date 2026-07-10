@@ -72,6 +72,7 @@ const api: GraspApi = {
   searchText: (workspace: string, query: string) => ipcRenderer.invoke('grasp:searchText', workspace, query),
   changedLines: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:changedLines', workspace, rel),
   fileSymbols: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileSymbols', workspace, rel),
+  revertTo: (workspace: string, sha: string) => ipcRenderer.invoke('grasp:revertTo', workspace, sha),
   gitGraph: (workspace: string) => ipcRenderer.invoke('grasp:gitGraph', workspace),
   gitAction: (workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string) => ipcRenderer.invoke('grasp:gitAction', workspace, op, arg),
   gitDiff: (workspace: string) => ipcRenderer.invoke('grasp:gitDiff', workspace),

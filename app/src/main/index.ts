@@ -22,6 +22,7 @@ import { gitGraph, gitAction, gitDiff } from './git'
 import { readWiki, generateWiki } from './wiki'
 import { loadHooks } from './hooks'
 import { generateCodeMap, fileSymbols } from './codemap'
+import { revertToCheckpoint } from './checkpoint'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent, steerAgent } from './agent'
 import { hasKey, setKey } from './vault'
@@ -186,6 +187,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:searchText', (_e, workspace: string, query: string) => searchWorkspace(workspace, query))
   ipcMain.handle('grasp:changedLines', (_e, workspace: string, rel: string) => changedLines(workspace, rel))
   ipcMain.handle('grasp:fileSymbols', (_e, workspace: string, rel: string) => fileSymbols(workspace, rel))
+  ipcMain.handle('grasp:revertTo', (_e, workspace: string, sha: string) => revertToCheckpoint(workspace, sha))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -271,6 +271,7 @@ export type AgentEvent =
   | { type: 'elicitation_request'; id: string; header?: string; question: string; options: ElicitOption[]; multiSelect?: boolean; source?: string }
   | { type: 'usage'; input: number; output: number }
   | { type: 'done'; note?: string }
+  | { type: 'checkpoint'; sha: string } // this turn's pre-edit baseline commit
   | { type: 'error'; error: string }
 
 // What grasp continuously surfaces as the agent works: after every edit, it re-observes
@@ -405,6 +406,7 @@ export interface GraspApi {
   searchText(workspace: string, query: string): Promise<{ ok: boolean; hits?: { file: string; line: number; text: string }[]; truncated?: boolean; error?: string }>
   changedLines(workspace: string, rel: string): Promise<{ ok: boolean; marks?: { line: number; kind: 'added' | 'changed' | 'removed' }[]; error?: string }>
   fileSymbols(workspace: string, rel: string): Promise<{ ok: boolean; symbols?: CodeSymbol[]; error?: string }>
+  revertTo(workspace: string, sha: string): Promise<{ ok: boolean; safeSha?: string; error?: string }>
   gitGraph(workspace: string): Promise<GitGraph>
   gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
   wikiRead(workspace: string): Promise<RepoWiki>

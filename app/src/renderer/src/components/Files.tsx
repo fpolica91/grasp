@@ -28,7 +28,8 @@ import { dockerFile as dockerMode } from '@codemirror/legacy-modes/mode/dockerfi
 import { MergeView } from '@codemirror/merge'
 import { Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view'
 import type { TreeNode } from '../../../shared/types'
-import type { WalkAnchor } from './FlowWalk'
+import { FlowWalk, type WalkAnchor } from './FlowWalk'
+import type { TraceDoc } from '../../../shared/trace'
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
 
@@ -294,9 +295,8 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
   // Auto-reload when the AGENT edits this file (grasp:file-changed from the tool loop).
   // A dirty buffer is never clobbered — the human's unsaved edit wins.
   useEffect(() => {
-    const onChanged = (e: Event): void => {
-      const d = (e as CustomEvent).detail as { file?: unknown } | undefined
-      if (!d || d.file !== file || mode !== 'edit' || dirtyRef.current) return
+    const reloadIfClean = (): void => {
+      if (mode !== 'edit' || dirtyRef.current) return
       void window.grasp.readFile(workspace, file).then((r) => {
         const v = viewRef.current
         if (typeof r.content !== 'string' || !v || !(v instanceof EditorView) || dirtyRef.current) return
@@ -308,8 +308,17 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
         refreshGit(v)
       })
     }
+    const onChanged = (e: Event): void => {
+      const d = (e as CustomEvent).detail as { file?: unknown } | undefined
+      if (d && d.file === file) reloadIfClean()
+    }
+    const onReverted = (): void => reloadIfClean()
     window.addEventListener('grasp:file-changed', onChanged)
-    return () => window.removeEventListener('grasp:file-changed', onChanged)
+    window.addEventListener('grasp:workspace-reverted', onReverted)
+    return () => {
+      window.removeEventListener('grasp:file-changed', onChanged)
+      window.removeEventListener('grasp:workspace-reverted', onReverted)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, mode, workspace])
 
@@ -526,7 +535,7 @@ function OutlinePanel({ workspace, file }: { workspace: string; file: string }):
   )
 }
 
-export function FilesPane({ workspace, active, walk }: { workspace: string; active: boolean; walk?: { anchors: WalkAnchor[]; currentIx: number | null; onTour: (ix: number) => void } }): React.JSX.Element {
+export function FilesPane({ workspace, active, walk, trace }: { workspace: string; active: boolean; walk?: { anchors: WalkAnchor[]; currentIx: number | null; onTour: (ix: number) => void }; trace?: TraceDoc | null }): React.JSX.Element {
   const [tree, setTree] = useState<TreeNode[]>([])
   const [open, setOpen] = useState<string[]>([])
   const [left, setLeft] = useState('')
@@ -545,7 +554,7 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
     setLeft(p)
   }
   const [reveal, setReveal] = useState<{ file: string; line: number | null; nonce: number } | null>(null)
-  const [leftTab, setLeftTab] = useState<'files' | 'search' | 'outline'>('files')
+  const [leftTab, setLeftTab] = useState<'files' | 'search' | 'outline' | 'walk'>('files')
   // The open-at-line bridge: FlowView / the Walk / anything else dispatches
   // 'grasp:open-source' {file, line}; every mounted FilesPane opens the file and
   // reveals the line — so the jump works in whichever persona is showing.
@@ -560,6 +569,12 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
     return () => window.removeEventListener('grasp:open-source', onOpen)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => {
+    const onReverted = (): void => loadTree()
+    window.addEventListener('grasp:workspace-reverted', onReverted)
+    return () => window.removeEventListener('grasp:workspace-reverted', onReverted)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace])
   const editorWalk = (f: string): EditorWalk | undefined =>
     walk && walk.anchors.length
       ? { anchors: walk.anchors.filter((a) => a.file === f), currentIx: walk.currentIx, total: walk.anchors.length, onTour: walk.onTour }
@@ -578,7 +593,7 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
       {/* Left rail: Files / Search / Outline */}
       <div className="flex w-[220px] shrink-0 flex-col border-r border-border bg-background">
         <div className="flex items-center gap-0.5 px-2 py-1.5">
-          {(['files', 'search', 'outline'] as const).map((t) => (
+          {(['files', 'search', 'outline', 'walk'] as const).map((t) => (
             <button key={t} className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
               {t}
             </button>
@@ -599,6 +614,12 @@ export function FilesPane({ workspace, active, walk }: { workspace: string; acti
           </div>
         )}
         {leftTab === 'search' && <SearchPanel workspace={workspace} />}
+        {leftTab === 'walk' &&
+          (walk && walk.anchors.length && trace ? (
+            <FlowWalk trace={trace} anchors={walk.anchors} currentIx={walk.currentIx} onSelect={walk.onTour} workspace={workspace} />
+          ) : (
+            <div className="px-3 py-2 text-[11px] text-foreground-subtlest">no live walk — ask the agent to show a flow</div>
+          ))}
         {leftTab === 'outline' && <OutlinePanel workspace={workspace} file={left} />}
       </div>
       {/* Editors */}
