@@ -80,6 +80,7 @@ export function App(): React.JSX.Element {
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
+  const [editorMode, setEditorMode] = useState(false)
   const [rightCollapsed, setRightCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(260)
@@ -130,6 +131,10 @@ export function App(): React.JSX.Element {
     const p = rightRef.current
     if (!p) return
     p.isCollapsed() ? p.expand() : p.collapse()
+  }
+  // Editor mode: swap the layout to editor-forward (editor large, chat as a side panel).
+  const toggleEditorMode = (): void => {
+    setEditorMode((e) => { const next = !e; if (next) setRightTab('editor'); return next })
   }
   // When the agent surfaces a Flow/trace, flip the right pane to Flow AND expand it if the
   // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
@@ -799,9 +804,9 @@ export function App(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col bg-background">
       <PanelGroup direction="vertical" className="min-h-0 flex-1" autoSaveId="grasp-vert">
         <Panel defaultSize={72} minSize={30}>
-          <PanelGroup direction="horizontal" autoSaveId="grasp-horz">
+          <PanelGroup direction="horizontal" autoSaveId={editorMode ? 'grasp-horz-editor' : 'grasp-horz'} key={editorMode ? 'editor-layout' : 'chat-layout'}>
             {/* chat */}
-            <Panel defaultSize={54} minSize={28} className="min-w-0">
+            <Panel defaultSize={editorMode ? 32 : 54} minSize={20} className="min-w-0">
               {remote && (
                 <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[12px]">
                   <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent-blue" />
@@ -910,9 +915,8 @@ export function App(): React.JSX.Element {
                   <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
-                  <CodemapPane workspace={workspace} backend={backend} model={model} active={rightTab === 'codemap'} />
-                </div>
-                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
+                  <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
+                </div>                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />
                 </div>
                 <div className={`absolute inset-0 flex flex-col ${rightTab === 'flow' ? 'visible' : 'hidden'}`}>

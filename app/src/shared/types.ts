@@ -50,6 +50,13 @@ export interface RepoWiki {
   error?: string
 }
 
+// Codemap: real symbol extraction (regex per language) — a structured tree of
+// dirs → files → symbols, rendered as an interactive visual map. Not AI prose.
+export interface CodeSymbol { name: string; kind: string; line: number }
+export interface CodeFile { name: string; path: string; ext: string; symbols: CodeSymbol[] }
+export interface CodeDir { name: string; path: string; dirs: CodeDir[]; files: CodeFile[] }
+export interface CodeMap { ok: boolean; tree?: CodeDir; fileCount?: number; symbolCount?: number; error?: string }
+
 export interface GraphNode {
   id: string
   kind: string
@@ -400,8 +407,7 @@ export interface GraspApi {
   wikiRead(workspace: string): Promise<RepoWiki>
   wikiGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
   hooks(workspace: string): Promise<{ event: string; match?: string; command: string; timeout?: number }[]>
-  codemapRead(workspace: string): Promise<RepoWiki>
-  codemapGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
+  codemap(workspace: string): Promise<CodeMap>
   gitDiff(workspace: string): Promise<{ ok: boolean; diff?: string; error?: string }>
 }
 
