@@ -4,13 +4,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { EditorView, basicSetup } from 'codemirror'
-import { EditorState, type Extension } from '@codemirror/state'
+import { Compartment, EditorState, type Extension, type Text } from '@codemirror/state'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import { python } from '@codemirror/lang-python'
 import { javascript } from '@codemirror/lang-javascript'
 import { MergeView } from '@codemirror/merge'
+import { Decoration, WidgetType, gutter, GutterMarker } from '@codemirror/view'
 import type { TreeNode } from '../../../shared/types'
+import type { WalkAnchor } from './FlowWalk'
 
 const base = (p: string): string => p.split('/').filter(Boolean).pop() ?? p
 
@@ -81,12 +83,88 @@ const graspTheme = EditorView.theme(
   { dark: true }
 )
 
-function Editor({ workspace, file }: { workspace: string; file: string }): React.JSX.Element {
+// ——— Flow-walk editor decorations: numbered anchor chips in the gutter + the inline
+// tour pill above the current anchor's line. Values shown are the trace's observed
+// reprs; the pill walks the meaningful frames (prev/next), across files.
+class WalkChipMarker extends GutterMarker {
+  constructor(private n: number, private current: boolean) { super() }
+  eq(o: WalkChipMarker): boolean { return o.n === this.n && o.current === this.current }
+  toDOM(): Node {
+    const s = document.createElement('span')
+    s.className = 'cm-walk-chip' + (this.current ? ' cm-walk-chip-current' : '')
+    s.textContent = String(this.n)
+    return s
+  }
+}
+
+class TourPillWidget extends WidgetType {
+  constructor(private a: WalkAnchor, private total: number, private onTour: (ix: number) => void) { super() }
+  eq(o: TourPillWidget): boolean { return o.a.n === this.a.n && o.total === this.total }
+  ignoreEvent(): boolean { return true }
+  toDOM(): HTMLElement {
+    const el = document.createElement('div')
+    el.className = 'cm-walk-pill'
+    const n = document.createElement('span'); n.className = 'cm-walk-pill-n'; n.textContent = String(this.a.n)
+    const fn = document.createElement('span'); fn.className = 'cm-walk-pill-fn'; fn.textContent = this.a.fn
+    const f = this.a.frame
+    const vals = document.createElement('span'); vals.className = 'cm-walk-pill-vals'
+    const args = f.args.map((x) => (x.repr.length > 24 ? x.repr.slice(0, 23) + '…' : x.repr)).join(', ')
+    const out = f.threw ? `threw ${f.threw.type}` : f.ret ? `→ ${f.ret.repr.slice(0, 36)}` : '→ ∅'
+    vals.textContent = `(${args}) ${out}`.slice(0, 100)
+    const nav = document.createElement('span'); nav.className = 'cm-walk-pill-nav'
+    const mk = (label: string, ix: number, ok: boolean): HTMLButtonElement => {
+      const b = document.createElement('button')
+      b.textContent = label
+      b.disabled = !ok
+      b.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation() })
+      b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.onTour(ix) })
+      return b
+    }
+    nav.append(mk('‹', this.a.n - 2, this.a.n > 1), document.createTextNode(`${this.a.n}/${this.total}`), mk('›', this.a.n, this.a.n < this.total))
+    el.append(n, fn, vals, nav)
+    return el
+  }
+}
+
+interface EditorWalk { anchors: WalkAnchor[]; currentIx: number | null; total: number; onTour: (ix: number) => void }
+
+function walkExtensions(doc: Text, walk: EditorWalk | undefined): Extension {
+  if (!walk || !walk.anchors.length) return []
+  const here = walk.anchors.filter((a) => a.line !== null && a.line >= 1 && a.line <= doc.lines)
+  if (!here.length) return []
+  const currentN = walk.currentIx !== null ? walk.currentIx + 1 : null
+  const g = gutter({
+    class: 'cm-walk-gutterCol',
+    lineMarker: (view, block) => {
+      const ln = view.state.doc.lineAt(block.from).number
+      const a = here.find((x) => x.line === ln)
+      return a ? new WalkChipMarker(a.n, a.n === currentN) : null
+    }
+  })
+  const cur = currentN !== null ? here.find((a) => a.n === currentN) : undefined
+  if (!cur || cur.line === null) return [g]
+  const deco = Decoration.widget({ widget: new TourPillWidget(cur, walk.total, walk.onTour), block: true, side: -1 })
+  return [g, EditorView.decorations.of(Decoration.set([deco.range(doc.line(cur.line).from)]))]
+}
+
+function Editor({ workspace, file, reveal, walk }: { workspace: string; file: string; reveal?: { line: number | null; nonce: number }; walk?: EditorWalk }): React.JSX.Element {
   const [mode, setMode] = useState<'edit' | 'diff'>('edit')
   const [dirty, setDirty] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | MergeView | null>(null)
   const docRef = useRef('')
+  const [walkComp] = useState(() => new Compartment())
+  const revealRef = useRef(reveal)
+  revealRef.current = reveal
+  const walkRef = useRef(walk)
+  walkRef.current = walk
+  const applyReveal = (v: EditorView): void => {
+    const r = revealRef.current
+    if (!r) return
+    const ln = Math.max(1, Math.min(r.line ?? 1, v.state.doc.lines))
+    const pos = v.state.doc.line(ln).from
+    v.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: 'center' }) })
+  }
 
   useEffect(() => {
     const host = hostRef.current
@@ -108,18 +186,35 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
         docRef.current = r.content ?? ''
         setDirty(false)
         host.innerHTML = ''
-        viewRef.current = new EditorView({
+        const v = new EditorView({
           parent: host,
           doc: docRef.current,
-          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorView.updateListener.of((u) => {
+          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, walkComp.of([]), EditorView.updateListener.of((u) => {
             if (u.docChanged) { docRef.current = u.state.doc.toString(); setDirty(true) }
           })]
         })
+        viewRef.current = v
+        v.dispatch({ effects: walkComp.reconfigure(walkExtensions(v.state.doc, walkRef.current)) })
+        applyReveal(v)
       }
     }
     void build()
     return () => { disposed = true; viewRef.current?.destroy(); viewRef.current = null }
   }, [file, mode, workspace])
+
+  // Walk decorations follow the anchors/current-step live (compartment reconfigure —
+  // no rebuild, no scroll loss).
+  useEffect(() => {
+    const v = viewRef.current
+    if (mode !== 'edit' || !v || !(v instanceof EditorView)) return
+    v.dispatch({ effects: walkComp.reconfigure(walkExtensions(v.state.doc, walk)) })
+  }, [walk, mode, walkComp])
+  useEffect(() => {
+    const v = viewRef.current
+    if (!reveal || mode !== 'edit' || !v || !(v instanceof EditorView)) return
+    applyReveal(v)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal?.nonce])
 
   const save = async (): Promise<void> => {
     await window.grasp.writeFile(workspace, file, docRef.current)
@@ -163,6 +258,8 @@ function Editor({ workspace, file }: { workspace: string; file: string }): React
 function EditorGroup(props: {
   workspace: string; open: string[]; active: string
   onActivate: (f: string) => void; onClose: (f: string) => void; right?: React.ReactNode
+  reveal?: { file: string; line: number | null; nonce: number } | null
+  walkFor?: (f: string) => EditorWalk | undefined
 }): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
@@ -185,7 +282,15 @@ function EditorGroup(props: {
         ))}
         <span className="ml-auto pr-2">{props.right}</span>
       </div>
-      {props.active && <Editor key={props.active} workspace={props.workspace} file={props.active} />}
+      {props.active && (
+        <Editor
+          key={props.active}
+          workspace={props.workspace}
+          file={props.active}
+          reveal={props.reveal && props.reveal.file === props.active ? { line: props.reveal.line, nonce: props.reveal.nonce } : undefined}
+          walk={props.walkFor?.(props.active)}
+        />
+      )}
     </div>
   )
 }
@@ -220,7 +325,7 @@ function Tree({ nodes, selected, onOpen }: { nodes: TreeNode[]; selected: string
   return <div className="flex flex-col gap-px py-1">{render(nodes, 0)}</div>
 }
 
-export function FilesPane({ workspace, active }: { workspace: string; active: boolean }): React.JSX.Element {
+export function FilesPane({ workspace, active, walk }: { workspace: string; active: boolean; walk?: { anchors: WalkAnchor[]; currentIx: number | null; onTour: (ix: number) => void } }): React.JSX.Element {
   const [tree, setTree] = useState<TreeNode[]>([])
   const [open, setOpen] = useState<string[]>([])
   const [left, setLeft] = useState('')
@@ -238,6 +343,25 @@ export function FilesPane({ workspace, active }: { workspace: string; active: bo
     setOpen((o) => (o.includes(p) ? o : [...o, p]))
     setLeft(p)
   }
+  const [reveal, setReveal] = useState<{ file: string; line: number | null; nonce: number } | null>(null)
+  // The open-at-line bridge: FlowView / the Walk / anything else dispatches
+  // 'grasp:open-source' {file, line}; every mounted FilesPane opens the file and
+  // reveals the line — so the jump works in whichever persona is showing.
+  useEffect(() => {
+    const onOpen = (e: Event): void => {
+      const d = (e as CustomEvent).detail as { file?: unknown; line?: unknown } | undefined
+      if (!d || typeof d.file !== 'string') return
+      openFile(d.file)
+      setReveal({ file: d.file, line: typeof d.line === 'number' ? d.line : null, nonce: Date.now() })
+    }
+    window.addEventListener('grasp:open-source', onOpen)
+    return () => window.removeEventListener('grasp:open-source', onOpen)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const editorWalk = (f: string): EditorWalk | undefined =>
+    walk && walk.anchors.length
+      ? { anchors: walk.anchors.filter((a) => a.file === f), currentIx: walk.currentIx, total: walk.anchors.length, onTour: walk.onTour }
+      : undefined
   const closeFile = (p: string): void => {
     setOpen((o) => {
       const next = o.filter((x) => x !== p)
@@ -270,6 +394,7 @@ export function FilesPane({ workspace, active }: { workspace: string; active: bo
         {rightFile === null ? (
           <EditorGroup
             workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile}
+            reveal={reveal} walkFor={editorWalk}
             right={open.length > 0 && (
               <button
                 className="flex size-5 items-center justify-center rounded text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
@@ -281,12 +406,13 @@ export function FilesPane({ workspace, active }: { workspace: string; active: bo
         ) : (
           <PanelGroup direction="horizontal" autoSaveId="grasp-editors">
             <Panel minSize={20}>
-              <EditorGroup workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile} />
+              <EditorGroup workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile} reveal={reveal} walkFor={editorWalk} />
             </Panel>
             <PanelResizeHandle className="w-px shrink-0 bg-border" />
             <Panel minSize={20}>
               <EditorGroup
                 workspace={workspace} open={open} active={rightFile} onActivate={setRightFile} onClose={closeFile}
+                reveal={reveal} walkFor={editorWalk}
                 right={
                   <button
                     className="flex size-5 items-center justify-center rounded text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"

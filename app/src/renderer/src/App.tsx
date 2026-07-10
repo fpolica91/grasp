@@ -1,7 +1,7 @@
 // grasp — the post-editor shell. Sidebar · conversation · the live dataflow instrument.
 // You ask an agent to change code; as it works, the observed dataflow updates live on
 // the right, ending in the question. Never a verdict.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar, type Theme } from './components/Sidebar'
 import { Conversation, type TranscriptItem } from './components/Conversation'
 import { DataflowGraph } from './components/DataflowGraph'
@@ -21,6 +21,7 @@ import { TrajectoryInspector } from './components/TrajectoryInspector'
 import { GitGraphPane } from './components/GitGraph'
 import { WikiPane } from './components/Wiki'
 import { CodemapPane } from './components/Codemap'
+import { FlowWalk, walkAnchorsOf, type WalkAnchor } from './components/FlowWalk'
 import type { AgentEvent, BackendInfo, FlowStatus, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
 import type { ThoughtLevel } from '../../shared/catalog'
 import type { TraceDoc, TraceDiff, FuzzDiff } from '../../shared/trace'
@@ -99,6 +100,8 @@ export function App(): React.JSX.Element {
     else localStorage.removeItem('grasp-thought')
   }
   const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
+  const [flowLens, setFlowLens] = useState<'tree' | 'walk'>('tree')
+  const [walkIx, setWalkIx] = useState<number | null>(null)
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
   const [persona, setPersona] = useState<'agent' | 'editor'>(() => (localStorage.getItem('grasp-persona') === 'editor' ? 'editor' : 'agent'))
   const [rightCollapsed, setRightCollapsed] = useState(false)
@@ -133,6 +136,10 @@ export function App(): React.JSX.Element {
   const bottomRef = useRef<ImperativePanelHandle>(null)
   const rightRef = useRef<ImperativePanelHandle>(null)
   const conversationRef = useRef<ImperativePanelHandle>(null)
+  const edDockRef = useRef<ImperativePanelHandle>(null) // editor persona: agent dock
+  const edTermRef = useRef<ImperativePanelHandle>(null) // editor persona: terminal
+  const [edTermCollapsed, setEdTermCollapsed] = useState(false)
+  const [edMounted, setEdMounted] = useState(false) // editor persona visited once — mounts its terminal, then persists
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
   const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'): void => {
     const p = rightRef.current
@@ -153,12 +160,23 @@ export function App(): React.JSX.Element {
     if (!p) return
     p.isCollapsed() ? p.expand() : p.collapse()
   }
+  const toggleEdDock = (): void => {
+    const p = edDockRef.current
+    if (!p) return
+    p.isCollapsed() ? p.expand() : p.collapse()
+  }
+  const toggleEdTerm = (): void => {
+    const p = edTermRef.current
+    if (!p) return
+    p.isCollapsed() ? p.expand() : p.collapse()
+  }
   // Persona flip (Agent ⇄ Editor) — the inversion. Two full-window layouts, BOTH stay
   // mounted (display toggle only): the conversation, terminals, and open editor tabs all
   // survive a round trip. Persisted; ⌘G ('editor-persona' in keybindings) flips it.
   const togglePersona = (): void => setPersona((p) => (p === 'agent' ? 'editor' : 'agent'))
   useEffect(() => {
     localStorage.setItem('grasp-persona', persona)
+    if (persona === 'editor') setEdMounted(true)
   }, [persona])
   // When the agent surfaces a Flow/trace, flip the right pane to Flow AND expand it if the
   // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
@@ -168,6 +186,34 @@ export function App(): React.JSX.Element {
     const p = rightRef.current
     if (p?.isCollapsed()) p.expand()
   }, [surface])
+
+  // The Flow WALK: the current trace's meaningful frames as numbered anchors, in
+  // execution order. Selecting an anchor opens the editor at its real file:line —
+  // in whichever persona is active — and the tour pill walks prev/next from there.
+  const walkAnchors = useMemo<WalkAnchor[]>(
+    () => (surface?.kind === 'trace' && traces[surface.ix] ? walkAnchorsOf(traces[surface.ix]) : []),
+    [surface, traces]
+  )
+  useEffect(() => {
+    setWalkIx(null)
+  }, [surface])
+  // Open a workspace file at a line: the single click-to-source path (Flow tree, Walk,
+  // diffs). Dispatches to every mounted FilesPane via the open-source bridge.
+  const openSource = (file: string, line: number | null): void => {
+    if (!file) return
+    if (persona === 'agent') {
+      setRightTab('editor')
+      const p = rightRef.current
+      if (p?.isCollapsed()) p.expand()
+    }
+    window.dispatchEvent(new CustomEvent('grasp:open-source', { detail: { file, line } }))
+  }
+  const tourTo = (ix: number): void => {
+    const a = walkAnchors[ix]
+    if (!a) return
+    setWalkIx(ix)
+    openSource(a.file, a.line)
+  }
 
   // Keybindings — driven by ~/.grasp/keybindings.json (loaded from the main process). Chord
   // grammar: mod+<key> (Cmd on mac, Ctrl elsewhere), or ctrl+/cmd+/shift+/alt+ combos.
@@ -192,9 +238,9 @@ export function App(): React.JSX.Element {
     const actions: Record<string, () => void> = {
       'new-session': newSession,
       'command-palette': () => setShowPalette((p) => !p),
-      'toggle-terminal': toggleBottom,
+      'toggle-terminal': () => (persona === 'editor' ? toggleEdTerm() : toggleBottom()),
       'toggle-sidebar': () => setSidebarOpen((s) => !s),
-      'toggle-side-pane': toggleRight,
+      'toggle-side-pane': () => (persona === 'editor' ? toggleEdDock() : toggleRight()),
       'editor-persona': togglePersona
     }
     const onKey = (e: KeyboardEvent): void => {
@@ -213,7 +259,7 @@ export function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keybinds])
+  }, [keybinds, persona])
   const [tokens, setTokens] = useState(0)
   const [budget, setBudget] = useState('')
   const [queue, setQueue] = useState<string[]>([]) // follow-ups queued while the agent was busy
@@ -742,6 +788,64 @@ export function App(): React.JSX.Element {
     if (id === sessionId) newSession()
   }
 
+  // The conversation element — ONE definition rendered in both personas (the chat
+  // pane in Agent, the right-hand agent dock in Editor). All state lives in App, so
+  // both chromes drive the same session.
+  const conversationView = (
+              <Conversation
+                transcript={transcript}
+                busy={busy}
+                error={error}
+                backends={backends}
+                backend={backend}
+                model={model}
+                mode={agentMode}
+                flowStatus={flowStatus}
+                tokens={tokens}
+                budget={budget}
+                onBudget={setBudget}
+                onCompact={compactConversation}
+                onCheck={checkChanges}
+                onForkUser={forkFromUser}
+                onBackend={pickBackend}
+                onModel={setModel}
+                thoughtLevel={thoughtLevel}
+                onThoughtLevel={setThoughtLevel}
+                onMode={setAgentMode}
+                onQueue={(t) => setQueue((q) => [...q, t])}
+                onSteer={steerPrompt}
+                queue={queue}
+                onRemoveQueued={(i) => setQueue((q) => q.filter((_, ix) => ix !== i))}
+                onApprovePlan={approvePlan}
+                onDecideApproval={decideApproval}
+                onDecideElicitation={decideElicitation}
+                onSend={send}
+                onStop={() => void window.grasp.stopAgent()}
+                onRegenerate={() => {
+                  const lastUser = [...transcript].reverse().find((it) => it.role === 'user')
+                  if (lastUser?.text) void send(lastUser.text)
+                }}
+                onReact={(index, reaction) => setTranscript((t) => t.map((it, i) => i === index ? { ...it, reaction } : it))}
+                commands={commands}
+                skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
+                onToggleTerminal={toggleBottom}
+                onToggleSidebar={() => setSidebarOpen((s) => !s)}
+                workspace={workspace}
+                banner={
+                  activeWf ? (
+                    <WorkflowPanel
+                      wf={activeWf}
+                      busy={busy}
+                      onResume={() => void runWorkflow(activeWf)}
+                      onCancel={cancelWorkflow}
+                      onRetry={(i) => void runWorkflow(activeWf, i)}
+                      onDismiss={() => setActiveWf(null)}
+                    />
+                  ) : null
+                }
+              />
+  )
+
   return (
     <div className="flex h-full overflow-hidden bg-background">
       {keyReady === false && <KeyGate onSaved={() => setKeyReady(true)} />}
@@ -849,58 +953,7 @@ export function App(): React.JSX.Element {
                   <button className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-foreground-subtle transition-colors hover:text-foreground" onClick={() => void disconnectRemote()}>Disconnect</button>
                 </div>
               )}
-              <Conversation
-                transcript={transcript}
-                busy={busy}
-                error={error}
-                backends={backends}
-                backend={backend}
-                model={model}
-                mode={agentMode}
-                flowStatus={flowStatus}
-                tokens={tokens}
-                budget={budget}
-                onBudget={setBudget}
-                onCompact={compactConversation}
-                onCheck={checkChanges}
-                onForkUser={forkFromUser}
-                onBackend={pickBackend}
-                onModel={setModel}
-                thoughtLevel={thoughtLevel}
-                onThoughtLevel={setThoughtLevel}
-                onMode={setAgentMode}
-                onQueue={(t) => setQueue((q) => [...q, t])}
-                onSteer={steerPrompt}
-                queue={queue}
-                onRemoveQueued={(i) => setQueue((q) => q.filter((_, ix) => ix !== i))}
-                onApprovePlan={approvePlan}
-                onDecideApproval={decideApproval}
-                onDecideElicitation={decideElicitation}
-                onSend={send}
-                onStop={() => void window.grasp.stopAgent()}
-                onRegenerate={() => {
-                  const lastUser = [...transcript].reverse().find((it) => it.role === 'user')
-                  if (lastUser?.text) void send(lastUser.text)
-                }}
-                onReact={(index, reaction) => setTranscript((t) => t.map((it, i) => i === index ? { ...it, reaction } : it))}
-                commands={commands}
-                skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
-                onToggleTerminal={toggleBottom}
-                onToggleSidebar={() => setSidebarOpen((s) => !s)}
-                workspace={workspace}
-                banner={
-                  activeWf ? (
-                    <WorkflowPanel
-                      wf={activeWf}
-                      busy={busy}
-                      onResume={() => void runWorkflow(activeWf)}
-                      onCancel={cancelWorkflow}
-                      onRetry={(i) => void runWorkflow(activeWf, i)}
-                      onDismiss={() => setActiveWf(null)}
-                    />
-                  ) : null
-                }
-              />
+              {conversationView}
             </Panel>
             <PanelResizeHandle className="w-px shrink-0 bg-border" />
             {/* editor / flow / browser — the tall side pane */}
@@ -935,7 +988,7 @@ export function App(): React.JSX.Element {
               </div>
               <div className="relative min-h-0 flex-1">
                 <div className={`absolute inset-0 ${rightTab === 'editor' ? 'visible' : 'hidden'}`}>
-                  <FilesPane workspace={workspace} active={rightTab === 'editor'} />
+                  <FilesPane workspace={workspace} active={rightTab === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} />
                 </div>
                 <div className={`absolute inset-0 ${rightTab === 'browser' ? 'visible' : 'hidden'}`}>
                   <BrowserPane active={rightTab === 'browser'} />
@@ -960,6 +1013,12 @@ export function App(): React.JSX.Element {
                     <button className="rounded-md bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
+                    {surface?.kind === 'trace' && (
+                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'tree' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('tree')}>Tree</button>
+                        <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('walk')}>Walk</button>
+                      </span>
+                    )}
                   </div>
                   {flowNote && <div className="shrink-0 border-b border-border px-3 py-1 text-[12px] text-foreground-subtlest">{flowNote}</div>}
                   <div className="min-h-0 flex-1 overflow-hidden">
@@ -967,20 +1026,14 @@ export function App(): React.JSX.Element {
                     <FuzzDiffView
                       fuzz={surface.fuzz}
                       onAdjudicate={(p) => void send(p)}
-                      onOpenSource={(file) => {
-                        setRightTab('editor')
-                        void window.grasp.readFile(workspace, file)
-                      }}
+                      onOpenSource={openSource}
                     />
                   ) : surface?.kind === 'intro' ? (
                     <IntroView intro={surface.intro} onPickFlow={(name) => void send(`Show the real Flow of: ${name}`)} />
                   ) : surface?.kind === 'tracediff' ? (
                     <FlowDiffView
                       diff={surface.diff}
-                      onOpenSource={(file) => {
-                        setRightTab('editor')
-                        void window.grasp.readFile(workspace, file)
-                      }}
+                      onOpenSource={openSource}
                     />
                   ) : surface?.kind === 'trace' && traces[surface.ix] ? (
                     <>
@@ -993,13 +1046,11 @@ export function App(): React.JSX.Element {
                           ))}
                         </div>
                       )}
-                      <FlowView
-                        trace={traces[surface.ix]}
-                        onOpenSource={(file) => {
-                          setRightTab('editor')
-                          void window.grasp.readFile(workspace, file)
-                        }}
-                      />
+                      {flowLens === 'walk' ? (
+                        <FlowWalk trace={traces[surface.ix]} anchors={walkAnchors} currentIx={walkIx} onSelect={tourTo} workspace={workspace} />
+                      ) : (
+                        <FlowView trace={traces[surface.ix]} onOpenSource={openSource} />
+                      )}
                     </>
                   ) : surface?.kind === 'diff' ? (
                     <DataflowDiff diff={surface.diff} />
@@ -1106,9 +1157,25 @@ export function App(): React.JSX.Element {
           </span>
           <span className="ml-auto font-mono text-[11px] text-foreground-subtlest" title="Switch persona">⌘G</span>
         </div>
-        <div className="min-h-0 flex-1">
-          <FilesPane workspace={workspace} active={persona === 'editor'} />
-        </div>
+        <PanelGroup direction="vertical" className="min-h-0 flex-1" autoSaveId="grasp-editor-vert">
+          <Panel defaultSize={74} minSize={30}>
+            <PanelGroup direction="horizontal" autoSaveId="grasp-editor-horz">
+              <Panel defaultSize={70} minSize={30} className="min-w-0">
+                <FilesPane workspace={workspace} active={persona === 'editor'} walk={{ anchors: walkAnchors, currentIx: walkIx, onTour: tourTo }} />
+              </Panel>
+              <PanelResizeHandle className="w-px shrink-0 bg-border" />
+              {/* the agent, docked — the same conversation in editor chrome (⌘L toggles) */}
+              <Panel ref={edDockRef} defaultSize={30} minSize={18} collapsible collapsedSize={0} className="flex min-h-0 flex-col border-l border-border bg-background">
+                {conversationView}
+              </Panel>
+            </PanelGroup>
+          </Panel>
+          <PanelResizeHandle className="h-px shrink-0 bg-border" />
+          {/* docked terminal (⌃` toggles) — mounts on first Editor visit, then persists */}
+          <Panel ref={edTermRef} defaultSize={26} minSize={10} collapsible collapsedSize={0} onCollapse={() => setEdTermCollapsed(true)} onExpand={() => setEdTermCollapsed(false)} className="border-t border-border bg-panel">
+            {edMounted && <TerminalDock workspace={workspace} active={persona === 'editor' && !edTermCollapsed} onCloseDock={toggleEdTerm} />}
+          </Panel>
+        </PanelGroup>
       </div>
     </div>
   )
