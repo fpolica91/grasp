@@ -19,6 +19,8 @@ export interface TranscriptItem {
   thinkingStreaming?: boolean
   name?: string
   input?: Record<string, unknown>
+  capability?: string
+  target?: string
   summary?: string
   output?: string
   status?: 'running' | 'done'
@@ -256,7 +258,7 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
   )
 }
 
-function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: boolean) => void }): React.JSX.Element {
+function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: boolean, scope?: 'once' | 'session' | 'project') => void }): React.JSX.Element {
   const { it } = props
   const detail = it.name === 'run_bash' ? String(it.input?.command ?? '') : String(it.input?.path ?? '')
   const decided = it.status === 'done'
@@ -268,12 +270,19 @@ function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: bo
       </div>
       <div className="flex items-center gap-2 text-[0.8125rem]">
         <span className="font-mono font-medium text-foreground">{it.name}</span>
+        {it.capability && <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[0.625rem] uppercase text-foreground-subtlest">{it.capability}</span>}
         <span className="truncate font-mono text-[0.75rem] text-foreground-subtle">{detail}</span>
       </div>
       {!decided && (
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, true)}>Allow</button>
-          <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, false)}>Deny</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110" onClick={() => props.onDecide(it.id!, true, 'once')}>Allow once</button>
+          {it.capability && it.target && (
+            <>
+              <button className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover" onClick={() => props.onDecide(it.id!, true, 'session')} title="Auto-allow this for the rest of this app session">This session</button>
+              <button className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover" onClick={() => props.onDecide(it.id!, true, 'project')} title={`Write an allow rule to .grasp/permissions.json — ${it.capability}(${it.target})`}>Always (project)</button>
+            </>
+          )}
+          <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover" onClick={() => props.onDecide(it.id!, false)}>Deny</button>
         </div>
       )}
     </div>
@@ -411,7 +420,7 @@ export function Conversation(props: {
   onThoughtLevel?: (l: ThoughtLevel | undefined) => void
   onMode: (m: 'auto' | 'ask' | 'plan' | 'task') => void
   onApprovePlan: (text: string) => void
-  onDecideApproval: (id: string, ok: boolean) => void
+  onDecideApproval: (id: string, ok: boolean, scope?: 'once' | 'session' | 'project') => void
   onDecideElicitation?: (id: string, answer: string | null) => void
   onSend: (prompt: string) => void
   onStop: () => void

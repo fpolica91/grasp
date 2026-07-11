@@ -264,7 +264,7 @@ export type AgentEvent =
   | { type: 'intro'; intro: IntroDoc }
   | { type: 'plan'; text: string }
   | { type: 'hook'; event: string; tool?: string; output: string }
-  | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown> }
+  | { type: 'approval_request'; id: string; tool: string; input: Record<string, unknown>; capability?: string; target?: string }
   | { type: 'elicitation_request'; id: string; header?: string; question: string; options: ElicitOption[]; multiSelect?: boolean; source?: string }
   | { type: 'usage'; input: number; output: number }
   | { type: 'done'; note?: string }
@@ -404,6 +404,7 @@ export interface GraspApi {
   changedLines(workspace: string, rel: string): Promise<{ ok: boolean; marks?: { line: number; kind: 'added' | 'changed' | 'removed' }[]; error?: string }>
   fileSymbols(workspace: string, rel: string): Promise<{ ok: boolean; symbols?: CodeSymbol[]; error?: string }>
   revertTo(workspace: string, sha: string): Promise<{ ok: boolean; safeSha?: string; error?: string }>
+  grantPermission(workspace: string, capability: string, target: string, scope: 'once' | 'session' | 'project'): Promise<{ ok: boolean; error?: string }>
   gitGraph(workspace: string): Promise<GitGraph>
   gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
   wikiRead(workspace: string): Promise<RepoWiki>

@@ -73,6 +73,7 @@ const api: GraspApi = {
   changedLines: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:changedLines', workspace, rel),
   fileSymbols: (workspace: string, rel: string) => ipcRenderer.invoke('grasp:fileSymbols', workspace, rel),
   revertTo: (workspace: string, sha: string) => ipcRenderer.invoke('grasp:revertTo', workspace, sha),
+  grantPermission: (workspace: string, capability: string, target: string, scope: string) => ipcRenderer.invoke('grasp:grantPermission', workspace, capability, target, scope),
   gitGraph: (workspace: string) => ipcRenderer.invoke('grasp:gitGraph', workspace),
   gitAction: (workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string) => ipcRenderer.invoke('grasp:gitAction', workspace, op, arg),
   gitDiff: (workspace: string) => ipcRenderer.invoke('grasp:gitDiff', workspace),

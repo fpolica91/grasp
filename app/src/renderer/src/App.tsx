@@ -266,9 +266,13 @@ export function App(): React.JSX.Element {
   const [queue, setQueue] = useState<string[]>([]) // follow-ups queued while the agent was busy
 
   // Resolve an Ask-mode approval and mark it decided in the transcript.
-  function decideApproval(id: string, ok: boolean): void {
+  function decideApproval(id: string, ok: boolean, scope: 'once' | 'session' | 'project' = 'once'): void {
+    if (ok && scope !== 'once') {
+      const it = transcript.find((x) => x.id === id)
+      if (it?.capability && it.target) void window.grasp.grantPermission(workspace, it.capability, it.target, scope)
+    }
     void window.grasp.approve(id, ok)
-    setTranscript((t) => t.map((it) => (it.id === id ? { ...it, status: 'done', summary: ok ? 'allowed' : 'denied' } : it)))
+    setTranscript((t) => t.map((it) => (it.id === id ? { ...it, status: 'done', summary: ok ? (scope === 'project' ? 'allowed — always (project)' : scope === 'session' ? 'allowed — this session' : 'allowed') : 'denied' } : it)))
   }
   function decideElicitation(id: string, answer: string | null): void {
     void window.grasp.resolveElicitation(id, answer)
@@ -656,7 +660,7 @@ export function App(): React.JSX.Element {
       else if (e.type === 'intro') { setSurface({ kind: 'intro', intro: e.intro }); setRightTab('flow') }
       else if (e.type === 'plan') { setTranscript((t) => [...t, { role: 'plan', text: e.text }]); setFlowStatus('awaiting-approval') }
       else if (e.type === 'approval_request')
-        setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running' }])
+        setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running', capability: e.capability, target: e.target }])
       else if (e.type === 'elicitation_request')
         setTranscript((t) => [...t, { role: 'elicitation', elicit: { id: e.id, header: e.header, question: e.question, options: e.options, multiSelect: e.multiSelect } }])
       else if (e.type === 'usage') setTokens((n) => n + e.input + e.output)

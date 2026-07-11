@@ -18,6 +18,7 @@ import {
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
+import { decidePermission } from '../permissions'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
@@ -226,8 +227,15 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       }
       // Ask mode also gates untrusted MCP tools (external servers — not built-ins).
       const isMcpTool = !TOOLS.find((t) => t.name === name) && !!tools.find((t) => t.name === name)
-      if (!output && turn.mode === 'ask' && (MUTATING_TOOLS.has(name) || isMcpTool)) {
-        const ok = await requestApproval(emit, name, input, turn.signal)
+      // Permission kernel — every mode. deny blocks with citation; ask forces a prompt;
+      // allow skips the ask-gate; default → mode behavior. (Mirror of anthropic.ts.)
+      const perm = decidePermission(workspace, name, input, isMcpTool)
+      if (!output && perm.effect === 'deny') {
+        output = `denied by your ${perm.source} permission rule: ${perm.capability}(${perm.rule?.pattern}). Edit .grasp/permissions.json to change it.`
+      }
+      const mustAsk = perm.effect === 'ask' || (turn.mode === 'ask' && (MUTATING_TOOLS.has(name) || isMcpTool) && perm.effect !== 'allow')
+      if (!output && mustAsk) {
+        const ok = await requestApproval(emit, name, input, turn.signal, { capability: perm.capability, target: perm.target })
         if (!ok) output = 'skipped — you denied this action.'
       }
       // Lifecycle hook: PreToolUse — final pre-execution authority; may BLOCK the tool.

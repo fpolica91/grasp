@@ -23,6 +23,7 @@ import {
 } from './tools'
 import type { SubagentRunner, Tool } from './tools'
 import { requestApproval } from '../approvals'
+import { decidePermission } from '../permissions'
 import { parseSSE } from './sse'
 import type { AgentBackend, BackendTurn, Emit } from './types'
 import { applyPathOps, shapingFor, type ThoughtLevel } from '../../shared/catalog'
@@ -295,8 +296,18 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
           continue
         }
         const isMcpTool = !TOOLS.find((t) => t.name === tu.name) && !!tools.find((t) => t.name === tu.name)
-        if (turn.mode === 'ask' && tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool)) {
-          const ok = await requestApproval(emit, tu.name, tu.input ?? {}, turn.signal)
+        // Permission kernel — applies in EVERY mode. deny always blocks (teaches via the
+        // rule); ask forces a prompt; allow skips the ask-gate; default → mode behavior.
+        const perm = tu.name ? decidePermission(workspace, tu.name, tu.input ?? {}, isMcpTool) : { effect: 'default' as const, capability: 'Tool' as const, target: tu.name ?? '' }
+        if (perm.effect === 'deny') {
+          output = `denied by your ${perm.source} permission rule: ${perm.capability}(${perm.rule?.pattern}). Edit .grasp/permissions.json to change it.`
+          emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })
+          results.push({ type: 'tool_result', tool_use_id: tu.id, content: output })
+          continue
+        }
+        const mustAsk = perm.effect === 'ask' || (turn.mode === 'ask' && !!tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool) && perm.effect !== 'allow')
+        if (mustAsk) {
+          const ok = await requestApproval(emit, tu.name ?? "", tu.input ?? {}, turn.signal, { capability: perm.capability, target: perm.target })
           if (!ok) {
             output = 'skipped — you denied this action.'
             emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })
