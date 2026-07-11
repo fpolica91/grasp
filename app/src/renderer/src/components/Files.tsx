@@ -59,10 +59,9 @@ function langFor(path: string): Extension {
   }
 }
 
-// Zed-inspired syntax palette (One Dark — the theme Zed ships) mapped to lezer tags.
-// Purple keywords, green strings, blue functions, yellow types, orange numbers,
-// red properties — the signature Zed look, shared with the terminal/code blocks.
-const graspHighlight = HighlightStyle.define([
+// Zed-inspired syntax palette mapped to lezer tags. Dark = One Dark; light = One Light,
+// so the editor honors the Daylight scheme instead of staying dark-on-light.
+const darkHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#7f848e', fontStyle: 'italic' },
   { tag: [t.keyword, t.controlKeyword, t.definitionKeyword, t.modifier, t.self], color: '#c678dd' },
   { tag: [t.operator, t.derefOperator, t.arithmeticOperator, t.logicOperator, t.bitwiseOperator], color: '#56b6c2' },
@@ -84,7 +83,29 @@ const graspHighlight = HighlightStyle.define([
   { tag: t.link, color: '#61afef', textDecoration: 'underline' }
 ])
 
-const graspTheme = EditorView.theme(
+const lightHighlight = HighlightStyle.define([
+  { tag: t.comment, color: '#a0a1a7', fontStyle: 'italic' },
+  { tag: [t.keyword, t.controlKeyword, t.definitionKeyword, t.modifier, t.self], color: '#a626a4' },
+  { tag: [t.operator, t.derefOperator, t.arithmeticOperator, t.logicOperator, t.bitwiseOperator], color: '#0184bc' },
+  { tag: [t.atom, t.bool, t.null], color: '#986801' },
+  { tag: [t.number, t.literal, t.unit], color: '#986801' },
+  { tag: [t.string, t.special(t.string)], color: '#50a14f' },
+  { tag: t.escape, color: '#0184bc' },
+  { tag: t.regexp, color: '#50a14f' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.function(t.variableName))], color: '#4078f2' },
+  { tag: [t.typeName, t.className, t.definition(t.typeName), t.namespace], color: '#c18401' },
+  { tag: [t.propertyName, t.constant(t.propertyName)], color: '#e45649' },
+  { tag: [t.attributeName, t.attributeValue], color: '#986801' },
+  { tag: [t.variableName, t.definition(t.variableName)], color: '#383a42' },
+  { tag: [t.local(t.variableName)], color: '#383a42' },
+  { tag: [t.labelName, t.heading], color: '#e45649' },
+  { tag: [t.punctuation, t.separator, t.bracket], color: '#696c77' },
+  { tag: t.meta, color: '#696c77' },
+  { tag: t.invalid, color: '#e45649' },
+  { tag: t.link, color: '#4078f2', textDecoration: 'underline' }
+])
+
+const darkTheme = EditorView.theme(
   {
     // canvas: a deep, dedicated editor background so code reads as the primary surface
     '&': { color: '#abb2bf', backgroundColor: '#161616', fontSize: '0.8125rem', height: '100%' },
@@ -119,6 +140,39 @@ const graspTheme = EditorView.theme(
   },
   { dark: true }
 )
+
+const lightTheme = EditorView.theme(
+  {
+    '&': { color: '#383a42', backgroundColor: '#fafafa', fontSize: '0.8125rem', height: '100%' },
+    '&.cm-focused': { outline: 'none' },
+    '.cm-scroller': { fontFamily: "'Geist Mono', 'JetBrains Mono', ui-monospace, monospace", lineHeight: '1.65', fontVariantLigatures: 'contextual', fontFeatureSettings: "'liga' 1, 'calt' 1" },
+    '.cm-content': { caretColor: '#0b7fff', padding: '8px 0' },
+    '.cm-gutters': { backgroundColor: '#fafafa', color: '#c2c2c2', border: 'none', paddingRight: '6px' },
+    '.cm-gutter.cm-lineNumbers': { minWidth: '2.5em' },
+    '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#383a42' },
+    '.cm-activeLine': { backgroundColor: '#00000006' },
+    '.cm-selectionBackground, ::selection': { backgroundColor: '#b3d4fc !important' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: '#a6ccf5 !important' },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#0b7fff', borderLeftWidth: '2px' },
+    '.cm-matchingBracket': { backgroundColor: '#e5ebf1', color: '#000 !important', outline: '1px solid #4078f266' },
+    '.cm-nonmatchingBracket': { backgroundColor: '#f7dede', color: '#e45649 !important' },
+    '.cm-indent': { borderLeftColor: '#00000010' },
+    '.cm-panels': { backgroundColor: '#f0f0f0', color: '#383a42', borderTop: '1px solid #00000014' },
+    '.cm-panels input': { backgroundColor: '#fff', border: '1px solid #00000022', color: '#383a42' },
+    '.cm-searchMatch': { backgroundColor: '#e5ebf1' },
+    '.cm-searchMatch-selected': { backgroundColor: '#a6ccf5' },
+    '.cm-tooltip': { backgroundColor: '#fff', border: '1px solid #00000022', color: '#383a42' },
+    '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: '#4078f233', color: '#000' }
+  },
+  { dark: false }
+)
+
+// The Daylight scheme sets <html data-theme="daylight"|"light">; everything else is dark.
+function isLightTheme(): boolean {
+  const t = document.documentElement.dataset.theme
+  return t === 'daylight' || t === 'light'
+}
+const editorTheme = (light: boolean): Extension => [light ? lightTheme : darkTheme, syntaxHighlighting(light ? lightHighlight : darkHighlight)]
 
 // ——— Flow-walk editor decorations: numbered anchor chips in the gutter + the inline
 // tour pill above the current anchor's line. Values shown are the trace's observed
@@ -226,6 +280,7 @@ function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace:
   const docRef = useRef('')
   const [walkComp] = useState(() => new Compartment())
   const [gitComp] = useState(() => new Compartment())
+  const [themeComp] = useState(() => new Compartment())
   const programmaticRef = useRef(false) // suppress dirty on programmatic doc swaps
   const dirtyRef = useRef(false)
   const markDirty = (b: boolean): void => {
@@ -260,8 +315,8 @@ function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace:
         host.innerHTML = ''
         viewRef.current = new MergeView({
           parent: host,
-          a: { doc: d.old, extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorState.readOnly.of(true)] },
-          b: { doc: d.new, extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, EditorState.readOnly.of(true)] }
+          a: { doc: d.old, extensions: [basicSetup, langFor(file), editorTheme(isLightTheme()), EditorState.readOnly.of(true)] },
+          b: { doc: d.new, extensions: [basicSetup, langFor(file), editorTheme(isLightTheme()), EditorState.readOnly.of(true)] }
         })
       } else {
         const r = await window.grasp.readFile(workspace, file)
@@ -272,7 +327,7 @@ function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace:
         const v = new EditorView({
           parent: host,
           doc: docRef.current,
-          extensions: [basicSetup, langFor(file), syntaxHighlighting(graspHighlight), graspTheme, walkComp.of([]), gitComp.of([]), EditorView.updateListener.of((u) => {
+          extensions: [basicSetup, langFor(file), themeComp.of(editorTheme(isLightTheme())), walkComp.of([]), gitComp.of([]), EditorView.updateListener.of((u) => {
             if (u.docChanged) {
               docRef.current = u.state.doc.toString()
               if (!programmaticRef.current) markDirty(true)
@@ -286,7 +341,14 @@ function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace:
       }
     }
     void build()
-    return () => { disposed = true; viewRef.current?.destroy(); viewRef.current = null }
+    // Re-theme the editor live when the app scheme changes (data-theme on <html>) —
+    // no rebuild, so scroll/cursor survive.
+    const obs = new MutationObserver(() => {
+      const v = viewRef.current
+      if (v instanceof EditorView) v.dispatch({ effects: themeComp.reconfigure(editorTheme(isLightTheme())) })
+    })
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => { disposed = true; obs.disconnect(); viewRef.current?.destroy(); viewRef.current = null }
   }, [file, mode, workspace])
 
   // Walk decorations follow the anchors/current-step live (compartment reconfigure —

@@ -423,6 +423,10 @@ export function Conversation(props: {
   onDecideApproval: (id: string, ok: boolean, scope?: 'once' | 'session' | 'project') => void
   onDecideElicitation?: (id: string, answer: string | null) => void
   onSend: (prompt: string) => void
+  draft?: string
+  onDraft?: (v: string) => void
+  sessionTitle?: string
+  onDismissError?: () => void
   onStop: () => void
   onQueue?: (prompt: string) => void // while busy: queue a follow-up for after the turn
   onSteer?: (prompt: string) => void // while busy: inject into the in-flight turn now
@@ -437,7 +441,9 @@ export function Conversation(props: {
   skills: { name: string; description: string }[]
   workspace?: string
 }): React.JSX.Element {
-  const [input, setInput] = useState('')
+  const [localInput, setLocalInput] = useState('')
+  const input = props.draft ?? localInput
+  const setInput = props.onDraft ?? setLocalInput
   const [armRevert, setArmRevert] = useState<number | null>(null) // two-click revert confirm
   const [slashIx, setSlashIx] = useState(0)
   const [enhancing, setEnhancing] = useState(false)
@@ -679,7 +685,7 @@ export function Conversation(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
-        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground">Session<span className="ml-2 hidden text-[0.75rem] font-normal text-foreground-subtlest @[480px]:inline">post-editor</span></span>
+        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground" title={props.sessionTitle || undefined}>{props.sessionTitle?.trim() || 'New session'}</span>
         {/* External app launcher */}
         {props.workspace && (
           <span className="hidden shrink-0 @[480px]:block">
@@ -772,8 +778,17 @@ export function Conversation(props: {
             <span className="size-1.5 animate-pulse rounded-full bg-foreground-subtlest" style={{ animationDelay: '0.36s' }} />
           </div>
         )}
-        {props.error && <div className="rounded-lg border border-border bg-surface px-3 py-2 text-[0.8125rem] text-destructive">{props.error}</div>}
+
       </div>
+
+      {props.error && (
+        <div className="mx-5 mb-2 flex shrink-0 items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-[0.8125rem] text-destructive" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <span className="min-w-0 flex-1">{props.error}</span>
+          {props.onDismissError && (
+            <button className="shrink-0 rounded p-0.5 text-destructive/70 transition-colors hover:text-destructive" title="Dismiss" onClick={props.onDismissError}>✕</button>
+          )}
+        </div>
+      )}
 
       {/* Composer */}
       <div className="shrink-0 px-5 pb-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
