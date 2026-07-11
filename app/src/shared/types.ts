@@ -53,9 +53,6 @@ export interface RepoWiki {
 // Codemap: real symbol extraction (regex per language) — a structured tree of
 // dirs → files → symbols, rendered as an interactive visual map. Not AI prose.
 export interface CodeSymbol { name: string; kind: string; line: number }
-export interface CodeFile { name: string; path: string; ext: string; symbols: CodeSymbol[] }
-export interface CodeDir { name: string; path: string; dirs: CodeDir[]; files: CodeFile[] }
-export interface CodeMap { ok: boolean; tree?: CodeDir; fileCount?: number; symbolCount?: number; error?: string }
 
 export interface GraphNode {
   id: string
@@ -271,6 +268,7 @@ export type AgentEvent =
   | { type: 'elicitation_request'; id: string; header?: string; question: string; options: ElicitOption[]; multiSelect?: boolean; source?: string }
   | { type: 'usage'; input: number; output: number }
   | { type: 'done'; note?: string }
+  | { type: 'checkpoint'; sha: string } // this turn's pre-edit baseline commit
   | { type: 'error'; error: string }
 
 // What grasp continuously surfaces as the agent works: after every edit, it re-observes
@@ -402,12 +400,15 @@ export interface GraspApi {
   readFile(workspace: string, rel: string): Promise<{ ok: boolean; content?: string; error?: string }>
   writeFile(workspace: string, rel: string, content: string): Promise<{ ok: boolean; error?: string }>
   fileDiff(workspace: string, rel: string): Promise<{ ok: boolean; old: string; new: string; error?: string }>
+  searchText(workspace: string, query: string): Promise<{ ok: boolean; hits?: { file: string; line: number; text: string }[]; truncated?: boolean; error?: string }>
+  changedLines(workspace: string, rel: string): Promise<{ ok: boolean; marks?: { line: number; kind: 'added' | 'changed' | 'removed' }[]; error?: string }>
+  fileSymbols(workspace: string, rel: string): Promise<{ ok: boolean; symbols?: CodeSymbol[]; error?: string }>
+  revertTo(workspace: string, sha: string): Promise<{ ok: boolean; safeSha?: string; error?: string }>
   gitGraph(workspace: string): Promise<GitGraph>
   gitAction(workspace: string, op: 'fetch' | 'pull' | 'push' | 'stageAll' | 'commit' | 'checkout' | 'newBranch' | 'merge' | 'rebase', arg?: string): Promise<{ ok: boolean; out: string }>
   wikiRead(workspace: string): Promise<RepoWiki>
   wikiGenerate(workspace: string, backend: string, model?: string): Promise<RepoWiki>
   hooks(workspace: string): Promise<{ event: string; match?: string; command: string; timeout?: number }[]>
-  codemap(workspace: string): Promise<CodeMap>
   gitDiff(workspace: string): Promise<{ ok: boolean; diff?: string; error?: string }>
 }
 

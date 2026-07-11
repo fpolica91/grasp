@@ -20,24 +20,24 @@ export function WikiPane(props: { workspace: string; backend: string; model: str
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <span className="text-[12px] font-medium text-foreground-subtle">Repo Wiki</span>
-        {wiki?.generatedAt ? <span className="text-[11px] text-foreground-subtlest">{new Date(wiki.generatedAt).toLocaleString()}</span> : null}
+        <span className="text-[0.75rem] font-medium text-foreground-subtle">Repo Wiki</span>
+        {wiki?.generatedAt ? <span className="text-[0.6875rem] text-foreground-subtlest">{new Date(wiki.generatedAt).toLocaleString()}</span> : null}
         <span className="ml-auto" />
         <button
           type="button"
           onClick={gen}
           disabled={busy || !props.workspace}
-          className="rounded-md border border-border bg-card px-2 py-1 text-[11.5px] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+          className="rounded-md border border-border bg-card px-2 py-1 text-[0.71875rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
           title="Generate the repo wiki from README + manifests + file tree"
         >{busy ? 'Generating…' : has ? 'Regenerate' : 'Generate'}</button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {has ? (
-          <div className="prose max-w-none text-[13px] leading-relaxed text-foreground">
+          <div className="prose max-w-none text-[0.8125rem] leading-relaxed text-foreground">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{wiki!.markdown!}</ReactMarkdown>
           </div>
         ) : (
-          <div className="text-[13px] text-foreground-subtle">
+          <div className="text-[0.8125rem] text-foreground-subtle">
             {busy ? 'Generating wiki from the repo…' : wiki?.error ? `${wiki.error}` : 'No wiki yet — click Generate to produce one from the README, manifests, and file tree.'}
           </div>
         )}

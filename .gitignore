@@ -27,3 +27,4 @@ app/*.tsbuildinfo
 *.db
 .beads-credential-key
 nohup.out
+app/.grasp-harness/

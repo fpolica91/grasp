@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "grasp",
+  "project_id": "da915fb7-e46e-43ec-978f-cea649ba320c"
+}

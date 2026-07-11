@@ -8,7 +8,7 @@ import { claudeBackend } from './backends/claude'
 import { claudeCodeBackend } from './backends/claude-code'
 import { openaiBackend } from './backends/openai'
 import { providerBackends } from './backends/providers'
-import { checkpointWorkspace } from './checkpoint'
+import { checkpointWorkspace, headSha } from './checkpoint'
 import type { AgentBackend, Emit } from './backends/types'
 import type { ThoughtLevel } from '../shared/catalog'
 import { fireHooks, summarizeHookOutputs } from './hooks'
@@ -72,7 +72,12 @@ export async function runAgent(
   // Flow's A→B diff always has a baseline. Pre-turn: sweep any manual edits into a
   // checkpoint. Post-turn: checkpoint what the agent changed (skipped in plan mode —
   // read-only). No-ops on a clean tree.
-  if (params.mode !== 'plan') checkpointWorkspace(workspace, `baseline before "${params.prompt.slice(0, 48)}"`)
+  if (params.mode !== 'plan') {
+    checkpointWorkspace(workspace, `baseline before "${params.prompt.slice(0, 48)}"`)
+    // Tell the renderer this turn's baseline so the human can revert to it later.
+    const baseline = headSha(workspace)
+    if (baseline) emit({ type: 'checkpoint', sha: baseline })
+  }
 
   activeAbort?.abort() // a new turn supersedes any stuck one
   const ac = new AbortController()

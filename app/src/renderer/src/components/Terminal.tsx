@@ -24,7 +24,7 @@ export function TerminalDock({
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center gap-0.5 border-b border-border bg-panel px-3 pt-1.5">
-        <button className="border-b-2 border-foreground px-3 pb-1.5 text-[13px] font-medium text-foreground">Terminal</button>
+        <button className="border-b-2 border-foreground px-3 pb-1.5 text-[0.8125rem] font-medium text-foreground">Terminal</button>
         <button
           className="flex size-6 items-center justify-center rounded-md text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
           onClick={split}
@@ -144,7 +144,7 @@ export function TerminalPane({
     <div className="relative h-full p-1">
       {onClose && (
         <button
-          className="absolute right-1 top-1 z-10 flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive [.term-wrap:hover_&]:opacity-100"
+          className="absolute right-1 top-1 z-10 flex size-5 items-center justify-center rounded text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive [.term-wrap:hover_&]:opacity-100"
           onClick={onClose}
           title="Close this terminal"
         >

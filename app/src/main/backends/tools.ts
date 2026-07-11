@@ -163,6 +163,7 @@ export interface ToolCtx {
   emit: Emit
   toolId?: string // the current tool_use id (parent for a task's subagent)
   subagent?: SubagentRunner // present when the backend supports delegation
+  signal?: AbortSignal // turn abort — long-waiting tools (ask_user) must resolve on it
 }
 
 export interface Tool {
@@ -885,13 +886,17 @@ export const TOOLS: Tool[] = [
         description: o.description ? String(o.description) : undefined
       }))
       const header = input.header ? String(input.header) : undefined
-      const ans = await requestElicitation(ctx.emit, {
+      const ans = await requestElicitation(
+        ctx.emit,
+        {
         header,
         question: String(input.question ?? ''),
         options,
         multiSelect: !!input.multiSelect,
         source: 'ask_user'
-      })
+      },
+        ctx.signal
+      )
       return ans ?? '(dismissed)'
     }
   },

@@ -348,3 +348,48 @@ body { font-family: var(--font-sans); background: var(--color-background); color
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* ——— Flow walk: editor gutter anchor chips + the inline tour pill (Files.tsx) ——— */
+.cm-walk-gutterCol { width: 24px; }
+.cm-walk-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 3px; margin-top: 2px; border-radius: 5px;
+  background: var(--color-tag); color: var(--color-foreground-subtle);
+  font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.625rem; font-weight: 600; line-height: 1;
+}
+.cm-walk-chip-current { background: var(--color-accent-blue); color: #fff; }
+.cm-walk-pill {
+  position: sticky; left: 6px; /* stay visible under horizontal code scroll */
+  display: flex; align-items: center; gap: 8px; width: fit-content; max-width: min(640px, 92%);
+  margin: 4px 6px; padding: 4px 10px;
+  border: 1px solid var(--color-border); border-radius: 8px;
+  background: var(--color-panel); color: var(--color-foreground-subtle);
+  font-size: 0.75rem;
+}
+.cm-walk-pill-n {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 5px;
+  background: var(--color-accent-blue); color: #fff;
+  font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.625rem; font-weight: 700;
+}
+.cm-walk-pill-fn { flex-shrink: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-weight: 600; color: var(--color-foreground); }
+.cm-walk-pill-vals { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.71875rem; color: var(--color-foreground); }
+.cm-walk-pill-nav { margin-left: auto; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.625rem; color: var(--color-foreground-subtlest); }
+.cm-walk-pill-nav button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 5px;
+  border: 1px solid var(--color-border); background: var(--color-tag); color: var(--color-foreground);
+  cursor: pointer; font-size: 0.75rem; line-height: 1;
+}
+.cm-walk-pill-nav button:disabled { opacity: 0.35; cursor: default; }
+.cm-walk-pill-nav button:not(:disabled):hover { filter: brightness(1.15); }
+
+.cm-walk-pill-docked { position: static; width: auto; max-width: none; margin: 0; border: 0; border-left: 3px solid var(--color-accent-blue); border-bottom: 1px solid var(--color-border); border-radius: 0; flex-shrink: 0; }
+.cm-walk-pill-note { flex-shrink: 0; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-foreground-subtlest); }
+
+/* ——— Git gutter: added / changed / removed vs HEAD (Files.tsx gitGutterExt) ——— */
+.cm-git-gutterCol { width: 6px; }
+.cm-git-mark { display: block; width: 3px; height: 100%; min-height: 13px; margin-left: 1px; border-radius: 2px; }
+.cm-git-mark-added { background: var(--color-git-added); }
+.cm-git-mark-changed { background: var(--color-git-modified); }
+.cm-git-mark-removed { height: 0; min-height: 0; margin-left: 0; border-left: 5px solid var(--color-git-deleted); border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; margin-top: 10px; }

@@ -45,9 +45,9 @@ const MCP_CATALOG = [
   { name: 'time', pkg: '@modelcontextprotocol/server-time', desc: 'Time & timezone conversion' }
 ]
 
-const inputCls = 'rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover'
-const btnPrimary = 'rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50'
-const btnSm = 'rounded-lg border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110'
+const inputCls = 'rounded-lg border border-border bg-input px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover'
+const btnPrimary = 'rounded-lg bg-primary px-3 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50'
+const btnSm = 'rounded-lg border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110'
 
 function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: string; hint: string; onSaved: () => void }): React.JSX.Element {
   const [has, setHas] = useState(false)
@@ -63,14 +63,14 @@ function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: s
   return (
     <div className="flex flex-col gap-1.5 py-2">
       <div className="flex items-center gap-2">
-        <span className="text-[13px] font-medium text-foreground">{label}</span>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] ${has ? 'bg-tag text-foreground' : 'border border-border text-foreground-subtlest'}`}>{has ? 'key set' : 'no key'}</span>
+        <span className="text-[0.8125rem] font-medium text-foreground">{label}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[0.625rem] ${has ? 'bg-tag text-foreground' : 'border border-border text-foreground-subtlest'}`}>{has ? 'key set' : 'no key'}</span>
       </div>
       <div className="flex gap-2">
         <input type="password" value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && val.trim()) void save() }} placeholder={has ? 'replace key…' : 'paste key…'} spellCheck={false} className={`${inputCls} flex-1`} />
         <button className={btnPrimary} disabled={!val.trim()} onClick={() => void save()}>Save</button>
       </div>
-      <div className="text-[12px] text-foreground-subtlest">{hint}{msg && <span> · {msg}</span>}</div>
+      <div className="text-[0.75rem] text-foreground-subtlest">{hint}{msg && <span> · {msg}</span>}</div>
     </div>
   )
 }
@@ -79,7 +79,22 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   return <div className={`flex flex-col gap-1 rounded-lg border border-border bg-surface p-3 ${className}`}>{children}</div>
 }
 
+function useEscapeToClose(onClose: () => void): void {
+  useEffect(() => {
+    const h = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', h, true)
+    return () => window.removeEventListener('keydown', h, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+}
+
 export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
+  useEscapeToClose(props.onClose)
   const [section, setSection] = useState<Section>('marketplace')
   const [mcpName, setMcpName] = useState(''); const [mcpCmd, setMcpCmd] = useState(''); const [mcpArgs, setMcpArgs] = useState(''); const [mcpEnv, setMcpEnv] = useState('')
   const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])
@@ -89,27 +104,27 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
   useEffect(() => { if (section === 'hooks' && props.workspace) void window.grasp.hooks(props.workspace).then(setHooksList) }, [section, props.workspace])
 
   const revealBtn = (key: string): React.JSX.Element => (
-    <button className="ml-2 border-0 bg-transparent text-[11px] text-foreground-subtlest underline underline-offset-2 transition-colors hover:text-foreground" onClick={() => void window.grasp.revealInFiles(key)}>reveal in files</button>
+    <button className="ml-2 border-0 bg-transparent text-[0.6875rem] text-foreground-subtlest underline underline-offset-2 transition-colors hover:text-foreground" onClick={() => void window.grasp.revealInFiles(key)}>reveal in files</button>
   )
   const note = (children: React.ReactNode): React.JSX.Element => (
-    <p className="mt-1.5 text-[12.5px] leading-relaxed text-foreground-subtle">{children}</p>
+    <p className="mt-1.5 text-[0.78125rem] leading-relaxed text-foreground-subtle">{children}</p>
   )
-  const codeCls = 'rounded bg-tag px-1 py-0.5 font-mono text-[11px] text-foreground-subtle'
+  const codeCls = 'rounded bg-tag px-1 py-0.5 font-mono text-[0.6875rem] text-foreground-subtle'
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-[3px]" onClick={props.onClose}>
       <div className="flex h-[90vh] w-[960px] max-w-[95vw] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex shrink-0 items-center px-6 py-4">
-          <h2 className="text-[18px] font-semibold tracking-tight text-foreground">Settings</h2>
-          <button className="ml-auto border-0 bg-transparent text-[16px] text-foreground-subtlest transition-colors hover:text-foreground" onClick={props.onClose} title="Close">✕</button>
+          <h2 className="text-[1.125rem] font-semibold tracking-tight text-foreground">Settings</h2>
+          <button className="ml-auto border-0 bg-transparent text-[1rem] text-foreground-subtlest transition-colors hover:text-foreground" onClick={props.onClose} title="Close">✕</button>
         </div>
         {/* Body */}
         <div className="flex min-h-0 flex-1 gap-4 px-6 pb-6">
           {/* Nav */}
           <nav className="flex w-[130px] shrink-0 flex-col gap-0.5 border-r border-border pr-3.5">
             {SECTIONS.map((s) => (
-              <button key={s.id} className={`rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${section === s.id ? 'bg-surface font-semibold text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => setSection(s.id)}>{s.label}</button>
+              <button key={s.id} className={`rounded-lg px-2.5 py-1.5 text-left text-[0.8125rem] transition-colors ${section === s.id ? 'bg-surface font-semibold text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => setSection(s.id)}>{s.label}</button>
             ))}
           </nav>
           {/* Content */}
@@ -117,7 +132,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Marketplace */}
             {section === 'marketplace' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP Marketplace</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP Marketplace</div>
                 {note(<>One-click install popular MCP tool servers. They run via <code className={codeCls}>npx</code> and appear as agent tools on the next turn.</>)}
                 <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2.5">
                   {MCP_CATALOG.map((item) => {
@@ -125,11 +140,11 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                     return (
                       <Card key={item.name} className={installed ? 'border-foreground/20' : ''}>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[14px] font-semibold text-foreground">{item.name}</span>
-                          {item.envHint && <span className="rounded-full border border-border px-1.5 py-0 text-[10px] text-foreground-subtlest">needs key</span>}
+                          <span className="text-[0.875rem] font-semibold text-foreground">{item.name}</span>
+                          {item.envHint && <span className="rounded-full border border-border px-1.5 py-0 text-[0.625rem] text-foreground-subtlest">needs key</span>}
                         </div>
-                        <div className="text-[12.5px] text-foreground-subtle">{item.desc}</div>
-                        <code className="break-all font-mono text-[11px] text-foreground-subtlest">{item.pkg}</code>
+                        <div className="text-[0.78125rem] text-foreground-subtle">{item.desc}</div>
+                        <code className="break-all font-mono text-[0.6875rem] text-foreground-subtlest">{item.pkg}</code>
                         <button className={`${installed ? btnSm : btnPrimary} mt-1.5 self-start`} disabled={installed} onClick={() => void window.grasp.saveMcpServer(item.name, 'npx', `-y ${item.pkg}${item.args ? ' ' + item.args : ''}`, item.envHint ? `${item.envHint}=` : '').then(props.onMcpChanged)}>
                           {installed ? '✓ Installed' : 'Install'}
                         </button>
@@ -142,7 +157,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Keys */}
             {section === 'keys' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">API keys</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">API keys</div>
                 {note(<>Stored encrypted in your OS keychain (safeStorage) — never written in plaintext.</>)}
                 {PROVIDERS.map((p) => (<KeyRow key={p.id} provider={p.id} label={p.label} hint={p.hint} onSaved={props.onKeysChanged} />))}
               </div>
@@ -150,10 +165,10 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Appearance */}
             {section === 'appearance' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Appearance</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Appearance</div>
                 <div className="mt-3 flex gap-2">
                   {THEME_LABELS.map((t) => (
-                    <button key={t.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] transition-colors ${props.theme === t.id ? 'border-foreground text-foreground' : 'border-border text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => props.onTheme(t.id)}>
+                    <button key={t.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[0.8125rem] transition-colors ${props.theme === t.id ? 'border-foreground text-foreground' : 'border-border text-foreground-subtle hover:bg-surface-hover'}`} onClick={() => props.onTheme(t.id)}>
                       <span className="size-4 rounded-full" style={{ background: THEME_DOTS[t.id] }} />
                       {t.label}
                     </button>
@@ -164,18 +179,18 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Skills */}
             {section === 'skills' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills {revealBtn('skills')}</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills {revealBtn('skills')}</div>
                 {note(<>Reusable instructions the agent loads via <code className={codeCls}>use_skill</code>. Install in <code className={codeCls}>~/.grasp/skills</code>.</>)}
-                {props.skills.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No skills yet.</div> : (
+                {props.skills.length === 0 ? <div className="py-4 text-[0.8125rem] text-foreground-subtlest">No skills yet.</div> : (
                   <div className="mt-2 flex flex-col gap-1.5">
                     {props.skills.map((s) => (
                       <Card key={s.name + '|' + s.source} className={s.enabled ? '' : 'opacity-50'}>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground">{s.name}</span>
-                          <span className="rounded-full border border-border px-1.5 text-[10px] uppercase text-foreground-subtlest">{s.source}</span>
-                          <button className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] transition-colors ${s.enabled ? 'border-foreground text-foreground' : 'border-border text-foreground-subtlest'}`} title={s.enabled ? 'Disable' : 'Enable'} onClick={() => void window.grasp.setSkillEnabled(s.name, !s.enabled).then(props.onSkillsChanged)}>{s.enabled ? 'on' : 'off'}</button>
+                          <span className="text-[0.8125rem] font-semibold text-foreground">{s.name}</span>
+                          <span className="rounded-full border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{s.source}</span>
+                          <button className={`ml-auto rounded-full border px-2 py-0.5 text-[0.625rem] transition-colors ${s.enabled ? 'border-foreground text-foreground' : 'border-border text-foreground-subtlest'}`} title={s.enabled ? 'Disable' : 'Enable'} onClick={() => void window.grasp.setSkillEnabled(s.name, !s.enabled).then(props.onSkillsChanged)}>{s.enabled ? 'on' : 'off'}</button>
                         </div>
-                        <div className="text-[12.5px] text-foreground-subtle">{(s.description || '(no description)').slice(0, 180)}</div>
+                        <div className="text-[0.78125rem] text-foreground-subtle">{(s.description || '(no description)').slice(0, 180)}</div>
                       </Card>
                     ))}
                   </div>
@@ -185,7 +200,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* MCP */}
             {section === 'mcp' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP servers {revealBtn('mcp')}</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP servers {revealBtn('mcp')}</div>
                 {note(<>External stdio tool servers. Saved to <code className={codeCls}>~/.grasp/mcp.json</code>.</>)}
                 {Object.keys(props.mcpServers).length > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
@@ -194,14 +209,14 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                       return (
                         <Card key={name}>
                           <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-semibold text-foreground">{name}</span>
-                            <span className={`rounded-full border px-1.5 text-[10px] ${st?.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}</span>
-                            <button className="ml-auto border-0 bg-transparent text-[12px] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
+                            <span className="text-[0.8125rem] font-semibold text-foreground">{name}</span>
+                            <span className={`rounded-full border px-1.5 text-[0.625rem] ${st?.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}</span>
+                            <button className="ml-auto border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
                           </div>
-                          <div className="text-[12.5px] text-foreground-subtle">
+                          <div className="text-[0.78125rem] text-foreground-subtle">
                             <code className={codeCls}>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
-                            {s.env && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{Object.keys(s.env).length} env</span>}
-                            {st?.error && <div className="mt-1 font-mono text-[11.5px] text-destructive">{st.error}</div>}
+                            {s.env && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{Object.keys(s.env).length} env</span>}
+                            {st?.error && <div className="mt-1 font-mono text-[0.71875rem] text-destructive">{st.error}</div>}
                           </div>
                         </Card>
                       )
@@ -220,21 +235,21 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Plugins */}
             {section === 'plugins' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Plugins {revealBtn('plugins')}</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Plugins {revealBtn('plugins')}</div>
                 {note(<>Distribution units that bundle skills + optionally MCP. Install from a git URL.</>)}
                 {props.plugins.length > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
                     {props.plugins.map((p) => (
                       <Card key={p.name + '|' + p.source}>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground">{p.name}</span>
-                          <span className="rounded-full border border-border px-1.5 text-[10px] uppercase text-foreground-subtlest">{p.source}</span>
-                          {p.source === 'user' && <button className="ml-auto border-0 bg-transparent text-[12px] text-foreground-subtlest transition-colors hover:text-destructive" title="Uninstall" onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}>✕</button>}
+                          <span className="text-[0.8125rem] font-semibold text-foreground">{p.name}</span>
+                          <span className="rounded-full border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{p.source}</span>
+                          {p.source === 'user' && <button className="ml-auto border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Uninstall" onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}>✕</button>}
                         </div>
-                        <div className="text-[12.5px] text-foreground-subtle">
+                        <div className="text-[0.78125rem] text-foreground-subtle">
                           {p.description || '(no description)'}
-                          {p.hasSkills && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">skills</span>}
-                          {p.mcpCount > 0 && <span className="ml-1 rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{p.mcpCount} mcp</span>}
+                          {p.hasSkills && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">skills</span>}
+                          {p.mcpCount > 0 && <span className="ml-1 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{p.mcpCount} mcp</span>}
                         </div>
                       </Card>
                     ))}
@@ -244,23 +259,23 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                   <input className={`${inputCls} flex-1`} placeholder="git URL (https://…/plugin.git)" value={pluginUrl} onChange={(e) => setPluginUrl(e.target.value)} spellCheck={false} />
                   <button className={btnPrimary} disabled={!pluginUrl.trim()} onClick={() => { void window.grasp.installPlugin(pluginUrl.trim()).then((r) => { if (r.ok) { setPluginUrl(''); setPluginMsg(`installed ${r.name}`) } else setPluginMsg(r.error ?? 'install failed'); props.onPluginsChanged(); setTimeout(() => setPluginMsg(''), 3000) }) }}>Install</button>
                 </div>
-                {pluginMsg && <div className="mt-1.5 text-[12px] text-foreground-subtlest">{pluginMsg}</div>}
+                {pluginMsg && <div className="mt-1.5 text-[0.75rem] text-foreground-subtlest">{pluginMsg}</div>}
               </div>
             )}
             {/* Commands */}
             {section === 'commands' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Commands {revealBtn('commands')}</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Commands {revealBtn('commands')}</div>
                 {note(<>Slash commands the composer shows when you type <code className={codeCls}>/</code>.</>)}
-                {props.commands.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No commands.</div> : (
+                {props.commands.length === 0 ? <div className="py-4 text-[0.8125rem] text-foreground-subtlest">No commands.</div> : (
                   <div className="mt-2 flex flex-col gap-1.5">
                     {props.commands.map((c) => (
                       <Card key={c.name}>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground">/{c.name}</span>
-                          {c.skills && <span className="rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">skill: {c.skills}</span>}
+                          <span className="text-[0.8125rem] font-semibold text-foreground">/{c.name}</span>
+                          {c.skills && <span className="rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">skill: {c.skills}</span>}
                         </div>
-                        <div className="text-[12.5px] text-foreground-subtle">{(c.description || '(no description)').slice(0, 180)}</div>
+                        <div className="text-[0.78125rem] text-foreground-subtle">{(c.description || '(no description)').slice(0, 180)}</div>
                       </Card>
                     ))}
                   </div>
@@ -270,14 +285,14 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Keybindings */}
             {section === 'keybindings' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Keybindings {revealBtn('keybindings')}</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Keybindings {revealBtn('keybindings')}</div>
                 {note(<>Edit <code className={codeCls}>~/.grasp/keybindings.json</code>. <code className={codeCls}>mod+</code> = Cmd/Ctrl.</>)}
                 <div className="mt-2 flex flex-col gap-1.5">
                   {Object.entries(props.keybinds).map(([action, chord]) => (
                     <Card key={action}>
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-semibold text-foreground">{action}</span>
-                        <span className="ml-auto rounded-full border border-border bg-tag px-2 py-0.5 font-mono text-[12px] text-foreground-subtle">{chord}</span>
+                        <span className="text-[0.8125rem] font-semibold text-foreground">{action}</span>
+                        <span className="ml-auto rounded-full border border-border bg-tag px-2 py-0.5 font-mono text-[0.75rem] text-foreground-subtle">{chord}</span>
                       </div>
                     </Card>
                   ))}
@@ -287,18 +302,18 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {/* Hooks */}
             {section === 'hooks' && (
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Hooks</div>
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Hooks</div>
                 {note(<>Run shell commands at lifecycle events. Edit <code className={codeCls}>~/.grasp/hooks.json</code> or <code className={codeCls}>.grasp/hooks.json</code> in the project. Events: <code className={codeCls}>UserPromptSubmit</code>, <code className={codeCls}>PreToolUse</code> (may deny a tool), <code className={codeCls}>PostToolUse</code>, <code className={codeCls}>Stop</code>. Each command receives a JSON context on stdin.</>)}
-                {hooksList.length === 0 ? <div className="py-4 text-[13px] text-foreground-subtlest">No hooks configured.</div> : (
+                {hooksList.length === 0 ? <div className="py-4 text-[0.8125rem] text-foreground-subtlest">No hooks configured.</div> : (
                   <div className="mt-2 flex flex-col gap-1.5">
                     {hooksList.map((h, i) => (
                       <Card key={i}>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-semibold text-foreground">{h.event}</span>
-                          {h.match && <span className="rounded-full border border-border px-1.5 text-[10px] text-foreground-subtlest">{h.match}</span>}
-                          {h.timeout != null && <span className="ml-auto rounded-full bg-tag px-1.5 text-[10px] text-foreground-subtlest">{h.timeout}s</span>}
+                          <span className="text-[0.8125rem] font-semibold text-foreground">{h.event}</span>
+                          {h.match && <span className="rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{h.match}</span>}
+                          {h.timeout != null && <span className="ml-auto rounded-full bg-tag px-1.5 text-[0.625rem] text-foreground-subtlest">{h.timeout}s</span>}
                         </div>
-                        <div className="truncate text-[12.5px] text-foreground-subtlest font-mono">{h.command}</div>
+                        <div className="truncate text-[0.78125rem] text-foreground-subtlest font-mono">{h.command}</div>
                       </Card>
                     ))}
                   </div>

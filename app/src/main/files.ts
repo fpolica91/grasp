@@ -136,3 +136,73 @@ export function fileDiff(workspace: string, rel: string): Promise<{ ok: boolean;
     cp.on('close', (code) => res({ ok: true, old: code === 0 ? old : '', new: now }))
   })
 }
+
+// ——— Find in files: the repo's own search (git grep when versioned, plain grep
+// otherwise), parsed to file:line:text hits and capped. Remote-aware via exec.
+export interface SearchHit { file: string; line: number; text: string }
+const MAX_HITS = 400
+
+function runTool(cmd: string, args: string[], cwd: string): Promise<{ out: string }> {
+  return new Promise((res) => {
+    const p = spawn(cmd, args, { cwd })
+    let out = ''
+    p.stdout.on('data', (d: Buffer) => { if (out.length < 2_000_000) out += d.toString() })
+    p.on('error', () => res({ out: '' }))
+    p.on('close', () => res({ out }))
+  })
+}
+
+function parseGrep(out: string): SearchHit[] {
+  const hits: SearchHit[] = []
+  for (const ln of out.split('\n')) {
+    if (hits.length > MAX_HITS) break
+    const m = /^(.+?):(\d+):(.*)$/.exec(ln)
+    if (!m) continue
+    const file = m[1].replace(/^\.\//, '')
+    if (file.includes('node_modules/')) continue
+    hits.push({ file, line: Number(m[2]), text: m[3].slice(0, 240) })
+  }
+  return hits
+}
+
+export async function searchWorkspace(workspace: string, query: string): Promise<{ ok: boolean; hits?: SearchHit[]; truncated?: boolean; error?: string }> {
+  const q = String(query ?? '').trim()
+  if (q.length < 2) return { ok: false, error: 'query too short' }
+  const st = remoteStatus()
+  if (st.active && st.cwd) {
+    const r = await remoteExec(`(git grep -nI --untracked -e ${JSON.stringify(q)} -- . 2>/dev/null || grep -rnI --exclude-dir=node_modules --exclude-dir=.git -e ${JSON.stringify(q)} . 2>/dev/null) | head -${MAX_HITS + 1}`, st.cwd)
+    const hits = parseGrep(r.stdout ?? '')
+    return { ok: true, hits: hits.slice(0, MAX_HITS), truncated: hits.length > MAX_HITS }
+  }
+  const ws = resolve(workspace)
+  if (!existsSync(ws)) return { ok: false, error: 'no workspace' }
+  const r = existsSync(join(ws, '.git'))
+    ? await runTool('git', ['grep', '-nI', '--untracked', '-e', q, '--', '.'], ws)
+    : await runTool('grep', ['-rnI', '--exclude-dir=node_modules', '--exclude-dir=.git', '-e', q, '.'], ws)
+  const hits = parseGrep(r.out) // grep exit 1 = no matches — empty, not an error
+  return { ok: true, hits: hits.slice(0, MAX_HITS), truncated: hits.length > MAX_HITS }
+}
+
+// ——— Git gutter: which working-tree lines differ from HEAD for one file, parsed
+// from the repo's own unified-0 diff. Untracked/no-repo/remote → no marks (honest).
+export type GutterKind = 'added' | 'changed' | 'removed'
+export async function changedLines(workspace: string, rel: string): Promise<{ ok: boolean; marks?: { line: number; kind: GutterKind }[]; error?: string }> {
+  if (remoteStatus().active) return { ok: true, marks: [] }
+  const ws = resolve(workspace)
+  if (!existsSync(join(ws, '.git'))) return { ok: true, marks: [] }
+  const r = await runTool('git', ['diff', '--unified=0', 'HEAD', '--', rel], ws)
+  const marks: { line: number; kind: GutterKind }[] = []
+  for (const ln of r.out.split('\n')) {
+    const m = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(ln)
+    if (!m) continue
+    const minus = m[1] === undefined ? 1 : Number(m[1])
+    const start = Number(m[2])
+    const plus = m[3] === undefined ? 1 : Number(m[3])
+    if (plus === 0) marks.push({ line: Math.max(1, start), kind: 'removed' })
+    else {
+      const kind: GutterKind = minus === 0 ? 'added' : 'changed'
+      for (let i = 0; i < plus && marks.length < 2000; i++) marks.push({ line: start + i, kind })
+    }
+  }
+  return { ok: true, marks }
+}

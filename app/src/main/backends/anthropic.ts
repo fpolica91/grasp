@@ -282,6 +282,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
 
       const results: unknown[] = []
       for (const tu of toolUses) {
+        if (turn.signal?.aborted) break // Stop ends the batch — no post-Stop tool tail
         const tool = tools.find((t) => t.name === tu.name)
         emit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
         let output = ''
@@ -295,7 +296,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         }
         const isMcpTool = !TOOLS.find((t) => t.name === tu.name) && !!tools.find((t) => t.name === tu.name)
         if (turn.mode === 'ask' && tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool)) {
-          const ok = await requestApproval(emit, tu.name, tu.input ?? {})
+          const ok = await requestApproval(emit, tu.name, tu.input ?? {}, turn.signal)
           if (!ok) {
             output = 'skipped — you denied this action.'
             emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })
@@ -304,7 +305,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
           }
         }
         try {
-          output = tool ? await tool.run(tu.input ?? {}, { workspace, emit, toolId: tu.id, subagent }) : `unknown tool: ${tu.name}`
+          output = tool ? await tool.run(tu.input ?? {}, { workspace, emit, toolId: tu.id, subagent, signal: turn.signal }) : `unknown tool: ${tu.name}`
         } catch (e) {
           output = `tool error: ${e instanceof Error ? e.message : String(e)}`
         }

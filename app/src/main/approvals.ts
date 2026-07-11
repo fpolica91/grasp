@@ -7,10 +7,18 @@ import type { ElicitOption } from '../shared/types'
 
 const pending = new Map<string, (ok: boolean) => void>()
 
-export function requestApproval(emit: Emit, tool: string, input: Record<string, unknown>): Promise<boolean> {
+export function requestApproval(emit: Emit, tool: string, input: Record<string, unknown>, signal?: AbortSignal): Promise<boolean> {
   const id = randomUUID()
   return new Promise<boolean>((resolve) => {
-    pending.set(id, resolve)
+    if (signal?.aborted) return resolve(false)
+    const done = (ok: boolean): void => {
+      pending.delete(id)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(ok)
+    }
+    const onAbort = (): void => done(false) // Stop/Esc denies the pending ask — the turn can end
+    signal?.addEventListener('abort', onAbort, { once: true })
+    pending.set(id, done)
     emit({ type: 'approval_request', id, tool, input })
   })
 }
@@ -35,10 +43,18 @@ export interface ElicitPayload {
 
 const pendingElicit = new Map<string, (answer: string | null) => void>()
 
-export function requestElicitation(emit: Emit, payload: ElicitPayload): Promise<string | null> {
+export function requestElicitation(emit: Emit, payload: ElicitPayload, signal?: AbortSignal): Promise<string | null> {
   const id = randomUUID()
   return new Promise<string | null>((resolve) => {
-    pendingElicit.set(id, resolve)
+    if (signal?.aborted) return resolve(null)
+    const done = (answer: string | null): void => {
+      pendingElicit.delete(id)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(answer)
+    }
+    const onAbort = (): void => done(null)
+    signal?.addEventListener('abort', onAbort, { once: true })
+    pendingElicit.set(id, done)
     emit({ type: 'elicitation_request', id, ...payload })
   })
 }
