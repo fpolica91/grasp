@@ -334,9 +334,12 @@ function Frame({ frame, children, byParent, onOpenSource, occ }: {
 }
 
 const shellCls = 'flex h-full flex-col gap-2 overflow-y-auto p-4'
-const headEntry = 'font-mono text-[14px] font-semibold text-foreground'
-const headLang = 'rounded-full border border-border px-2 text-[10px] uppercase text-foreground-subtlest'
-const headMeta = 'text-[11px] text-foreground-subtlest'
+const headEntry = 'min-w-0 break-all font-mono text-[14px] font-semibold text-foreground'
+const headLang = 'shrink-0 whitespace-nowrap rounded-full border border-border px-2 text-[10px] uppercase text-foreground-subtlest'
+// The observation-channel disclosure (e.g. "runner · app attach failed") — an honesty
+// signal, so it stays a single readable line: truncate with the full text on hover.
+const headChannel = 'max-w-[300px] truncate whitespace-nowrap rounded-md border border-border px-2 py-px text-[10px] uppercase tracking-wide text-foreground-subtlest'
+const headMeta = 'shrink-0 whitespace-nowrap text-[11px] text-foreground-subtlest'
 const footCls = 'mt-auto pt-3 text-[12px] leading-relaxed text-foreground-subtlest'
 const qCls = 'mt-1 text-[13px] text-foreground-subtle'
 const unobsBox = 'rounded-xl border border-dashed border-border bg-surface p-4'
@@ -346,7 +349,7 @@ export function FlowView({ trace, onOpenSource }: { trace: TraceDoc; onOpenSourc
   if (trace.status === 'unobservable') {
     return (
       <div className={shellCls}>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={headEntry}>{trace.entry}</span>
           <span className={headLang}>{trace.language}</span>
         </div>
@@ -374,21 +377,28 @@ export function FlowView({ trace, onOpenSource }: { trace: TraceDoc; onOpenSourc
   const occ = buildOcc(trace.frames)
   return (
     <div className={shellCls}>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className={headEntry}>{trace.entry}</span>
         <span className={headLang}>{trace.language}</span>
-        {trace.observation && (
-          <span className={headLang} title="how this run was observed">
-            {trace.observation.channel}
-            {trace.observation.channel === 'runner' && trace.observation.appAttempt
-              ? trace.observation.appAttempt.attempted
-                ? ' · app attach failed'
-                : trace.observation.appAttempt.reason === 'deferred-heavyweight'
-                  ? ` · app deferred — boots with: ${trace.observation.appAttempt.path ?? '?'}`
-                  : ` · app not attempted: ${trace.observation.appAttempt.reason ?? 'unreasoned'}`
-              : ''}
-          </span>
-        )}
+        {trace.observation &&
+          (() => {
+            const att = trace.observation.appAttempt
+            const detail =
+              trace.observation.channel === 'runner' && att
+                ? att.attempted
+                  ? ' · app attach failed'
+                  : att.reason === 'deferred-heavyweight'
+                    ? ` · app deferred — boots with: ${att.path ?? '?'}`
+                    : ` · app not attempted: ${att.reason ?? 'unreasoned'}`
+                : ''
+            const text = `${trace.observation.channel}${detail}`
+            const hover = `how this run was observed — ${text}${att?.failure ? ` — ${att.failure}` : ''}`
+            return (
+              <span className={headChannel} title={hover}>
+                {text}
+              </span>
+            )
+          })()}
         <span className={headMeta}>{trace.frames.length} frame{trace.frames.length === 1 ? '' : 's'}{trace.durationMs != null && ` · ${trace.durationMs.toFixed(1)}ms`}</span>
       </div>
       {trace.how.length > 90 ? (
