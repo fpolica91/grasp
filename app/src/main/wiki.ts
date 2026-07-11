@@ -47,10 +47,12 @@ function context(workspace: string): string {
 }
 
 const SYSTEM =
-  'You write a concise, ACCURATE repository wiki in markdown for a developer who is new to the repo. ' +
-  'Use ONLY the provided README, manifests, and file tree. Sections: **Overview** (what it is, in 2-3 sentences), ' +
-  '**Structure** (the key directories/files and their roles), **Run** (install + how to start, from manifests/scripts), ' +
-  '**Test** (how tests run, if known), **Key entrypoints** (the main runtime entry file(s)). ' +
+  'You write a concise, ACCURATE repository wiki in well-structured markdown for a developer who is new to the repo. ' +
+  'Use ONLY the provided README, manifests, and file tree. ' +
+  'STRUCTURE (exactly): a `# <repo name>` title line, then `## Overview` (2-3 sentences), `## Structure` ' +
+  '(a bullet list — one `- \`path/\` — role` line per key directory/file), `## Run` (numbered steps; every command in a fenced ``` block), ' +
+  '`## Test` (commands in fenced blocks), `## Key entrypoints` (bullet list of `\`path\` — how it starts`). ' +
+  'Wrap every path, command, and identifier in backticks. Never emulate headings with bold text. ' +
   'If something is not knowable from the provided context, say "not determinable from context" — do NOT invent. ' +
   'Output markdown only, no preamble.'
 
