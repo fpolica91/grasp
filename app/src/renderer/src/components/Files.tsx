@@ -218,7 +218,7 @@ function walkExtensions(doc: Text, walk: EditorWalk | undefined): Extension {
   return exts
 }
 
-function Editor({ workspace, file, reveal, walk }: { workspace: string; file: string; reveal?: { line: number | null; nonce: number }; walk?: EditorWalk }): React.JSX.Element {
+function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace: string; file: string; reveal?: { line: number | null; nonce: number }; walk?: EditorWalk; showDock?: boolean }): React.JSX.Element {
   const [mode, setMode] = useState<'edit' | 'diff'>('edit')
   const [dirty, setDirty] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -374,7 +374,7 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
           </button>
         )}
       </div>
-      {dockedAnchor && walk && (
+      {showDock && dockedAnchor && walk && (
         <div className="cm-walk-pill cm-walk-pill-docked">
           <span className="cm-walk-pill-n">{dockedAnchor.n}</span>
           <span className="cm-walk-pill-fn">{dockedAnchor.fn}</span>
@@ -404,6 +404,7 @@ function EditorGroup(props: {
   onActivate: (f: string) => void; onClose: (f: string) => void; right?: React.ReactNode
   reveal?: { file: string; line: number | null; nonce: number } | null
   walkFor?: (f: string) => EditorWalk | undefined
+  primary?: boolean // only the primary group shows the docked (line-unknown) tour bar
 }): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
@@ -417,7 +418,8 @@ function EditorGroup(props: {
           >
             <span className="truncate">{base(f)}</span>
             <button
-              className="rounded p-0.5 text-[0.625rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              className="pointer-events-none rounded p-0.5 text-[0.625rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:pointer-events-auto group-hover:opacity-100"
+              title="Close tab"
               onClick={(e) => { e.stopPropagation(); props.onClose(f) }}
             >
               ✕
@@ -433,6 +435,7 @@ function EditorGroup(props: {
           file={props.active}
           reveal={props.reveal && props.reveal.file === props.active ? { line: props.reveal.line, nonce: props.reveal.nonce } : undefined}
           walk={props.walkFor?.(props.active)}
+          showDock={props.primary !== false}
         />
       )}
     </div>
@@ -514,9 +517,15 @@ function SearchPanel({ workspace }: { workspace: string }): React.JSX.Element {
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
         {busy && <div className="px-2 py-1 text-[0.6875rem] text-foreground-subtlest">searching…</div>}
         {!busy && hits !== null && hits.length === 0 && <div className="px-2 py-1 text-[0.6875rem] text-foreground-subtlest">no matches</div>}
+        {!busy && hits !== null && hits.length > 0 && (
+          <div className="px-2 pb-1 text-[0.6875rem] text-foreground-subtlest">{hits.length} hit{hits.length === 1 ? '' : 's'} in {grouped.length} file{grouped.length === 1 ? '' : 's'}</div>
+        )}
         {grouped.map(([file, rows]) => (
           <div key={file} className="mb-1.5">
-            <div className="truncate px-1 py-0.5 font-mono text-[0.65625rem] font-semibold text-foreground-subtle" title={file}>{file}</div>
+            <div className="flex items-baseline gap-1.5 px-1 py-0.5" title={file}>
+              <span className="truncate font-mono text-[0.65625rem] font-semibold text-foreground-subtle">{file.split('/').pop()}</span>
+              <span className="shrink-0 font-mono text-[0.59375rem] text-foreground-subtlest">{rows.length}</span>
+            </div>
             {rows.map((r, i) => (
               <button key={i} className="flex w-full items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-surface-hover" onClick={() => open(file, r.line)}>
                 <span className="shrink-0 font-mono text-[0.625rem] text-foreground-subtlest">{r.line}</span>
@@ -627,7 +636,7 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
   return (
     <div className="flex h-full">
       {/* Left rail: Files / Search / Outline / Walk — the walk needs room to breathe */}
-      <div className={`flex ${leftTab === 'walk' ? 'w-[300px]' : 'w-[220px]'} shrink-0 flex-col border-r border-border bg-background`}>
+      <div className={`flex ${leftTab === 'walk' || leftTab === 'search' ? 'w-[300px]' : 'w-[220px]'} shrink-0 flex-col border-r border-border bg-background transition-[width] duration-150`}>
         <div className="flex items-center gap-0.5 px-2 py-1.5">
           {(['files', 'search', 'outline', 'walk'] as const).map((t) => (
             <button key={t} className={`rounded-md px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
@@ -660,7 +669,11 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
       </div>
       {/* Editors */}
       <div className="flex min-w-0 flex-1 flex-col bg-background">
-        {rightFile === null ? (
+        {open.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center px-8 text-center text-[0.8125rem] text-foreground-subtlest">
+            Pick a file from the tree — or ⌘P — to open it. Open several: they become tabs; split with ⊟.
+          </div>
+        ) : rightFile === null ? (
           <EditorGroup
             workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile}
             reveal={reveal} walkFor={editorWalk}
@@ -675,13 +688,13 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
         ) : (
           <PanelGroup direction="horizontal" autoSaveId="grasp-editors">
             <Panel minSize={20}>
-              <EditorGroup workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile} reveal={reveal} walkFor={editorWalk} />
+              <EditorGroup workspace={workspace} open={open} active={left} onActivate={setLeft} onClose={closeFile} reveal={reveal} walkFor={editorWalk} primary />
             </Panel>
             <PanelResizeHandle className="w-px shrink-0 bg-border" />
             <Panel minSize={20}>
               <EditorGroup
                 workspace={workspace} open={open} active={rightFile} onActivate={setRightFile} onClose={closeFile}
-                reveal={reveal} walkFor={editorWalk}
+                reveal={reveal} walkFor={editorWalk} primary={false}
                 right={
                   <button
                     className="flex size-5 items-center justify-center rounded text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
@@ -693,11 +706,7 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
             </Panel>
           </PanelGroup>
         )}
-        {open.length === 0 && (
-          <div className="flex flex-1 items-center justify-center px-8 text-center text-[0.8125rem] text-foreground-subtlest">
-            Pick a file from the tree to open it. Open several — they become tabs — and split the editor with ⊟.
-          </div>
-        )}
+
       </div>
     </div>
   )

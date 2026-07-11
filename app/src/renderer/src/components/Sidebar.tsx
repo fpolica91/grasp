@@ -44,6 +44,8 @@ function SessionRow({
   onRename,
   onFork,
   onDelete,
+  armDelete,
+  onArmDelete,
   onDraftChange,
   onCommitRename,
   onCancelRename
@@ -58,6 +60,8 @@ function SessionRow({
   onRename: () => void
   onFork: () => void
   onDelete: () => void
+  armDelete: boolean
+  onArmDelete: (armed: boolean) => void
   onDraftChange: (v: string) => void
   onCommitRename: () => void
   onCancelRename: () => void
@@ -90,14 +94,23 @@ function SessionRow({
     >
       <span className="flex-1 truncate">{title}</span>
       <span className="ml-1.5 shrink-0 font-mono text-[0.625rem] text-foreground-subtlest group-hover:hidden">{ago(updatedAt)}</span>
-      <button className="ml-auto shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
+      <button className="ml-auto shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest pointer-events-none opacity-0 transition-opacity hover:text-foreground group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
         ✎
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
+      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest pointer-events-none opacity-0 transition-opacity hover:text-foreground group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
         ⎇
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-focus-within:opacity-100 group-hover:opacity-100" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete() }}>
-        ✕
+      <button
+        className={`shrink-0 rounded p-0.5 text-[0.6875rem] transition-opacity ${armDelete ? 'pointer-events-auto bg-destructive/15 px-1.5 text-destructive opacity-100' : 'pointer-events-none text-foreground-subtlest opacity-0 hover:text-destructive group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100'}`}
+        title={armDelete ? 'Click again to delete this conversation' : 'Delete'}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (armDelete) onDelete()
+          else onArmDelete(true)
+        }}
+        onMouseLeave={() => armDelete && onArmDelete(false)}
+      >
+        {armDelete ? 'sure?' : '✕'}
       </button>
     </div>
   )
@@ -127,6 +140,7 @@ export function Sidebar(props: {
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
   const [editing, setEditing] = useState<string | null>(null)
+  const [armDeleteId, setArmDeleteId] = useState<string | null>(null)
   const [skillsOpen, setSkillsOpen] = useState(() => localStorage.getItem('grasp-skills-open') === '1')
   const toggleSkills = (): void => {
     setSkillsOpen((o) => {
@@ -244,7 +258,9 @@ export function Sidebar(props: {
                   onSelect={() => props.onSelectSession(s.id)}
                   onRename={() => { setEditing(s.id); setDraft(s.title) }}
                   onFork={() => props.onForkSession(s.id)}
-                  onDelete={() => props.onDeleteSession(s.id)}
+                  onDelete={() => { setArmDeleteId(null); props.onDeleteSession(s.id) }}
+                  armDelete={armDeleteId === s.id}
+                  onArmDelete={(a) => setArmDeleteId(a ? s.id : null)}
                   onDraftChange={setDraft}
                   onCommitRename={() => commitRename(s.id)}
                   onCancelRename={() => setEditing(null)}
@@ -272,7 +288,7 @@ export function Sidebar(props: {
                   {w.done}/{w.total}
                 </span>
                 <button
-                  className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-focus-within:opacity-100 group-hover:opacity-100"
+                  className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest pointer-events-none opacity-0 transition-opacity hover:text-destructive group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
                   title="Delete workflow"
                   onClick={(e) => { e.stopPropagation(); props.onDeleteWorkflow(w.id) }}
                 >

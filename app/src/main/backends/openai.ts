@@ -130,6 +130,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       const calls = sr.msg.tool_calls ?? []
       if (sr.finish !== 'tool_calls' || calls.length === 0) return finalText || '(subagent done)'
       for (const tc of calls) {
+        if (turn.signal?.aborted) break // Stop ends the batch — no post-Stop tool tail
         let inp: Record<string, unknown> = {}
         try {
           inp = JSON.parse(tc.function.arguments || '{}')
@@ -234,7 +235,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       if (gate.blocked) output = `blocked by hook: ${gate.reason}`
       if (!output) {
         try {
-          output = tool ? await tool.run(input, { workspace, emit, toolId: tc.id, subagent }) : `unknown tool: ${name}`
+          output = tool ? await tool.run(input, { workspace, emit, toolId: tc.id, subagent, signal: turn.signal }) : `unknown tool: ${name}`
         } catch (e) {
           output = `tool error: ${e instanceof Error ? e.message : String(e)}`
         }

@@ -300,7 +300,7 @@ export function App(): React.JSX.Element {
   // it can reference these overlay states (declared just above) cleanly.
   useEffect(() => {
     const onEsc = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal && !showRemote) {
+      if (e.key === 'Escape' && busy && !showPalette && !showSettings && !showWfModal && !showRemote && !showQuickOpen) {
         e.preventDefault()
         e.stopPropagation()
         void window.grasp.stopAgent()
@@ -308,13 +308,14 @@ export function App(): React.JSX.Element {
     }
     window.addEventListener('keydown', onEsc, true)
     return () => window.removeEventListener('keydown', onEsc, true)
-  }, [busy, showPalette, showSettings, showWfModal])
+  }, [busy, showPalette, showSettings, showWfModal, showRemote, showQuickOpen])
   const [skills, setSkills] = useState<{ name: string; description: string; source: string; enabled: boolean }[]>([])
   const [mcpServers, setMcpServers] = useState<Record<string, { command: string; args?: string[]; env?: Record<string, string> }>>({})
   const [plugins, setPlugins] = useState<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>([])
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const history = useRef<unknown[]>([])
   const taskRef = useRef<{ phases: string[] } | null>(null) // the Task loop pipeline (verify → review)
+  const justLoadedRef = useRef(false) // skip one autosave after opening a session — viewing is not editing
   const editPaths = useRef(new Map<string, string>()) // tool_use id → edited path (auto-reload)
   const wfCancelRef = useRef(false)
   useEffect(() => {
@@ -450,6 +451,10 @@ export function App(): React.JSX.Element {
   // Autosave: whenever a turn settles, persist the session (transcript + opaque history).
   useEffect(() => {
     if (busy || transcript.length === 0) return
+    if (justLoadedRef.current) {
+      justLoadedRef.current = false
+      return
+    }
     const firstUser = transcript.find((t) => t.role === 'user')
     const existing = sessions.find((s) => s.id === sessionId)
     const rec: SessionRecord = {
@@ -472,6 +477,7 @@ export function App(): React.JSX.Element {
   }, [busy, transcript, calls, traces, surface])
 
   function applySession(rec: SessionRecord): void {
+    justLoadedRef.current = true
     setSessionId(rec.id)
     setTranscript(rec.transcript as TranscriptItem[])
     history.current = rec.history
@@ -487,6 +493,9 @@ export function App(): React.JSX.Element {
     setQueue([])
     setTokens(0)
     setWalkIx(null)
+    setBudget('')
+    setFlowLens('tree')
+    setFlowNote(null)
   }
   function loadSession(id: string): void {
     const rec = sessions.find((s) => s.id === id)
@@ -807,6 +816,9 @@ export function App(): React.JSX.Element {
     setQueue([])
     setTokens(0)
     setWalkIx(null)
+    setBudget('')
+    setFlowLens('tree')
+    setFlowNote(null)
     setSessionId(crypto.randomUUID())
     history.current = []
     setTranscript([])
@@ -886,8 +898,8 @@ export function App(): React.JSX.Element {
                 onReact={(index, reaction) => setTranscript((t) => t.map((it, i) => i === index ? { ...it, reaction } : it))}
                 commands={commands}
                 skills={skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description }))}
-                onToggleTerminal={toggleBottom}
-                onToggleSidebar={() => setSidebarOpen((s) => !s)}
+                onToggleTerminal={() => (persona === 'editor' ? toggleEdTerm() : toggleBottom())}
+                onToggleSidebar={() => (persona === 'editor' ? toggleEdDock() : setSidebarOpen((s) => !s))}
                 workspace={workspace}
                 banner={
                   activeWf ? (
@@ -1225,7 +1237,15 @@ export function App(): React.JSX.Element {
           <span className="truncate font-mono text-[0.75rem] text-foreground-subtle" title={workspace}>
             {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
           </span>
-          <span className="ml-auto font-mono text-[0.6875rem] text-foreground-subtlest" title="Switch persona">⌘G</span>
+          <button
+            className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-[0.6875rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground"
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            onClick={togglePersona}
+            title="Switch to the Agent persona (⌘G)"
+          >
+            ⇄ Agent
+            <span className="font-mono text-foreground-subtlest">⌘G</span>
+          </button>
         </div>
         <PanelGroup direction="vertical" className="min-h-0 flex-1" autoSaveId="grasp-editor-vert">
           <Panel defaultSize={74} minSize={30}>

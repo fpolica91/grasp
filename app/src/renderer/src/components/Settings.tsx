@@ -79,7 +79,22 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   return <div className={`flex flex-col gap-1 rounded-lg border border-border bg-surface p-3 ${className}`}>{children}</div>
 }
 
+function useEscapeToClose(onClose: () => void): void {
+  useEffect(() => {
+    const h = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', h, true)
+    return () => window.removeEventListener('keydown', h, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+}
+
 export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
+  useEscapeToClose(props.onClose)
   const [section, setSection] = useState<Section>('marketplace')
   const [mcpName, setMcpName] = useState(''); const [mcpCmd, setMcpCmd] = useState(''); const [mcpArgs, setMcpArgs] = useState(''); const [mcpEnv, setMcpEnv] = useState('')
   const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])

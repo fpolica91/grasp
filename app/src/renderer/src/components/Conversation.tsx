@@ -108,6 +108,7 @@ function describe(it: TranscriptItem): { verb: string; arg: string } {
     case 'read_file': case 'Read': return { verb: 'Read', arg: base(path) }
     case 'list_dir': case 'LS': return { verb: 'Listed', arg: base(path) || '.' }
     case 'run_bash': case 'Bash': return { verb: 'Ran', arg: cmd.slice(0, 60) || 'command' }
+    case 'use_skill': case 'Skill': return { verb: 'Skill', arg: String(it.input?.name ?? '') || 'loaded' }
     case 'grasp_observe': return { verb: 'Observed', arg: ep }
     case 'grasp_diff': return { verb: 'Diffed', arg: ep }
     case 'grasp_fuzz': return { verb: 'Fuzzed', arg: ep }
@@ -656,7 +657,7 @@ export function Conversation(props: {
   }
 
   return (
-    <section className="flex h-full min-w-0 flex-col">
+    <section className="@container flex h-full min-w-0 flex-col">
       {/* Header */}
       <header className="flex shrink-0 items-center gap-2.5 border-b border-border bg-background px-5 py-3" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
         {props.onToggleSidebar && (
@@ -669,10 +670,14 @@ export function Conversation(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
-        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground">Session<span className="ml-2 hidden text-[0.75rem] font-normal text-foreground-subtlest sm:inline">post-editor</span></span>
+        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground">Session<span className="ml-2 hidden text-[0.75rem] font-normal text-foreground-subtlest @[480px]:inline">post-editor</span></span>
         {/* External app launcher */}
-        {props.workspace && <AppLauncher workspace={props.workspace} />}
-        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[0.6875rem] text-foreground-subtle shadow-sm min-[560px]:inline-flex" title="tokens used this session">
+        {props.workspace && (
+          <span className="hidden shrink-0 @[480px]:block">
+            <AppLauncher workspace={props.workspace} />
+          </span>
+        )}
+        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[0.6875rem] text-foreground-subtle shadow-sm @[560px]:inline-flex" title="tokens used this session">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".4" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           {fmtTokens(props.tokens)}
           {ctxPct !== null && (
@@ -712,7 +717,7 @@ export function Conversation(props: {
           const m = map[fs] ?? { label: fs, cls: 'bg-tag text-foreground-subtle' }
           return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ${m.cls}`} title={`Flow: ${fs}`}>{m.label}</span>
         })()}
-        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
+        <span className="ml-auto inline-flex max-w-[190px] items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm @[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
           <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
           <span className="min-w-0 truncate">{activeLabel} · {props.model}</span>
         </span>
@@ -736,7 +741,7 @@ export function Conversation(props: {
                 onClick={props.onLoadRepo}
                 title="The agent introduces this workspace: how it runs, the flows you can ask to see, the rules awaiting your signature"
               >
-                Load repo — introduce this workspace
+                Load repo
               </button>
             )}
             {props.resume && (
@@ -811,7 +816,8 @@ export function Conversation(props: {
               ))}
             </div>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div className="flex items-end gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
             <ModelPicker backends={props.backends} backend={props.backend} model={props.model} onBackend={props.onBackend} onModel={props.onModel} />
             {props.onThoughtLevel && (
               <ThoughtLevelPicker backend={props.backend} model={props.model} level={props.thoughtLevel} onLevel={props.onThoughtLevel} />
@@ -837,8 +843,9 @@ export function Conversation(props: {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             )}
+          </div>
             {props.busy ? (
-              <div className="ml-auto flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5">
                 {props.onSteer && (
                   <button
                     type="button"
@@ -860,7 +867,7 @@ export function Conversation(props: {
               </div>
             ) : (
               <button
-                className="ml-auto flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-filter hover:brightness-110"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-filter hover:brightness-110"
                 onClick={submit}
                 title="Send (Enter · Shift+Enter for newline)"
               >

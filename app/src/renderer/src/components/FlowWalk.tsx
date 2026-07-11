@@ -70,8 +70,15 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace, compa
       {/* header — the observed facts of this run */}
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[0.8125rem] font-semibold text-foreground" title={trace.entry}>
-            {compact ? trace.entry.split('/').slice(-2).join('/') : trace.entry}
+          <span className="min-w-0 truncate font-mono text-[0.8125rem] font-semibold text-foreground" title={trace.entry}>
+            {(() => {
+              if (!compact) return trace.entry
+              // keep what matters: basename:symbol — the path start is the tooltip's job
+              const ci = trace.entry.lastIndexOf(':')
+              const path = ci > 0 ? trace.entry.slice(0, ci) : trace.entry
+              const sym = ci > 0 ? trace.entry.slice(ci) : ''
+              return `${path.split('/').pop()}${sym}`
+            })()}
           </span>
           <span className={`rounded px-1.5 py-0.5 font-mono text-[0.625rem] ${trace.status === 'threw' ? 'bg-destructive/15 text-destructive' : 'bg-tag text-foreground-subtle'}`}>{trace.status}</span>
         </div>
@@ -97,8 +104,8 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace, compa
                 title={a.file ? `open ${a.file}${a.line ? `:${a.line}` : ''}` : undefined}
               >
                 <span className={`absolute left-1.5 top-2 z-10 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md px-1 font-mono text-[0.625rem] font-semibold ${current ? 'bg-accent-blue text-white' : 'bg-tag text-foreground-subtle'}`}>{a.n}</span>
-                <span className="flex items-baseline gap-2">
-                  <span className="font-mono text-[0.8125rem] font-semibold text-foreground">{a.fn}</span>
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="min-w-0 truncate font-mono text-[0.8125rem] font-semibold text-foreground">{a.fn}</span>
                   {a.file && !compact && (
                     <span className="truncate font-mono text-[0.65625rem] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
                   )}
