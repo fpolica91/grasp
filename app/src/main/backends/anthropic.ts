@@ -21,7 +21,7 @@ import {
   mcpAugmentedTools,
   withProjectContext
 } from './tools'
-import type { SubagentRunner, Tool } from './tools'
+import type { SubagentRunner, SubagentOpts, Tool } from './tools'
 import { requestApproval } from '../approvals'
 import { decidePermission } from '../permissions'
 import { parseSSE } from './sse'
@@ -165,14 +165,22 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
     const plan = turn.mode === 'plan'
     const messages: unknown[] = [...turn.history, { role: 'user', content: turn.prompt }]
 
-    const subagent: SubagentRunner = async (prompt, parentId, opts) => {
+    // Background subagents: fire-and-forget delegations that run while the main agent
+    // keeps working; their results are injected as a user message when they finish (and
+    // any stragglers are awaited before the turn can end). Fan out several to parallelize.
+    interface BgAgent { id: string; label: string; promise: Promise<string>; done: boolean; result: string; injected: boolean }
+    const bgAgents: BgAgent[] = []
+    let bgSeq = 0
+
+    const runSub = async (prompt: string, parentId: string, opts?: SubagentOpts): Promise<string> => {
       const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
       const sys = opts?.system ?? SUBAGENT_SYSTEM
       const subTools = opts?.tools ?? SUBAGENT_TOOLS
       const subMessages: unknown[] = [{ role: 'user', content: prompt }]
       let finalText = ''
       for (let s = 0; ; s++) {
-        const sr = await callModel(model, turn.thoughtLevel, subMessages, withProjectContext(workspace, sys), subTools)
+        if (turn.signal?.aborted) return finalText || '(subagent aborted)'
+        const sr = await callModel(opts?.model ?? model, turn.thoughtLevel, subMessages, withProjectContext(workspace, sys), subTools)
         if (!sr.ok) return `subagent error: ${sr.error}`
         const blocks = sr.content ?? []
         subMessages.push({ role: 'assistant', content: blocks })
@@ -185,7 +193,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
           subEmit({ type: 'tool_use', id: tu.id, name: tu.name, input: tu.input })
           let out = ''
           try {
-            out = tool ? await tool.run(tu.input ?? {}, { workspace, emit: subEmit, toolId: tu.id }) : `unknown tool: ${tu.name}`
+            out = tool ? await tool.run(tu.input ?? {}, { workspace, emit: subEmit, toolId: tu.id, signal: turn.signal }) : `unknown tool: ${tu.name}`
           } catch (e) {
             out = `tool error: ${e instanceof Error ? e.message : String(e)}`
           }
@@ -194,8 +202,26 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         }
         subMessages.push({ role: 'user', content: subResults })
       }
-      return finalText || '(subagent ended without a final message)'
     }
+
+    const subagent: SubagentRunner = async (prompt, parentId, opts) => {
+      if (opts?.background) {
+        const id = `bg-${++bgSeq}`
+        const entry: BgAgent = { id, label: opts.label ?? id, promise: Promise.resolve(''), done: false, result: '', injected: false }
+        entry.promise = runSub(prompt, `${parentId}:${id}`, opts)
+          .then((r) => { entry.done = true; entry.result = r; return r })
+          .catch((e) => { entry.done = true; entry.result = `error: ${e instanceof Error ? e.message : String(e)}`; return entry.result })
+        bgAgents.push(entry)
+        return `Started background subagent ${id} ("${entry.label}"). It runs while you continue — do NOT wait on it. Its result is delivered to you as a message when ready.`
+      }
+      return runSub(prompt, parentId, opts)
+    }
+
+    // Text blocks for background subagents that finished but haven't been shown yet.
+    const drainBg = (): { type: 'text'; text: string }[] =>
+      bgAgents
+        .filter((e) => e.done && !e.injected)
+        .map((e) => { e.injected = true; return { type: 'text', text: `<background-subagent id="${e.id}" label="${e.label}">\n${e.result}\n</background-subagent>` } })
 
     let turnTokens = 0
     let fuzzNudged = false
@@ -276,6 +302,15 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         emit({ type: 'text_end' })
       }
       if (terminal) {
+        // The model wants to stop — but if background subagents are still outstanding,
+        // wait for them and deliver their results so it can react before ending.
+        const pending = bgAgents.filter((e) => !e.injected)
+        if (pending.length > 0) {
+          emit({ type: 'trajectory_call', call: trajCall })
+          await Promise.all(pending.map((e) => e.promise))
+          messages.push({ role: 'user', content: drainBg() })
+          continue
+        }
         emit({ type: 'trajectory_call', call: trajCall })
         emit({ type: 'done' })
         return { messages }
@@ -339,7 +374,10 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
       if (turn.flowAuto !== false)
         await liveSurface(workspace, mutatedNow, emit)
 
-      messages.push({ role: 'user', content: results })
+      // Deliver any background subagents that finished during this step alongside the
+      // tool results (same user turn), so the model sees them on its next call.
+      const bgBlocks = drainBg()
+      messages.push({ role: 'user', content: bgBlocks.length ? [...(results as unknown[]), ...bgBlocks] : results })
       trajCall.toolResults = results.map((rr) => {
         const r0 = rr as { tool_use_id: string; content: string }
         const tu = toolUses.find((t) => t.id === r0.tool_use_id)

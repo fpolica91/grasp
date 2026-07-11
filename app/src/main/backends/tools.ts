@@ -8,6 +8,7 @@ import { resolve, dirname, join } from 'node:path'
 import { validateTrace, validateObservation, diffTraces, buildFuzzDiff, validateClaim, validateAxes, type TraceDoc, type FuzzCase, type FuzzClaim, type FuzzAxes } from '../../shared/trace'
 import { listSkills, readSkill, skillsListing } from '../skills'
 import { requestElicitation } from '../approvals'
+import { resolveProfile, listProfiles } from '../profiles'
 import type { Emit } from './types'
 import type { IntroDoc } from '../../shared/types'
 import { McpRegistry } from './mcp'
@@ -155,7 +156,7 @@ export const EDIT_TOOLS = new Set(['write_file', 'edit_file', 'notebook_edit', '
 
 // A subagent runner: run a focused sub-task and return its final text. Events it emits
 // are tagged with the parent task's id so the UI nests them.
-export interface SubagentOpts { system?: string; tools?: Tool[] }
+export interface SubagentOpts { system?: string; tools?: Tool[]; model?: string; background?: boolean; label?: string }
 export type SubagentRunner = (prompt: string, parentId: string, opts?: SubagentOpts) => Promise<string>
 
 export interface ToolCtx {
@@ -284,6 +285,10 @@ export function withProjectContext(workspace: string, base: string): string {
   let out = base
   if (ctx) out += `\n\n# Project instructions (from ${PROJECT_FILES.join(' / ')} at the workspace root)\n\n${ctx}`
   if (listing) out += listing // skills metadata, always in context (progressive disclosure)
+  const profiles = listProfiles(workspace)
+  if (profiles.length)
+    out += `\n\n# Custom agent profiles (delegate via task with profile:<name>)\n` +
+      profiles.map((pr) => `- ${pr.name}: ${pr.description || '(no description)'}`).join('\n')
   return out
 }
 
@@ -850,18 +855,36 @@ export const TOOLS: Tool[] = [
       'Delegate a focused, self-contained sub-task to a subagent (e.g. "investigate how X ' +
       'is validated", "make the edit to file Y and observe it"). The subagent works on its ' +
       'own with the file/observe tools and returns a concise result. Use for parallelizable ' +
-      'or well-scoped work so your main thread stays focused. Give it one clear objective.',
+      'or well-scoped work so your main thread stays focused. Give it one clear objective. ' +
+      'Set background:true to run it WITHOUT blocking — you keep working and its result is ' +
+      'delivered to you as a message when ready (fan out several this way to parallelize). ' +
+      'Set profile to a named custom agent (see the workspace profiles listing) to pin its ' +
+      'model and tools.',
     input_schema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: 'a short label for the sub-task' },
-        prompt: { type: 'string', description: 'the full objective + context the subagent needs' }
+        prompt: { type: 'string', description: 'the full objective + context the subagent needs' },
+        background: { type: 'boolean', description: 'run without blocking; result arrives as a message later' },
+        profile: { type: 'string', description: 'name of a custom agent profile to use (optional)' }
       },
       required: ['prompt']
     },
     async run(input, ctx) {
       if (!ctx.subagent) return 'subagents are not available on this backend.'
-      return ctx.subagent(String(input.prompt), ctx.toolId ?? 'task')
+      const opts: SubagentOpts = { background: input.background === true, label: (input.description ? String(input.description) : String(input.prompt)).slice(0, 60) }
+      const profileName = input.profile ? String(input.profile) : ''
+      if (profileName) {
+        const prof = resolveProfile(ctx.workspace, profileName)
+        if (!prof) {
+          const avail = listProfiles(ctx.workspace).map((p) => p.name)
+          return `unknown agent profile "${profileName}". Available: ${avail.length ? avail.join(', ') : '(none defined — add .grasp/agents/<name>/AGENT.md)'}`
+        }
+        opts.system = SUBAGENT_SYSTEM + '\n\n' + prof.system
+        if (prof.model) opts.model = prof.model
+        if (prof.tools?.length) opts.tools = SUBAGENT_TOOLS.filter((t) => prof.tools!.includes(t.name))
+      }
+      return ctx.subagent(String(input.prompt), ctx.toolId ?? 'task', opts)
     }
   },
   {
