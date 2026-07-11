@@ -21,7 +21,7 @@ import { oneShot } from './oneshot'
 import { gitGraph, gitAction, gitDiff } from './git'
 import { readWiki, generateWiki } from './wiki'
 import { loadHooks } from './hooks'
-import { generateCodeMap, fileSymbols } from './codemap'
+import { fileSymbols } from './codemap'
 import { revertToCheckpoint } from './checkpoint'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent, steerAgent } from './agent'
@@ -72,7 +72,6 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:wikiRead', (_e, workspace: string) => readWiki(workspace))
   ipcMain.handle('grasp:wikiGenerate', (_e, workspace: string, backend: string, model?: string) => generateWiki(workspace, backend, model))
   ipcMain.handle('grasp:hooks', (_e, workspace: string) => loadHooks(workspace))
-  ipcMain.handle('grasp:codemap', (_e, workspace: string) => generateCodeMap(workspace))
   ipcMain.handle('grasp:observe', (_e, params: ObserveParams) => observe(params))
   ipcMain.handle('grasp:fuzz', (_e, params: FuzzParams) => fuzz(params))
   ipcMain.handle('grasp:agent', (e, turn: AgentTurn) => runAgent(e.sender, turn))

@@ -79,7 +79,6 @@ const api: GraspApi = {
   wikiRead: (workspace: string) => ipcRenderer.invoke('grasp:wikiRead', workspace),
   wikiGenerate: (workspace: string, backend: string, model?: string) => ipcRenderer.invoke('grasp:wikiGenerate', workspace, backend, model),
   hooks: (workspace: string) => ipcRenderer.invoke('grasp:hooks', workspace),
-  codemap: (workspace: string) => ipcRenderer.invoke('grasp:codemap', workspace)
 }
 
 contextBridge.exposeInMainWorld('grasp', api)

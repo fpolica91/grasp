@@ -187,15 +187,15 @@ plugins, `hooks.json`, `keybindings.json`, `mcp.json`. Trajectory `calls` persis
 
 ## The renderer (`app/src/renderer/src/`)
 
-`App.tsx` owns the shell: Sidebar · Conversation · a right pane with **seven tabs** (Editor
-[CodeMirror], **Flow — the core surface**, Trajectory, Browser, Git, Wiki, Codemap) · xterm
+`App.tsx` owns the shell: Sidebar · Conversation · a right pane with **six tabs** (Editor
+[CodeMirror], **Flow — the core surface**, Trajectory, Browser, Git, Wiki) · xterm
 terminal dock · activity rail. **Editor mode** (persisted in localStorage) flips to an
 editor-forward split via **imperative panel resize** (`ImperativePanelHandle.resize()`), never a
 key-remount — a remount loses Conversation input/scroll state.
 
-- **Codemap** (`Codemap.tsx` ← `main/codemap.ts` over `grasp:codemap`) — a regex-extracted symbol
-  tree, explicitly **no AI, no LSP** (caps: 100 files / 30 symbols / depth 4); double-click opens
-  the file in the Editor tab.
+- **Symbols without a tab** — the old Codemap pane was removed as purposeless; its extractor
+  survives in `main/codemap.ts` (`fileSymbols`, regex, **no AI, no LSP**) feeding the editor's
+  Outline rail panel.
 - **Wiki** (`Wiki.tsx` ← `main/wiki.ts`) — the sole AI-prose repo doc, persisted at
   `<ws>/.grasp/wiki.md`, regenerated on demand via oneShot.
 - The composer: queue + steer, thought-level control, mode picker (incl. Task), the flow-status

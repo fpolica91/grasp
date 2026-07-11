@@ -20,7 +20,6 @@ import { BrowserPane } from './components/Browser'
 import { TrajectoryInspector } from './components/TrajectoryInspector'
 import { GitGraphPane } from './components/GitGraph'
 import { WikiPane } from './components/Wiki'
-import { CodemapPane } from './components/Codemap'
 import { FlowWalk, walkAnchorsOf, type WalkAnchor } from './components/FlowWalk'
 import { QuickOpen } from './components/QuickOpen'
 import type { AgentEvent, BackendInfo, FlowStatus, FuzzReport, GraphDiffModel, GraphModel, IntroDoc, SessionRecord, SlashCommand, TrajectoryCall, WorkflowRecord } from '../../shared/types'
@@ -100,7 +99,7 @@ export function App(): React.JSX.Element {
     if (l) localStorage.setItem('grasp-thought', l)
     else localStorage.removeItem('grasp-thought')
   }
-  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'>('flow')
+  const [rightTab, setRightTab] = useState<'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'>('flow')
   const [flowLens, setFlowLens] = useState<'tree' | 'walk'>('tree') // Flow tab: the call tree | the walk narrative
   const [walkIx, setWalkIx] = useState<number | null>(null)
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
@@ -142,7 +141,7 @@ export function App(): React.JSX.Element {
   const [edTermCollapsed, setEdTermCollapsed] = useState(false)
   const [edMounted, setEdMounted] = useState(false) // editor persona visited once — mounts its terminal, then persists
   // Activity-rail click: open the pane to that tab, or collapse if it's already the active view.
-  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki' | 'codemap'): void => {
+  const pickRight = (tab: 'editor' | 'flow' | 'trajectory' | 'browser' | 'git' | 'wiki'): void => {
     const p = rightRef.current
     if (!p) return
     if (!p.isCollapsed() && rightTab === tab) p.collapse()
@@ -1034,7 +1033,6 @@ export function App(): React.JSX.Element {
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'git' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('git')}>Git</button>
                 <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'wiki' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('wiki')}>Wiki</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'codemap' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('codemap')}>Codemap</button>
                 {surface && (
                   <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground-subtlest">
                     <span className="size-1.5 animate-pulse rounded-full bg-foreground" />
@@ -1056,9 +1054,7 @@ export function App(): React.JSX.Element {
                 <div className={`absolute inset-0 ${rightTab === 'wiki' ? 'visible' : 'hidden'}`}>
                   <WikiPane workspace={workspace} backend={backend} model={model} active={rightTab === 'wiki'} />
                 </div>
-                <div className={`absolute inset-0 ${rightTab === 'codemap' ? 'visible' : 'hidden'}`}>
-                  <CodemapPane workspace={workspace} active={rightTab === 'codemap'} onOpenSource={() => setRightTab('editor')} />
-                </div>                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
+                <div className={`absolute inset-0 ${rightTab === 'trajectory' ? 'visible' : 'hidden'}`}>
                   <TrajectoryInspector calls={calls} />
                 </div>
                 <div className={`absolute inset-0 flex flex-col ${rightTab === 'flow' ? 'visible' : 'hidden'}`}>
