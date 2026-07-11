@@ -13,7 +13,7 @@ import { makeAnthropicBackend } from './anthropic'
 
 export const claudeBackend = makeAnthropicBackend({
   id: 'claude',
-  label: 'Claude',
+  label: 'Anthropic',
   base: process.env.GRASP_CLAUDE_BASE ?? 'https://api.anthropic.com',
   defaultModel: process.env.GRASP_CLAUDE_MODEL ?? 'claude-sonnet-5',
   // Claude 5 family. Default to Sonnet 5 (balanced); Opus 4.8 / Fable 5 for hard tasks,
