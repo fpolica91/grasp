@@ -16,7 +16,7 @@ import {
   mcpAugmentedTools,
   withProjectContext
 } from './tools'
-import type { SubagentRunner, Tool } from './tools'
+import type { SubagentRunner, SubagentOpts, Tool } from './tools'
 import { requestApproval } from '../approvals'
 import { decidePermission } from '../permissions'
 import { parseSSE } from './sse'
@@ -117,14 +117,21 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
   const plan = turn.mode === 'plan'
   const messages: Msg[] = [...(turn.history as Msg[]), { role: 'user', content: turn.prompt }]
 
-  const subagent: SubagentRunner = async (prompt, parentId, opts) => {
+  // Background subagents: run while the main agent keeps working; results injected as a
+  // user message when they finish (stragglers awaited before the turn can end).
+  interface BgAgent { id: string; label: string; promise: Promise<string>; done: boolean; result: string; injected: boolean }
+  const bgAgents: BgAgent[] = []
+  let bgSeq = 0
+
+  const runSub = async (prompt: string, parentId: string, opts?: SubagentOpts): Promise<string> => {
     const subEmit: Emit = (e) => emit({ ...e, parent: parentId })
     const sys = opts?.system ?? SUBAGENT_SYSTEM
     const subTools = opts?.tools ?? SUBAGENT_TOOLS
     const sub: Msg[] = [{ role: 'user', content: prompt }]
     let finalText = ''
     for (let s = 0; ; s++) {
-      const sr = await callModel(model, turn.thoughtLevel, sub, withProjectContext(workspace, sys), subTools)
+      if (turn.signal?.aborted) return finalText || '(subagent aborted)'
+      const sr = await callModel(opts?.model ?? model, turn.thoughtLevel, sub, withProjectContext(workspace, sys), subTools)
       if (!sr.ok || !sr.msg) return `subagent error: ${sr.error}`
       sub.push(sr.msg)
       if (sr.msg.content) { finalText = sr.msg.content; subEmit({ type: 'text', text: sr.msg.content }) }
@@ -142,7 +149,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         subEmit({ type: 'tool_use', id: tc.id, name: tc.function.name, input: inp })
         let out = ''
         try {
-          out = tool ? await tool.run(inp, { workspace, emit: subEmit, toolId: tc.id }) : `unknown tool: ${tc.function.name}`
+          out = tool ? await tool.run(inp, { workspace, emit: subEmit, toolId: tc.id, signal: turn.signal }) : `unknown tool: ${tc.function.name}`
         } catch (e) {
           out = `tool error: ${e instanceof Error ? e.message : String(e)}`
         }
@@ -150,8 +157,26 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
         sub.push({ role: 'tool', tool_call_id: tc.id, content: out })
       }
     }
-    return finalText || '(subagent ended without a final message)'
   }
+
+  const subagent: SubagentRunner = async (prompt, parentId, opts) => {
+    if (opts?.background) {
+      const id = `bg-${++bgSeq}`
+      const entry: BgAgent = { id, label: opts.label ?? id, promise: Promise.resolve(''), done: false, result: '', injected: false }
+      entry.promise = runSub(prompt, `${parentId}:${id}`, opts)
+        .then((r) => { entry.done = true; entry.result = r; return r })
+        .catch((e) => { entry.done = true; entry.result = `error: ${e instanceof Error ? e.message : String(e)}`; return entry.result })
+      bgAgents.push(entry)
+      return `Started background subagent ${id} ("${entry.label}"). It runs while you continue — do NOT wait on it. Its result is delivered to you as a message when ready.`
+    }
+    return runSub(prompt, parentId, opts)
+  }
+
+  const drainBg = (): string =>
+    bgAgents
+      .filter((e) => e.done && !e.injected)
+      .map((e) => { e.injected = true; return `<background-subagent id="${e.id}" label="${e.label}">\n${e.result}\n</background-subagent>` })
+      .join('\n\n')
 
   let turnTokens = 0
   let fuzzNudged = false
@@ -204,6 +229,12 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       emit({ type: 'text_end' })
     }
     if (terminal) {
+      const pending = bgAgents.filter((e) => !e.injected)
+      if (pending.length > 0) {
+        await Promise.all(pending.map((e) => e.promise))
+        messages.push({ role: 'user', content: drainBg() })
+        continue
+      }
       emit({ type: 'done' })
       return { messages }
     }
@@ -256,6 +287,9 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       if (EDIT_TOOLS.has(name) && !output.startsWith('skipped') && !output.startsWith('plan mode')) mutated = true
       if (name === 'grasp_fuzz_diff' || name === 'grasp_flow_diff') diffed = true
     }
+
+    const bgText = drainBg()
+    if (bgText) messages.push({ role: 'user', content: bgText })
 
     if (mutated && !diffed && !fuzzNudged) {
       fuzzNudged = true
