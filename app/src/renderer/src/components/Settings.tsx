@@ -93,11 +93,29 @@ function useEscapeToClose(onClose: () => void): void {
   }, [])
 }
 
-export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command: string; args?: string[]; env?: Record<string, string> }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
+export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onKeysChanged: () => void; skills: { name: string; description: string; source: string; enabled: boolean }[]; onSkillsChanged: () => void; mcpServers: Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; transport?: string; disabled?: boolean; disabledTools?: string[] }>; onMcpChanged: () => void; plugins: { name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]; onPluginsChanged: () => void; commands: { name: string; description: string; skills?: string }[]; keybinds: Record<string, string>; workspace: string; onClose: () => void }): React.JSX.Element {
   useEscapeToClose(props.onClose)
   const [section, setSection] = useState<Section>('marketplace')
   const [mcpName, setMcpName] = useState(''); const [mcpCmd, setMcpCmd] = useState(''); const [mcpArgs, setMcpArgs] = useState(''); const [mcpEnv, setMcpEnv] = useState('')
-  const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number }[]>([])
+  const [mcpKind, setMcpKind] = useState<'stdio' | 'http'>('stdio'); const [mcpUrl, setMcpUrl] = useState(''); const [mcpHeaders, setMcpHeaders] = useState('')
+  const [mcpExpanded, setMcpExpanded] = useState<string | null>(null)
+  const parseKV = (text: string): Record<string, string> => {
+    const o: Record<string, string> = {}
+    for (const line of text.split('\n')) { const i = line.indexOf('='); if (i > 0) o[line.slice(0, i).trim()] = line.slice(i + 1) }
+    return o
+  }
+  const addMcp = (): void => {
+    const name = mcpName.trim(); if (!name) return
+    const cfg = mcpKind === 'http'
+      ? { url: mcpUrl.trim(), transport: 'http', ...(mcpHeaders.trim() ? { headers: parseKV(mcpHeaders) } : {}) }
+      : { command: mcpCmd.trim(), ...(mcpArgs.trim() ? { args: mcpArgs.match(/"[^"]*"|'[^']*'|\S+/g)?.map((t) => t.replace(/^["']|["']$/g, '')) ?? [] } : {}), ...(mcpEnv.trim() ? { env: parseKV(mcpEnv) } : {}) }
+    void window.grasp.saveMcpConfig(name, cfg).then(props.onMcpChanged)
+    setMcpName(''); setMcpCmd(''); setMcpArgs(''); setMcpEnv(''); setMcpUrl(''); setMcpHeaders('')
+  }
+  const toggleMcpDisabled = (name: string, cfg: { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; transport?: string; disabled?: boolean; disabledTools?: string[] }): void => {
+    void window.grasp.saveMcpConfig(name, { ...cfg, disabled: !cfg.disabled }).then(props.onMcpChanged)
+  }
+  const [mcpStatusList, setMcpStatusList] = useState<{ name: string; ok: boolean; error?: string; toolCount: number; disabled?: boolean; transport?: string; tools?: string[] }[]>([])
   const [pluginUrl, setPluginUrl] = useState(''); const [pluginMsg, setPluginMsg] = useState('')
   useEffect(() => { if (section === 'mcp' && props.workspace) void window.grasp.mcpStatus(props.workspace).then(setMcpStatusList) }, [section, props.workspace, props.mcpServers])
   const [hooksList, setHooksList] = useState<{ event: string; match?: string; command: string; timeout?: number }[]>([])
@@ -201,34 +219,67 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
             {section === 'mcp' && (
               <div>
                 <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">MCP servers {revealBtn('mcp')}</div>
-                {note(<>External stdio tool servers. Saved to <code className={codeCls}>~/.grasp/mcp.json</code>.</>)}
+                {note(<>External tool servers — stdio or HTTP. Saved to <code className={codeCls}>~/.grasp/mcp.json</code>. Secrets: <code className={codeCls}>{'${env:VAR}'}</code> / <code className={codeCls}>{'${file:/path}'}</code>.</>)}
                 {Object.keys(props.mcpServers).length > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
                     {Object.entries(props.mcpServers).map(([name, s]) => {
                       const st = mcpStatusList.find((x) => x.name === name)
+                      const kind = s.transport ?? (s.url ? 'http' : 'stdio')
+                      const dot = s.disabled ? 'bg-foreground-subtlest' : st?.ok ? 'bg-git-added' : st?.ok === false ? 'bg-destructive' : 'bg-foreground-subtlest'
+                      const open = mcpExpanded === name
                       return (
                         <Card key={name}>
                           <div className="flex items-center gap-2">
-                            <span className="text-[0.8125rem] font-semibold text-foreground">{name}</span>
-                            <span className={`rounded-full border px-1.5 text-[0.625rem] ${st?.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st ? (st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed') : 'mcp'}</span>
-                            <button className="ml-auto border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
+                            <span className={`size-2 shrink-0 rounded-full ${dot}`} title={s.disabled ? 'disabled' : st?.ok ? 'connected' : st?.ok === false ? 'failed' : 'unknown'} />
+                            <span className={`text-[0.8125rem] font-semibold ${s.disabled ? 'text-foreground-subtle' : 'text-foreground'}`}>{name}</span>
+                            <span className="rounded border border-border px-1.5 text-[0.5625rem] uppercase text-foreground-subtlest">{kind}</span>
+                            {st && !s.disabled && <span className={`rounded-full border px-1.5 text-[0.625rem] ${st.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed'}</span>}
+                            {st?.ok && (st.tools?.length ?? 0) > 0 && <button className="text-[0.625rem] text-foreground-subtlest transition-colors hover:text-foreground" onClick={() => setMcpExpanded(open ? null : name)}>{open ? 'hide' : 'tools'}</button>}
+                            <label className="ml-auto flex cursor-pointer items-center gap-1 text-[0.625rem] text-foreground-subtlest" title={s.disabled ? 'Enable this server' : 'Disable without removing'}>
+                              <input type="checkbox" checked={!s.disabled} onChange={() => toggleMcpDisabled(name, s)} />
+                              {s.disabled ? 'off' : 'on'}
+                            </label>
+                            <button className="border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
                           </div>
                           <div className="text-[0.78125rem] text-foreground-subtle">
-                            <code className={codeCls}>{s.command}{s.args?.length ? ' ' + s.args.join(' ') : ''}</code>
+                            <code className={codeCls}>{s.url ? s.url : `${s.command}${s.args?.length ? ' ' + s.args.join(' ') : ''}`}</code>
                             {s.env && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{Object.keys(s.env).length} env</span>}
+                            {s.headers && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{Object.keys(s.headers).length} header{Object.keys(s.headers).length === 1 ? '' : 's'}</span>}
                             {st?.error && <div className="mt-1 font-mono text-[0.71875rem] text-destructive">{st.error}</div>}
+                            {open && st?.tools && (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {st.tools.map((t) => <span key={t} className="rounded border border-border px-1.5 py-0.5 font-mono text-[0.625rem] text-foreground-subtle">{t}</span>)}
+                              </div>
+                            )}
                           </div>
                         </Card>
                       )
                     })}
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <input className={`${inputCls} w-[110px]`} placeholder="name" value={mcpName} onChange={(e) => setMcpName(e.target.value)} spellCheck={false} />
-                  <input className={`${inputCls} flex-1`} placeholder="command (e.g. npx)" value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} spellCheck={false} />
-                  <input className={`${inputCls} flex-1`} placeholder={'args (quote spaces: "foo bar")'} value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
-                  <textarea className={`${inputCls} w-full font-mono`} placeholder="env: KEY=VALUE per line (optional)" value={mcpEnv} onChange={(e) => setMcpEnv(e.target.value)} rows={1} spellCheck={false} />
-                  <button className={btnPrimary} disabled={!mcpName.trim() || !mcpCmd.trim()} onClick={() => { void window.grasp.saveMcpServer(mcpName.trim(), mcpCmd.trim(), mcpArgs, mcpEnv).then(props.onMcpChanged); setMcpName(''); setMcpCmd(''); setMcpArgs(''); setMcpEnv('') }}>Add</button>
+                <div className="mt-3 flex flex-col gap-1.5 rounded-lg border border-border p-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <input className={`${inputCls} w-[130px]`} placeholder="name" value={mcpName} onChange={(e) => setMcpName(e.target.value)} spellCheck={false} />
+                    <span className="ml-auto flex items-center rounded-lg bg-tag p-0.5 text-[0.6875rem]">
+                      <button className={`rounded px-2 py-0.5 transition-colors ${mcpKind === 'stdio' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMcpKind('stdio')}>stdio</button>
+                      <button className={`rounded px-2 py-0.5 transition-colors ${mcpKind === 'http' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMcpKind('http')}>HTTP</button>
+                    </span>
+                  </div>
+                  {mcpKind === 'stdio' ? (
+                    <>
+                      <div className="flex gap-1.5">
+                        <input className={`${inputCls} flex-1`} placeholder="command (e.g. npx)" value={mcpCmd} onChange={(e) => setMcpCmd(e.target.value)} spellCheck={false} />
+                        <input className={`${inputCls} flex-1`} placeholder={'args (quote spaces: "foo bar")'} value={mcpArgs} onChange={(e) => setMcpArgs(e.target.value)} spellCheck={false} />
+                      </div>
+                      <textarea className={`${inputCls} w-full font-mono`} placeholder="env: KEY=VALUE per line — use ${env:VAR} to reference a secret" value={mcpEnv} onChange={(e) => setMcpEnv(e.target.value)} rows={1} spellCheck={false} />
+                    </>
+                  ) : (
+                    <>
+                      <input className={`${inputCls} w-full`} placeholder="url (https://…/mcp)" value={mcpUrl} onChange={(e) => setMcpUrl(e.target.value)} spellCheck={false} />
+                      <textarea className={`${inputCls} w-full font-mono`} placeholder="headers: Name=Value per line — e.g. Authorization=Bearer ${env:TOKEN}" value={mcpHeaders} onChange={(e) => setMcpHeaders(e.target.value)} rows={1} spellCheck={false} />
+                    </>
+                  )}
+                  <button className={`${btnPrimary} self-start`} disabled={!mcpName.trim() || (mcpKind === 'stdio' ? !mcpCmd.trim() : !mcpUrl.trim())} onClick={addMcp}>Add server</button>
                 </div>
               </div>
             )}

@@ -46,6 +46,7 @@ const api: GraspApi = {
   installPlugin: (url: string) => ipcRenderer.invoke('grasp:installPlugin', url),
   uninstallPlugin: (name: string) => ipcRenderer.invoke('grasp:uninstallPlugin', name),
   saveMcpServer: (name: string, command: string, args: string, env: string) => ipcRenderer.invoke('grasp:saveMcpServer', name, command, args, env),
+  saveMcpConfig: (name: string, cfg: unknown) => ipcRenderer.invoke('grasp:saveMcpConfig', name, cfg),
   deleteMcpServer: (name: string) => ipcRenderer.invoke('grasp:deleteMcpServer', name),
   mcpStatus: (workspace: string) => ipcRenderer.invoke('grasp:mcpStatus', workspace),
   openFolder: () => ipcRenderer.invoke('grasp:openFolder'),

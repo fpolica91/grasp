@@ -330,9 +330,12 @@ export function clearMcpCache(): void {
 // Forces a start if none has happened yet this session.
 export async function mcpStatus(
   workspace: string
-): Promise<{ name: string; ok: boolean; error?: string; toolCount: number }[]> {
+): Promise<{ name: string; ok: boolean; error?: string; toolCount: number; disabled?: boolean; transport?: string; tools?: string[] }[]> {
   const reg = await mcpRegistry(workspace)
-  return reg.status
+  return reg.status.map((s) => ({
+    ...s,
+    tools: reg.tools.filter((t) => t.server === s.name).map((t) => t.name.slice(s.name.length + 2))
+  }))
 }
 
 export const TOOLS: Tool[] = [
