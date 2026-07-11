@@ -54,16 +54,16 @@ function CodeBlock({ lang, code }: { lang: string; code: string }): React.JSX.El
   return (
     <div className="my-1 overflow-hidden rounded-xl border border-border bg-panel">
       <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
-        <span className="text-[11px] font-medium text-foreground-subtlest">{lang || 'text'}</span>
-        <button className="text-[11px] text-foreground-subtlest transition-colors hover:text-foreground-subtle" onClick={copy}>
+        <span className="text-[0.6875rem] font-medium text-foreground-subtlest">{lang || 'text'}</span>
+        <button className="text-[0.6875rem] text-foreground-subtlest transition-colors hover:text-foreground-subtle" onClick={copy}>
           {copied ? '✓ copied' : 'copy'}
         </button>
       </div>
-      <pre className={`overflow-auto p-4 font-mono text-[13px] leading-relaxed text-foreground ${collapsed ? 'max-h-[60px]' : ''}`}>
+      <pre className={`overflow-auto p-4 font-mono text-[0.8125rem] leading-relaxed text-foreground ${collapsed ? 'max-h-[60px]' : ''}`}>
         <code className="hljs" dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
       {lineCount > 24 && (
-        <button className="w-full border-t border-border py-1 text-center text-[11px] text-foreground-subtlest transition-colors hover:text-foreground-subtle" onClick={() => setCollapsed((c) => !c)}>
+        <button className="w-full border-t border-border py-1 text-center text-[0.6875rem] text-foreground-subtlest transition-colors hover:text-foreground-subtle" onClick={() => setCollapsed((c) => !c)}>
           {collapsed ? `▸ show all ${lineCount} lines` : '▾ collapse'}
         </button>
       )}
@@ -76,7 +76,7 @@ const markdownComponents = {
     const text = String(children ?? '').replace(/\n$/, '')
     const m = /language-(\w+)/.exec(className || '')
     if (m || text.includes('\n')) return <CodeBlock lang={m ? m[1] : ''} code={text} />
-    return <code className="rounded bg-tag px-1 py-0.5 font-mono text-[12px]">{children}</code>
+    return <code className="rounded bg-tag px-1 py-0.5 font-mono text-[0.75rem]">{children}</code>
   },
   pre({ children }: { children?: React.ReactNode }): React.JSX.Element {
     return <>{children}</>
@@ -146,14 +146,14 @@ function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
   return (
     <div className="group/tool my-0.5">
       <div
-        className="inline-flex max-w-full cursor-pointer items-center gap-2 self-start text-left text-[13px] outline-none"
+        className="inline-flex max-w-full cursor-pointer items-center gap-2 self-start text-left text-[0.8125rem] outline-none"
         onClick={() => setOpen((o) => !o)}
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o) } }}
       >
-        <span className={`text-[9px] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
+        <span className={`text-[0.5625rem] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
         <span className={`shrink-0 font-medium whitespace-nowrap ${running ? 'text-foreground' : 'text-foreground-subtlest'}`}>{verb}</span>
-        <span className="truncate font-mono text-[12px] text-foreground">{arg}</span>
+        <span className="truncate font-mono text-[0.75rem] text-foreground">{arg}</span>
         {running && (
           <span className="ml-1 size-2.5 shrink-0 animate-spin rounded-full border-[1.5px] border-foreground border-r-transparent" />
         )}
@@ -163,9 +163,9 @@ function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
           {cmd && <CodeBlock lang="bash" code={cmd} />}
           {inputDetail && <CodeBlock lang="json" code={inputDetail} />}
           {it.output ? (
-            <pre className="mt-2 max-h-[100px] overflow-auto whitespace-pre-wrap break-words font-mono text-[13px] text-foreground-subtle">{it.output}</pre>
+            <pre className="mt-2 max-h-[100px] overflow-auto whitespace-pre-wrap break-words font-mono text-[0.8125rem] text-foreground-subtle">{it.output}</pre>
           ) : (
-            <p className="font-mono text-[13px] text-foreground-subtle">{running ? 'running…' : 'no captured output for this call'}</p>
+            <p className="font-mono text-[0.8125rem] text-foreground-subtle">{running ? 'running…' : 'no captured output for this call'}</p>
           )}
         </div>
       )}
@@ -182,10 +182,10 @@ function ModelPicker(props: {
   const meta = lookupModel(props.backend, props.model)
   const ctx = meta?.contextWindow ? `${Math.round(meta.contextWindow / 1000)}k` : null
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-foreground-subtle">
+    <span className="flex shrink-0 items-center gap-1.5 text-[0.75rem] text-foreground-subtle">
       <span className={`size-1.5 rounded-full ${active?.ok ? 'bg-foreground' : 'bg-foreground-subtlest'}`} title={active?.ok ? 'available' : (active?.reason ?? 'unavailable')} />
       <select
-        className="border-0 bg-transparent text-[12px] text-foreground-subtle outline-none"
+        className="border-0 bg-transparent text-[0.75rem] text-foreground-subtle outline-none"
         value={props.backend}
         onChange={(e) => props.onBackend(e.target.value)}
         title="agent backend"
@@ -194,7 +194,7 @@ function ModelPicker(props: {
       </select>
       <span className="text-foreground-subtlest">/</span>
       <select
-        className="border-0 bg-transparent text-[12px] text-foreground-subtle outline-none"
+        className="border-0 bg-transparent text-[0.75rem] text-foreground-subtle outline-none"
         value={props.model}
         onChange={(e) => props.onModel(e.target.value)}
         title={meta ? `model · ${meta.contextWindow ? Math.round(meta.contextWindow / 1000) + 'k ctx' : ''}${meta.maxOutputTokens ? ' · ' + Math.round(meta.maxOutputTokens / 1000) + 'k out' : ''}${meta.inputModalities?.length ? ' · ' + meta.inputModalities.join('+') : ''}`.replace('  ', ' ').trim() : 'model'}
@@ -219,7 +219,7 @@ function ThoughtLevelPicker(props: {
   const next = THOUGHT_CYCLE[(THOUGHT_CYCLE.indexOf(props.level) + 1) % THOUGHT_CYCLE.length]
   return (
     <button
-      className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[12px] transition-colors ${props.level ? 'bg-tag text-foreground font-medium' : 'text-foreground-subtle hover:text-foreground'}`}
+      className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.75rem] transition-colors ${props.level ? 'bg-tag text-foreground font-medium' : 'text-foreground-subtle hover:text-foreground'}`}
       onClick={() => props.onLevel(next)}
       title={`Reasoning effort — click to cycle. Current: ${props.level ? THOUGHT_LABEL[props.level] : 'auto (provider default)'}.`}
     >
@@ -233,22 +233,22 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
   return (
     <div className="flex w-full flex-col gap-3 rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">proposed plan</span>
-        <span className="rounded-full border border-border bg-tag px-2 py-0.5 text-[10px] text-foreground-subtle">awaiting approval</span>
+        <span className="text-[0.625rem] font-medium uppercase tracking-wide text-foreground-subtlest">proposed plan</span>
+        <span className="rounded-full border border-border bg-tag px-2 py-0.5 text-[0.625rem] text-foreground-subtle">awaiting approval</span>
       </div>
-      <div className="prose max-w-none text-[13px] leading-relaxed text-foreground">
+      <div className="prose max-w-none text-[0.875rem] leading-relaxed text-foreground">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{props.text}</ReactMarkdown>
       </div>
       {props.latest && (
         <div className="flex items-center gap-3">
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
             disabled={props.busy}
             onClick={() => props.onApprove(props.text)}
           >
             Approve &amp; execute
           </button>
-          <span className="text-[12px] text-foreground-subtlest">or reply below to revise the plan</span>
+          <span className="text-[0.75rem] text-foreground-subtlest">or reply below to revise the plan</span>
         </div>
       )}
     </div>
@@ -262,17 +262,17 @@ function ApprovalCard(props: { it: TranscriptItem; onDecide: (id: string, ok: bo
   return (
     <div className={`flex w-full flex-col gap-2.5 rounded-xl border p-4 ${decided ? 'border-border bg-card opacity-70' : 'border-border bg-popover'}`}>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">approval needed</span>
-        {decided && <span className={`text-[11px] ${it.summary === 'allowed' ? 'text-foreground' : 'text-destructive'}`}>{it.summary}</span>}
+        <span className="text-[0.625rem] font-medium uppercase tracking-wide text-foreground-subtlest">approval needed</span>
+        {decided && <span className={`text-[0.6875rem] ${it.summary === 'allowed' ? 'text-foreground' : 'text-destructive'}`}>{it.summary}</span>}
       </div>
-      <div className="flex items-center gap-2 text-[13px]">
+      <div className="flex items-center gap-2 text-[0.8125rem]">
         <span className="font-mono font-medium text-foreground">{it.name}</span>
-        <span className="truncate font-mono text-[12px] text-foreground-subtle">{detail}</span>
+        <span className="truncate font-mono text-[0.75rem] text-foreground-subtle">{detail}</span>
       </div>
       {!decided && (
         <div className="flex items-center gap-2">
-          <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, true)}>Allow</button>
-          <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[13px] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, false)}>Deny</button>
+          <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, true)}>Allow</button>
+          <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => props.onDecide(it.id!, false)}>Deny</button>
         </div>
       )}
     </div>
@@ -293,24 +293,24 @@ function ElicitationCard(props: { it: TranscriptItem; onDecide?: (id: string, an
   return (
     <div className={`flex w-full flex-col gap-3 rounded-xl border p-4 ${resolved ? 'border-border bg-card opacity-80' : 'border-border bg-popover'}`}>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">{e.header ?? 'question'}</span>
-        {resolved && <span className="text-[11px] text-foreground-subtle">→ {props.it.elicitAnswer === null ? '(dismissed)' : props.it.elicitAnswer}</span>}
+        <span className="text-[0.625rem] font-medium uppercase tracking-wide text-foreground-subtlest">{e.header ?? 'question'}</span>
+        {resolved && <span className="text-[0.6875rem] text-foreground-subtle">→ {props.it.elicitAnswer === null ? '(dismissed)' : props.it.elicitAnswer}</span>}
       </div>
-      <div className="text-[13px] text-foreground">{e.question}</div>
+      <div className="text-[0.8125rem] text-foreground">{e.question}</div>
       {!resolved && (
         <>
           <div className="flex flex-col gap-1.5">
             {e.options.map((o, i) => (
-              <button key={i} type="button" onClick={() => setSel(i)} className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 text-left text-[13px] transition-colors ${sel === i ? 'border-foreground bg-surface' : 'border-border hover:bg-surface-hover'}`}>
+              <button key={i} type="button" onClick={() => setSel(i)} className={`flex items-start gap-2.5 rounded-lg border px-3 py-2 text-left text-[0.8125rem] transition-colors ${sel === i ? 'border-foreground bg-surface' : 'border-border hover:bg-surface-hover'}`}>
                 <span className={`mt-0.5 size-3.5 shrink-0 rounded-full border ${sel === i ? 'border-foreground bg-foreground' : 'border-foreground-subtlest'}`} />
-                <span className="flex flex-col"><span className="text-foreground">{o.label}</span>{o.description && <span className="text-[12px] text-foreground-subtle">{o.description}</span>}</span>
+                <span className="flex flex-col"><span className="text-foreground">{o.label}</span>{o.description && <span className="text-[0.75rem] text-foreground-subtle">{o.description}</span>}</span>
               </button>
             ))}
           </div>
-          <input value={custom} onChange={(ev) => setCustom(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Enter') submit() }} placeholder="Or type your own answer…" className="rounded-lg border border-border bg-input px-3 py-2 text-[13px] text-foreground outline-none focus:border-foreground" />
+          <input value={custom} onChange={(ev) => setCustom(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Enter') submit() }} placeholder="Or type your own answer…" className="rounded-lg border border-border bg-input px-3 py-2 text-[0.8125rem] text-foreground outline-none focus:border-foreground" />
           <div className="flex items-center gap-2">
-            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
-            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[13px] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
+            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
+            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
           </div>
         </>
       )}
@@ -340,7 +340,7 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
   return (
     <div className="relative flex items-stretch" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <button
-        className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-card pl-2 pr-1.5 py-1 text-[12px] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
+        className="flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-card pl-2 pr-1.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm transition-colors hover:bg-surface-hover"
         onClick={openLast}
         title={lastAppObj ? `Open in ${lastAppObj.name}` : 'Open in external editor'}
       >
@@ -360,7 +360,7 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
           <div className="fixed inset-0 z-40" onClick={() => setAppsOpen(false)} />
           <div className="absolute top-full left-0 z-50 mt-1 flex w-[208px] flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-2xl">
             <button
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-hover"
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover"
               onClick={() => { if (lastAppObj) pick(lastAppObj.id); else setAppsOpen(false) }}
             >
               {lastAppObj ? <EditorIcon id={lastAppObj.id} size={16} /> : <span className="w-4" />}
@@ -370,7 +370,7 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
             {apps.map((app) => (
               <button
                 key={app.id}
-                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+                className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[0.8125rem] transition-colors ${app.id === lastApp ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
                 onClick={() => pick(app.id)}
               >
                 <EditorIcon id={app.id} size={16} />
@@ -378,7 +378,7 @@ function AppLauncher({ workspace }: { workspace: string }): React.JSX.Element {
                 {app.id === lastApp && <span className="text-foreground-subtlest">✓</span>}
               </button>
             ))}
-            {apps.length === 0 && <div className="px-2.5 py-2 text-[12px] text-foreground-subtlest">No editors detected.</div>}
+            {apps.length === 0 && <div className="px-2.5 py-2 text-[0.75rem] text-foreground-subtlest">No editors detected.</div>}
           </div>
         </>
       )}
@@ -401,6 +401,7 @@ export function Conversation(props: {
   onCheck?: () => void
   onForkUser?: (index: number) => void
   onRevertUser?: (index: number) => void
+  onLoadRepo?: () => void
   flowStatus?: FlowStatus
   onBackend: (id: string) => void
   onModel: (m: string) => void
@@ -543,7 +544,7 @@ export function Conversation(props: {
       const h = it.hook
       return (
         <div key={i} className="flex w-full justify-center">
-          <span className="max-w-full truncate rounded-md border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-foreground-subtle" title={h?.output}>
+          <span className="max-w-full truncate rounded-md border border-border bg-surface px-2 py-0.5 text-[0.6875rem] font-mono text-foreground-subtle" title={h?.output}>
             <span className="text-foreground-subtlest">hook {h?.event}{h?.tool ? ` · ${h.tool}` : ''}:</span> {h?.output}
           </span>
         </div>
@@ -566,19 +567,19 @@ export function Conversation(props: {
     if (it.role === 'user')
       return (
         <div key={i} className="group/msguser flex w-full flex-col items-end gap-1">
-          <div className="flex max-w-[576px] flex-col rounded-xl rounded-tr-sm border border-border bg-surface px-4 py-3 text-[13px] text-foreground">
+          <div className="flex max-w-[576px] flex-col rounded-xl rounded-tr-sm border border-border bg-surface px-4 py-3 text-[0.875rem] leading-relaxed text-foreground">
             {it.text}
           </div>
           <span className="flex items-center gap-1">
             {props.onForkUser && it.histLen !== undefined && (
-              <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:bg-surface-hover hover:text-foreground-subtle group-hover/msguser:opacity-100" onClick={() => props.onForkUser?.(i)} title="Fork from here — branch the conversation at your message">
+              <button className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:bg-surface-hover hover:text-foreground-subtle group-hover/msguser:opacity-100" onClick={() => props.onForkUser?.(i)} title="Fork from here — branch the conversation at your message">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 3v6a3 3 0 0 0 3 3h6M18 21v-6a3 3 0 0 0-3-3H9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /><circle cx="6" cy="3" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="21" r="2.4" stroke="currentColor" strokeWidth="1.7" /></svg>
                 Fork
               </button>
             )}
             {props.onRevertUser && it.checkpointSha && (
               <button
-                className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] transition-opacity group-hover/msguser:opacity-100 ${armRevert === i ? 'bg-destructive/15 text-destructive opacity-100' : 'text-foreground-subtlest opacity-0 hover:bg-surface-hover hover:text-foreground-subtle'}`}
+                className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] transition-opacity group-hover/msguser:opacity-100 ${armRevert === i ? 'bg-destructive/15 text-destructive opacity-100' : 'text-foreground-subtlest opacity-0 hover:bg-surface-hover hover:text-foreground-subtle'}`}
                 onClick={() => {
                   if (armRevert === i) {
                     setArmRevert(null)
@@ -599,24 +600,24 @@ export function Conversation(props: {
       <div key={i} className="group/msg flex w-full flex-col gap-2">
         {/* Thinking / reasoning collapsible (model trajectory) */}
         {(it.thinking || it.thinkingStreaming) && (
-          <details className="rounded-lg border border-border bg-surface" open={it.thinkingStreaming}>
-            <summary className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[12px] text-foreground-subtlest transition-colors hover:text-foreground-subtle">
+          <details className="rounded-lg border border-border bg-surface">
+            <summary className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.75rem] text-foreground-subtlest transition-colors hover:text-foreground-subtle">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v5a2.5 2.5 0 0 1-5 0v-5A2.5 2.5 0 0 1 9.5 2zM7.5 15.5l2-3 2 3M16.5 12a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               {it.thinkingStreaming ? <span className="animate-pulse text-foreground-subtle">Thinking…</span> : <span>Thought{it.thinkingMs ? ` for ${(it.thinkingMs / 1000).toFixed(1)}s` : ''}</span>}
             </summary>
-            <div className="border-t border-border px-3 py-2 text-[12px] leading-relaxed text-foreground-subtlest">
+            <div className="border-t border-border px-3 py-2 text-[0.75rem] leading-relaxed text-foreground-subtlest">
               {it.thinking || '…'}
             </div>
           </details>
         )}
-        <div className="prose max-w-none text-[13px] leading-relaxed text-foreground">
+        <div className="prose max-w-none text-[0.875rem] leading-relaxed text-foreground">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{it.text ?? ''}</ReactMarkdown>
         </div>
         {/* Hover actions: copy + regenerate + reactions */}
         {!it.streaming && it.text && (
           <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/msg:opacity-100">
             <button
-              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
               onClick={() => { void navigator.clipboard.writeText(it.text ?? ''); }}
               title="Copy message"
             >
@@ -625,7 +626,7 @@ export function Conversation(props: {
             </button>
             {props.onRegenerate && (
               <button
-                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
                 onClick={() => props.onRegenerate?.()}
                 title="Regenerate response"
               >
@@ -636,12 +637,12 @@ export function Conversation(props: {
             {props.onReact && (
               <>
                 <button
-                  className={`ml-1 rounded-md p-1 text-[11px] transition-colors ${it.reaction === 'up' ? 'text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
+                  className={`ml-1 rounded-md p-1 text-[0.6875rem] transition-colors ${it.reaction === 'up' ? 'text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
                   onClick={() => props.onReact?.(i, it.reaction === 'up' ? undefined : 'up')}
                   title="Good response"
                 >👍</button>
                 <button
-                  className={`rounded-md p-1 text-[11px] transition-colors ${it.reaction === 'down' ? 'text-destructive' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
+                  className={`rounded-md p-1 text-[0.6875rem] transition-colors ${it.reaction === 'down' ? 'text-destructive' : 'text-foreground-subtlest hover:text-foreground-subtle'}`}
                   onClick={() => props.onReact?.(i, it.reaction === 'down' ? undefined : 'down')}
                   title="Bad response"
                 >👎</button>
@@ -667,10 +668,10 @@ export function Conversation(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
-        <span className="min-w-0 truncate whitespace-nowrap text-[14px] font-medium text-foreground">Session<span className="ml-2 hidden text-[12px] font-normal text-foreground-subtlest sm:inline">post-editor</span></span>
+        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground">Session<span className="ml-2 hidden text-[0.75rem] font-normal text-foreground-subtlest sm:inline">post-editor</span></span>
         {/* External app launcher */}
         {props.workspace && <AppLauncher workspace={props.workspace} />}
-        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[11px] text-foreground-subtle shadow-sm min-[560px]:inline-flex" title="tokens used this session">
+        <span className="ml-auto hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 font-mono text-[0.6875rem] text-foreground-subtle shadow-sm min-[560px]:inline-flex" title="tokens used this session">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".4" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           {fmtTokens(props.tokens)}
           {ctxPct !== null && (
@@ -678,9 +679,9 @@ export function Conversation(props: {
               <span className="block h-full rounded-full" style={{ width: `${ctxPct}%`, background: ctxPct > 80 ? 'var(--color-destructive)' : ctxPct > 50 ? 'var(--color-warning)' : 'var(--color-accent-blue)' }} />
             </span>
           )}
-          <span className="font-sans text-[10px] uppercase tracking-wide text-foreground-subtlest">budget</span>
+          <span className="font-sans text-[0.625rem] uppercase tracking-wide text-foreground-subtlest">budget</span>
           <input
-            className="w-[46px] border-0 bg-transparent text-right font-mono text-[11px] text-foreground outline-none"
+            className="w-[46px] border-0 bg-transparent text-right font-mono text-[0.6875rem] text-foreground outline-none"
             value={props.budget}
             onChange={(e) => props.onBudget(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder="none"
@@ -708,9 +709,9 @@ export function Conversation(props: {
             failed: { label: 'Failed', cls: 'bg-destructive/20 text-destructive' }
           }
           const m = map[fs] ?? { label: fs, cls: 'bg-tag text-foreground-subtle' }
-          return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${m.cls}`} title={`Flow: ${fs}`}>{m.label}</span>
+          return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ${m.cls}`} title={`Flow: ${fs}`}>{m.label}</span>
         })()}
-        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
+        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
           <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
           <span className="min-w-0 truncate">{activeLabel} · {props.model}</span>
         </span>
@@ -725,9 +726,18 @@ export function Conversation(props: {
             <div className="flex size-16 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
             </div>
-            <h2 className="text-[20px] font-semibold tracking-tight text-foreground">What should we change?</h2>
-            <p className="text-[13px] leading-relaxed text-foreground-subtle">Ask an agent to edit code. Type <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px] text-foreground">/</code> for commands, <code className="rounded bg-surface px-1 py-0.5 font-mono text-[12px] text-foreground">$</code> for skills.</p>
-            <p className="text-[12px] text-foreground-subtlest">The observed dataflow shows on the right — you adjudicate what the change did.</p>
+            <h2 className="text-[1.25rem] font-semibold tracking-tight text-foreground">What should we change?</h2>
+            <p className="text-[0.8125rem] leading-relaxed text-foreground-subtle">Ask an agent to edit code. Type <code className="rounded bg-surface px-1 py-0.5 font-mono text-[0.75rem] text-foreground">/</code> for commands, <code className="rounded bg-surface px-1 py-0.5 font-mono text-[0.75rem] text-foreground">$</code> for skills.</p>
+            <p className="text-[0.75rem] text-foreground-subtlest">The observed dataflow shows on the right — you adjudicate what the change did.</p>
+            {props.onLoadRepo && (
+              <button
+                className="mt-1.5 rounded-lg border border-border bg-card px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover"
+                onClick={props.onLoadRepo}
+                title="The agent introduces this workspace: how it runs, the flows you can ask to see, the rules awaiting your signature"
+              >
+                Load repo — introduce this workspace
+              </button>
+            )}
           </div>
         )}
         {top.map((it, i) => renderItem(it, i, i === top.length - 1))}
@@ -738,14 +748,14 @@ export function Conversation(props: {
             <span className="size-1.5 animate-pulse rounded-full bg-foreground-subtlest" style={{ animationDelay: '0.36s' }} />
           </div>
         )}
-        {props.error && <div className="rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-destructive">{props.error}</div>}
+        {props.error && <div className="rounded-lg border border-border bg-surface px-3 py-2 text-[0.8125rem] text-destructive">{props.error}</div>}
       </div>
 
       {/* Composer */}
       <div className="shrink-0 px-5 pb-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="relative flex flex-col gap-3 rounded-2xl border border-border bg-input p-3 transition-colors focus-within:border-border-hover focus-within:shadow-[0_0_0_1px_var(--color-border-hover)]">
           {slashItems.length === 0 && typedCmd && typedCmd.hasArgs && !typedCmd.args && (
-            <div className="absolute bottom-full left-0 right-0 z-20 mb-1.5 rounded-xl border border-border bg-popover px-3 py-2 text-[12px] text-foreground-subtle shadow-2xl">
+            <div className="absolute bottom-full left-0 right-0 z-20 mb-1.5 rounded-xl border border-border bg-popover px-3 py-2 text-[0.75rem] text-foreground-subtle shadow-2xl">
               <span className="font-semibold text-foreground">/{typedCmd.cmd.name}</span> needs a target — a feature or a function, then Enter (e.g. \u201cshare-link encoding\u201d or src/file.ts:fn). {typedCmd.cmd.description}
             </div>
           )}
@@ -754,19 +764,19 @@ export function Conversation(props: {
               {slashItems.map((it, i) => (
                 <button
                   key={it.kind + '|' + it.name}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors ${i === slashCur ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[0.8125rem] transition-colors ${i === slashCur ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
                   onMouseEnter={() => setSlashIx(i)}
                   onClick={() => pickSlash(it)}
                 >
                   <span className="shrink-0 font-semibold text-foreground">{it.kind === 'command' ? '/' + it.name : it.name}</span>
-                  <span className="flex-1 truncate text-[12px]">{it.desc.slice(0, 56)}</span>
-                  <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px] uppercase text-foreground-subtlest">{it.kind}</span>
+                  <span className="flex-1 truncate text-[0.75rem]">{it.desc.slice(0, 56)}</span>
+                  <span className="shrink-0 rounded-full border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{it.kind}</span>
                 </button>
               ))}
             </div>
           )}
           <textarea
-            className="w-full max-h-[180px] resize-none border-0 bg-transparent text-[14px] leading-relaxed text-foreground outline-none placeholder:text-foreground-subtlest"
+            className="w-full max-h-[180px] resize-none border-0 bg-transparent text-[0.875rem] leading-relaxed text-foreground outline-none placeholder:text-foreground-subtlest"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -784,7 +794,7 @@ export function Conversation(props: {
           {props.queue && props.queue.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               {props.queue.map((q, i) => (
-                <span key={i} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-foreground-subtle" title={`Queued: ${q}`}>
+                <span key={i} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[0.6875rem] text-foreground-subtle" title={`Queued: ${q}`}>
                   <span className="max-w-[240px] truncate">⏳ {q}</span>
                   {props.onRemoveQueued && <button type="button" className="text-foreground-subtlest hover:text-foreground" onClick={() => props.onRemoveQueued?.(i)}>✕</button>}
                 </span>
@@ -796,13 +806,13 @@ export function Conversation(props: {
             {props.onThoughtLevel && (
               <ThoughtLevelPicker backend={props.backend} model={props.model} level={props.thoughtLevel} onLevel={props.onThoughtLevel} />
             )}
-            <span className="flex shrink-0 items-center rounded-lg bg-tag p-0.5 text-[12px]" title="Build: edit directly. Ask: approve each edit. Plan: propose first.">
+            <span className="flex shrink-0 items-center rounded-lg bg-tag p-0.5 text-[0.75rem]" title="Build: edit directly. Ask: approve each edit. Plan: propose first.">
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'auto' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('auto')}>Build</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'ask' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('ask')}>Ask</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'plan' ? 'bg-background text-foreground font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('plan')}>Plan</button>
               <button className={`rounded-md px-2 py-0.5 transition-colors ${props.mode === 'task' ? 'bg-accent-blue text-white font-medium shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => props.onMode('task')} title="Task: run the full loop — plan → approve → implement → verify (tests) → review">Task</button>
             </span>
-            <button type="button" onClick={enhance} disabled={!input.trim() || enhancing || props.busy} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Enhance prompt — rewrite for clarity">
+            <button type="button" onClick={enhance} disabled={!input.trim() || enhancing || props.busy} className="flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[0.75rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40" title="Enhance prompt — rewrite for clarity">
               {enhancing
                 ? <span className="size-3 animate-spin rounded-full border-[1.5px] border-foreground-subtle border-r-transparent" />
                 : <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9l4.3-1.4L12 3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>}

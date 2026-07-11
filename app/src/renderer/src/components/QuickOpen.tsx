@@ -72,7 +72,7 @@ export function QuickOpen({ workspace, onPick, onClose }: {
       <div className="w-[600px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-panel shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
-          className="w-full border-b border-border bg-transparent px-4 py-3 text-[14px] text-foreground outline-none placeholder:text-foreground-subtlest"
+          className="w-full border-b border-border bg-transparent px-4 py-3 text-[0.875rem] text-foreground outline-none placeholder:text-foreground-subtlest"
           placeholder="Go to file…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -86,12 +86,12 @@ export function QuickOpen({ workspace, onPick, onClose }: {
               onMouseEnter={() => setSel(i)}
               onClick={() => onPick(p)}
             >
-              <span className="shrink-0 text-[13px] font-medium text-foreground">{base(p)}</span>
-              <span className="truncate font-mono text-[11px] text-foreground-subtlest">{dir(p)}</span>
+              <span className="shrink-0 text-[0.8125rem] font-medium text-foreground">{base(p)}</span>
+              <span className="truncate font-mono text-[0.6875rem] text-foreground-subtlest">{dir(p)}</span>
             </button>
           ))}
           {matches.length === 0 && (
-            <div className="px-4 py-6 text-center text-[13px] text-foreground-subtlest">
+            <div className="px-4 py-6 text-center text-[0.8125rem] text-foreground-subtlest">
               {files.length === 0 ? 'reading the workspace tree…' : 'no files match'}
             </div>
           )}

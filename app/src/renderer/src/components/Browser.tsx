@@ -86,14 +86,14 @@ export function BrowserPane({ active }: { active: boolean }): React.JSX.Element 
           ↻
         </button>
         <input
-          className="flex-1 rounded-md border border-border bg-input px-2.5 py-1 text-[13px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
+          className="flex-1 rounded-md border border-border bg-input px-2.5 py-1 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
           value={bar}
           onChange={(e) => setBar(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') go(bar) }}
           placeholder="localhost:3000, a URL, or a search…"
           spellCheck={false}
         />
-        {loading && <span className="text-[11px] text-foreground-subtlest">loading…</span>}
+        {loading && <span className="text-[0.6875rem] text-foreground-subtlest">loading…</span>}
       </div>
       {createElement('webview', {
         ref,
@@ -104,7 +104,7 @@ export function BrowserPane({ active }: { active: boolean }): React.JSX.Element 
         style: { display: current === 'about:blank' && !loading ? 'none' : 'flex' }
       })}
       {current === 'about:blank' && !loading && (
-        <div className="flex flex-1 items-center justify-center px-8 text-center text-[13px] text-foreground-subtlest">
+        <div className="flex flex-1 items-center justify-center px-8 text-center text-[0.8125rem] text-foreground-subtlest">
           Enter a URL to preview your app or read docs — grasp keeps the dataflow on the right.
         </div>
       )}

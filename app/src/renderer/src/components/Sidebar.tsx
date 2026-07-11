@@ -55,7 +55,7 @@ function SessionRow({
     return (
       <div className="flex items-center rounded-md px-2 py-1.5">
         <input
-          className="flex-1 rounded border border-border-hover bg-input px-1.5 py-0.5 text-[13px] text-foreground outline-none"
+          className="flex-1 rounded border border-border-hover bg-input px-1.5 py-0.5 text-[0.8125rem] text-foreground outline-none"
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           onClick={(e) => e.stopPropagation()}
@@ -71,20 +71,20 @@ function SessionRow({
   }
   return (
     <div
-      className={`group flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[13px] transition-colors ${
+      className={`group flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] transition-colors ${
         isActive ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
       }`}
       onClick={onSelect}
       title={title}
     >
       <span className="flex-1 truncate">{title}</span>
-      <button className="ml-auto shrink-0 rounded p-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
+      <button className="ml-auto shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
         ✎
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
+      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
         ⎇
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete() }}>
+      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete() }}>
         ✕
       </button>
     </div>
@@ -147,30 +147,30 @@ export function Sidebar(props: {
       {/* Brand */}
       <div className="flex items-center gap-2 px-1 pb-1">
         <Mark />
-        <span className="text-[15px] font-semibold tracking-tight text-foreground">grasp</span>
+        <span className="text-[0.9375rem] font-semibold tracking-tight text-foreground">grasp</span>
       </div>
 
       {/* Action buttons */}
       <button
-        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-hover"
+        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[0.8125rem] font-medium text-foreground transition-colors hover:bg-surface-hover"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         onClick={props.onNewSession}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         New session
-        <span className="ml-auto font-mono text-[11px] text-foreground-subtlest">⌘N</span>
+        <span className="ml-auto font-mono text-[0.6875rem] text-foreground-subtlest">⌘N</span>
       </button>
       <button
-        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-foreground-subtle transition-colors hover:bg-surface-hover"
+        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[0.8125rem] font-medium text-foreground-subtle transition-colors hover:bg-surface-hover"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         onClick={props.onSearch}
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         Search
-        <span className="ml-auto font-mono text-[11px] text-foreground-subtlest">⌘K</span>
+        <span className="ml-auto font-mono text-[0.6875rem] text-foreground-subtlest">⌘K</span>
       </button>
       <button
-        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-foreground-subtle transition-colors hover:bg-surface-hover"
+        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[0.8125rem] font-medium text-foreground-subtle transition-colors hover:bg-surface-hover"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         onClick={props.onNewWorkflow}
       >
@@ -181,9 +181,9 @@ export function Sidebar(props: {
       {/* Sessions grouped by project */}
       {groups.length > 0 && (
         <div className="mt-2 flex items-center px-2.5 pb-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Conversations</span>
+          <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Conversations</span>
           <button
-            className="ml-auto rounded px-1.5 py-0.5 text-[10px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+            className="ml-auto rounded px-1.5 py-0.5 text-[0.625rem] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
             title={sortOrder === 'newest' ? 'Newest first — click for oldest' : 'Oldest first — click for newest'}
             onClick={() => setSortOrder((s) => (s === 'newest' ? 'oldest' : 'newest'))}
           >
@@ -193,7 +193,7 @@ export function Sidebar(props: {
       )}
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {groups.length === 0 && (
-          <div className="rounded-md bg-selected px-2 py-1.5 text-[13px] text-foreground">Current session</div>
+          <div className="rounded-md bg-selected px-2 py-1.5 text-[0.8125rem] text-foreground">Current session</div>
         )}
         {groups.map(([ws, sess]) => {
           const wsName = ws.split('/').filter(Boolean).pop() ?? ws
@@ -201,7 +201,7 @@ export function Sidebar(props: {
           return (
             <div key={ws} className="flex flex-col">
               <div
-                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest transition-colors hover:bg-surface-hover"
+                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest transition-colors hover:bg-surface-hover"
                 onClick={() => setCollapsedGroups((prev) => {
                   const next = new Set(prev)
                   if (next.has(ws)) next.delete(ws)
@@ -209,9 +209,9 @@ export function Sidebar(props: {
                   return next
                 })}
               >
-                <span className={`text-[8px] transition-transform ${collapsed ? '' : 'rotate-90'}`}>▸</span>
+                <span className={`text-[0.5rem] transition-transform ${collapsed ? '' : 'rotate-90'}`}>▸</span>
                 <span className="flex-1 truncate">{wsName}</span>
-                <span className="text-[10px] opacity-60">{sess.length}</span>
+                <span className="text-[0.625rem] opacity-60">{sess.length}</span>
               </div>
               {!collapsed && sess.map((s) => (
                 <SessionRow
@@ -237,22 +237,22 @@ export function Sidebar(props: {
         {/* Workflows */}
         {props.workflows.length > 0 && (
           <div className="mt-2 flex flex-col gap-0.5">
-            <div className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Workflows</div>
+            <div className="px-2.5 pb-1 text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Workflows</div>
             {props.workflows.map((w) => (
               <div
                 key={w.id}
-                className={`group flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[13px] transition-colors ${
+                className={`group flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] transition-colors ${
                   w.id === props.activeWorkflow ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
                 }`}
                 onClick={() => props.onOpenWorkflow(w.id)}
                 title={w.title}
               >
                 <span className="flex-1 truncate">{w.title}</span>
-                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[9px] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
+                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[0.5625rem] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
                   {w.done}/{w.total}
                 </span>
                 <button
-                  className="shrink-0 rounded p-0.5 text-[11px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                   title="Delete workflow"
                   onClick={(e) => { e.stopPropagation(); props.onDeleteWorkflow(w.id) }}
                 >
@@ -266,16 +266,16 @@ export function Sidebar(props: {
         {/* Skills */}
         {props.skills.length > 0 && (
           <div className="mt-2 flex flex-col gap-0.5">
-            <div className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills</div>
+            <div className="px-2.5 pb-1 text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills</div>
             {props.skills.map((s) => (
               <div
                 key={s.name}
-                className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover"
+                className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] text-foreground-subtle transition-colors hover:bg-surface-hover"
                 onClick={() => props.onToggleSkill(s.name, !s.enabled)}
                 title={s.description}
               >
                 <span className={`flex-1 truncate ${s.enabled ? '' : 'opacity-40'}`}>{s.name}</span>
-                <span className={`shrink-0 text-[10px] ${s.enabled ? 'text-foreground' : 'text-foreground-subtlest'}`}>
+                <span className={`shrink-0 text-[0.625rem] ${s.enabled ? 'text-foreground' : 'text-foreground-subtlest'}`}>
                   {s.enabled ? '●' : '○'}
                 </span>
               </div>

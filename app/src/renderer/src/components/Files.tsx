@@ -87,7 +87,7 @@ const graspHighlight = HighlightStyle.define([
 const graspTheme = EditorView.theme(
   {
     // canvas: a deep, dedicated editor background so code reads as the primary surface
-    '&': { color: '#abb2bf', backgroundColor: '#161616', fontSize: '13px', height: '100%' },
+    '&': { color: '#abb2bf', backgroundColor: '#161616', fontSize: '0.8125rem', height: '100%' },
     '&.cm-focused': { outline: 'none' },
     '.cm-scroller': { fontFamily: "'Geist Mono', 'JetBrains Mono', ui-monospace, monospace", lineHeight: '1.65', fontVariantLigatures: 'contextual', fontFeatureSettings: "'liga' 1, 'calt' 1" },
     '.cm-content': { caretColor: '#528bff', padding: '8px 0' },
@@ -135,12 +135,12 @@ class WalkChipMarker extends GutterMarker {
 }
 
 class TourPillWidget extends WidgetType {
-  constructor(private a: WalkAnchor, private total: number, private onTour: (ix: number) => void) { super() }
-  eq(o: TourPillWidget): boolean { return o.a.n === this.a.n && o.total === this.total }
+  constructor(private a: WalkAnchor, private total: number, private onTour: (ix: number) => void, private docked = false) { super() }
+  eq(o: TourPillWidget): boolean { return o.a.n === this.a.n && o.total === this.total && o.docked === this.docked }
   ignoreEvent(): boolean { return true }
   toDOM(): HTMLElement {
     const el = document.createElement('div')
-    el.className = 'cm-walk-pill'
+    el.className = 'cm-walk-pill' + (this.docked ? ' cm-walk-pill-docked' : '')
     const n = document.createElement('span'); n.className = 'cm-walk-pill-n'; n.textContent = String(this.a.n)
     const fn = document.createElement('span'); fn.className = 'cm-walk-pill-fn'; fn.textContent = this.a.fn
     const f = this.a.frame
@@ -158,7 +158,12 @@ class TourPillWidget extends WidgetType {
       return b
     }
     nav.append(mk('‹', this.a.n - 2, this.a.n > 1), document.createTextNode(`${this.a.n}/${this.total}`), mk('›', this.a.n, this.a.n < this.total))
-    el.append(n, fn, vals, nav)
+    if (this.docked) {
+      const note = document.createElement('span')
+      note.className = 'cm-walk-pill-note'
+      note.textContent = 'line unknown'
+      el.append(n, fn, vals, note, nav)
+    } else el.append(n, fn, vals, nav)
     return el
   }
 }
@@ -190,21 +195,27 @@ interface EditorWalk { anchors: WalkAnchor[]; currentIx: number | null; total: n
 
 function walkExtensions(doc: Text, walk: EditorWalk | undefined): Extension {
   if (!walk || !walk.anchors.length) return []
-  const here = walk.anchors.filter((a) => a.line !== null && a.line >= 1 && a.line <= doc.lines)
-  if (!here.length) return []
+  const lined = walk.anchors.filter((a) => a.line !== null && a.line >= 1 && a.line <= doc.lines)
   const currentN = walk.currentIx !== null ? walk.currentIx + 1 : null
-  const g = gutter({
-    class: 'cm-walk-gutterCol',
-    lineMarker: (view, block) => {
-      const ln = view.state.doc.lineAt(block.from).number
-      const a = here.find((x) => x.line === ln)
-      return a ? new WalkChipMarker(a.n, a.n === currentN) : null
-    }
-  })
-  const cur = currentN !== null ? here.find((a) => a.n === currentN) : undefined
-  if (!cur || cur.line === null) return [g]
-  const deco = Decoration.widget({ widget: new TourPillWidget(cur, walk.total, walk.onTour), block: true, side: -1 })
-  return [g, EditorView.decorations.of(Decoration.set([deco.range(doc.line(cur.line).from)]))]
+  const exts: Extension[] = []
+  if (lined.length)
+    exts.push(
+      gutter({
+        class: 'cm-walk-gutterCol',
+        lineMarker: (view, block) => {
+          const ln = view.state.doc.lineAt(block.from).number
+          const a = lined.find((x) => x.line === ln)
+          return a ? new WalkChipMarker(a.n, a.n === currentN) : null
+        }
+      })
+    )
+  // Inline pill only for anchors with a known line; a line-less current anchor gets
+  // the docked React bar above the editor (see Editor render) — never a dead end.
+  const cur = currentN !== null ? lined.find((a) => a.n === currentN) : undefined
+  if (cur && cur.line !== null) {
+    exts.push(EditorView.decorations.of(Decoration.set([Decoration.widget({ widget: new TourPillWidget(cur, walk.total, walk.onTour), block: true, side: -1 }).range(doc.line(cur.line).from)])))
+  }
+  return exts
 }
 
 function Editor({ workspace, file, reveal, walk }: { workspace: string; file: string; reveal?: { line: number | null; nonce: number }; walk?: EditorWalk }): React.JSX.Element {
@@ -340,17 +351,22 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
 
+  const dockedAnchor = (() => {
+    if (!walk || walk.currentIx === null) return null
+    const cur = walk.anchors.find((a) => a.n === walk.currentIx! + 1)
+    return cur && cur.line === null ? cur : null
+  })()
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
-        <span className="truncate font-mono text-[12px] text-foreground-subtle">{file}</span>
-        <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+        <span className="truncate font-mono text-[0.75rem] text-foreground-subtle">{file}</span>
+        <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[0.6875rem]">
           <button className={`rounded px-2 py-0.5 transition-colors ${mode === 'edit' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMode('edit')}>Edit</button>
           <button className={`rounded px-2 py-0.5 transition-colors ${mode === 'diff' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setMode('diff')}>Diff</button>
         </span>
         {mode === 'edit' && (
           <button
-            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-40"
+            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-40"
             disabled={!dirty}
             onClick={() => void save()}
           >
@@ -358,6 +374,26 @@ function Editor({ workspace, file, reveal, walk }: { workspace: string; file: st
           </button>
         )}
       </div>
+      {dockedAnchor && walk && (
+        <div className="cm-walk-pill cm-walk-pill-docked">
+          <span className="cm-walk-pill-n">{dockedAnchor.n}</span>
+          <span className="cm-walk-pill-fn">{dockedAnchor.fn}</span>
+          <span className="cm-walk-pill-vals">
+            {(() => {
+              const f = dockedAnchor.frame
+              const args = f.args.map((x) => (x.repr.length > 24 ? x.repr.slice(0, 23) + '…' : x.repr)).join(', ')
+              const out = f.threw ? `threw ${f.threw.type}` : f.ret ? `→ ${f.ret.repr.slice(0, 36)}` : '→ ∅'
+              return `(${args}) ${out}`.slice(0, 100)
+            })()}
+          </span>
+          <span className="cm-walk-pill-note">line unknown</span>
+          <span className="cm-walk-pill-nav">
+            <button disabled={dockedAnchor.n <= 1} onClick={() => walk.onTour(dockedAnchor.n - 2)}>‹</button>
+            {dockedAnchor.n}/{walk.total}
+            <button disabled={dockedAnchor.n >= walk.total} onClick={() => walk.onTour(dockedAnchor.n)}>›</button>
+          </span>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-hidden" ref={hostRef} />
     </div>
   )
@@ -375,13 +411,13 @@ function EditorGroup(props: {
         {props.open.map((f) => (
           <div
             key={f}
-            className={`group flex cursor-pointer items-center gap-1.5 border-r border-border px-3 py-1.5 text-[12px] transition-colors ${f === props.active ? 'bg-background text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+            className={`group flex cursor-pointer items-center gap-1.5 border-r border-border px-3 py-1.5 text-[0.75rem] transition-colors ${f === props.active ? 'bg-background text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
             onClick={() => props.onActivate(f)}
             title={f}
           >
             <span className="truncate">{base(f)}</span>
             <button
-              className="rounded p-0.5 text-[10px] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              className="rounded p-0.5 text-[0.625rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
               onClick={(e) => { e.stopPropagation(); props.onClose(f) }}
             >
               ✕
@@ -412,8 +448,8 @@ function Tree({ nodes, selected, onOpen }: { nodes: TreeNode[]; selected: string
       if (n.dir) {
         const isOpen = open.has(n.path)
         return [
-          <div key={n.path} className="flex cursor-pointer items-center gap-1 rounded-md py-0.5 text-[13px] text-foreground-subtle transition-colors hover:bg-surface-hover" style={pad} onClick={() => toggle(n.path)}>
-            <span className={`text-[8px] transition-transform ${isOpen ? 'rotate-90' : ''}`}>▸</span>
+          <div key={n.path} className="flex cursor-pointer items-center gap-1 rounded-md py-0.5 text-[0.8125rem] text-foreground-subtle transition-colors hover:bg-surface-hover" style={pad} onClick={() => toggle(n.path)}>
+            <span className={`text-[0.5rem] transition-transform ${isOpen ? 'rotate-90' : ''}`}>▸</span>
             {n.name}
           </div>,
           ...(isOpen && n.children ? render(n.children, depth + 1) : [])
@@ -422,7 +458,7 @@ function Tree({ nodes, selected, onOpen }: { nodes: TreeNode[]; selected: string
       return [
         <div
           key={n.path}
-          className={`cursor-pointer rounded-md py-0.5 text-[13px] transition-colors ${selected === n.path ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
+          className={`cursor-pointer rounded-md py-0.5 text-[0.8125rem] transition-colors ${selected === n.path ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'}`}
           style={pad}
           onClick={() => onOpen(n.path)}
         >
@@ -473,23 +509,23 @@ function SearchPanel({ workspace }: { workspace: string }): React.JSX.Element {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-2 pb-1.5">
-        <input className="w-full rounded-md border border-border bg-card px-2 py-1 text-[12px] text-foreground outline-none placeholder:text-foreground-subtlest" placeholder="Search in files…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="w-full rounded-md border border-border bg-card px-2 py-1 text-[0.75rem] text-foreground outline-none placeholder:text-foreground-subtlest" placeholder="Search in files…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
-        {busy && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">searching…</div>}
-        {!busy && hits !== null && hits.length === 0 && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">no matches</div>}
+        {busy && <div className="px-2 py-1 text-[0.6875rem] text-foreground-subtlest">searching…</div>}
+        {!busy && hits !== null && hits.length === 0 && <div className="px-2 py-1 text-[0.6875rem] text-foreground-subtlest">no matches</div>}
         {grouped.map(([file, rows]) => (
           <div key={file} className="mb-1.5">
-            <div className="truncate px-1 py-0.5 font-mono text-[10.5px] font-semibold text-foreground-subtle" title={file}>{file}</div>
+            <div className="truncate px-1 py-0.5 font-mono text-[0.65625rem] font-semibold text-foreground-subtle" title={file}>{file}</div>
             {rows.map((r, i) => (
               <button key={i} className="flex w-full items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-surface-hover" onClick={() => open(file, r.line)}>
-                <span className="shrink-0 font-mono text-[10px] text-foreground-subtlest">{r.line}</span>
-                <span className="truncate font-mono text-[11px] text-foreground-subtle">{r.text.trim()}</span>
+                <span className="shrink-0 font-mono text-[0.625rem] text-foreground-subtlest">{r.line}</span>
+                <span className="truncate font-mono text-[0.6875rem] text-foreground-subtle">{r.text.trim()}</span>
               </button>
             ))}
           </div>
         ))}
-        {truncated && <div className="px-2 py-1 text-[11px] italic text-foreground-subtlest">results capped — refine the query</div>}
+        {truncated && <div className="px-2 py-1 text-[0.6875rem] italic text-foreground-subtlest">results capped — refine the query</div>}
       </div>
     </div>
   )
@@ -519,16 +555,16 @@ function OutlinePanel({ workspace, file }: { workspace: string; file: string }):
       window.removeEventListener('grasp:file-changed', onChanged)
     }
   }, [workspace, file])
-  if (!file) return <div className="px-3 py-2 text-[11px] text-foreground-subtlest">open a file to see its outline</div>
+  if (!file) return <div className="px-3 py-2 text-[0.6875rem] text-foreground-subtlest">open a file to see its outline</div>
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-2">
-      <div className="truncate px-1 py-1 font-mono text-[10.5px] font-semibold text-foreground-subtle" title={file}>{file.split('/').pop()}</div>
-      {symbols.length === 0 && <div className="px-2 py-1 text-[11px] text-foreground-subtlest">no symbols found</div>}
+      <div className="truncate px-1 py-1 font-mono text-[0.65625rem] font-semibold text-foreground-subtle" title={file}>{file.split('/').pop()}</div>
+      {symbols.length === 0 && <div className="px-2 py-1 text-[0.6875rem] text-foreground-subtlest">no symbols found</div>}
       {symbols.map((s, i) => (
         <button key={i} className="flex w-full items-baseline gap-1.5 rounded px-1 py-0.5 text-left hover:bg-surface-hover" onClick={() => window.dispatchEvent(new CustomEvent('grasp:open-source', { detail: { file, line: s.line } }))}>
-          <span className="w-14 shrink-0 truncate text-right font-mono text-[9.5px] uppercase text-foreground-subtlest">{s.kind}</span>
-          <span className="truncate font-mono text-[11.5px] text-foreground">{s.name}</span>
-          <span className="ml-auto shrink-0 font-mono text-[9.5px] text-foreground-subtlest">{s.line}</span>
+          <span className="w-14 shrink-0 truncate text-right font-mono text-[0.59375rem] uppercase text-foreground-subtlest">{s.kind}</span>
+          <span className="truncate font-mono text-[0.71875rem] text-foreground">{s.name}</span>
+          <span className="ml-auto shrink-0 font-mono text-[0.59375rem] text-foreground-subtlest">{s.line}</span>
         </button>
       ))}
     </div>
@@ -594,13 +630,13 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
       <div className="flex w-[220px] shrink-0 flex-col border-r border-border bg-background">
         <div className="flex items-center gap-0.5 px-2 py-1.5">
           {(['files', 'search', 'outline', 'walk'] as const).map((t) => (
-            <button key={t} className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
+            <button key={t} className={`rounded-md px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
               {t}
             </button>
           ))}
           {leftTab === 'files' && (
             <button
-              className="ml-auto flex size-5 items-center justify-center rounded text-[11px] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
+              className="ml-auto flex size-5 items-center justify-center rounded text-[0.6875rem] text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground"
               onClick={loadTree}
               title="refresh"
             >
@@ -618,7 +654,7 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
           (walk && walk.anchors.length && trace ? (
             <FlowWalk trace={trace} anchors={walk.anchors} currentIx={walk.currentIx} onSelect={walk.onTour} workspace={workspace} />
           ) : (
-            <div className="px-3 py-2 text-[11px] text-foreground-subtlest">no live walk — ask the agent to show a flow</div>
+            <div className="px-3 py-2 text-[0.6875rem] text-foreground-subtlest">no live walk — ask the agent to show a flow</div>
           ))}
         {leftTab === 'outline' && <OutlinePanel workspace={workspace} file={left} />}
       </div>
@@ -658,7 +694,7 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
           </PanelGroup>
         )}
         {open.length === 0 && (
-          <div className="flex flex-1 items-center justify-center px-8 text-center text-[13px] text-foreground-subtlest">
+          <div className="flex flex-1 items-center justify-center px-8 text-center text-[0.8125rem] text-foreground-subtlest">
             Pick a file from the tree to open it. Open several — they become tabs — and split the editor with ⊟.
           </div>
         )}

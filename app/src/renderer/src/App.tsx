@@ -41,7 +41,7 @@ function PersonaPill({ persona, onSwitch }: { persona: 'agent' | 'editor'; onSwi
   const seg = (id: 'agent' | 'editor', label: string): React.JSX.Element => (
     <button
       key={id}
-      className={`rounded-md px-2.5 py-0.5 text-[12px] font-medium transition-colors ${persona === id ? 'bg-background text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`}
+      className={`rounded-md px-2.5 py-0.5 text-[0.75rem] font-medium transition-colors ${persona === id ? 'bg-background text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`}
       onClick={() => onSwitch(id)}
     >
       {label}
@@ -211,8 +211,8 @@ export function App(): React.JSX.Element {
   const tourTo = (ix: number): void => {
     const a = walkAnchors[ix]
     if (!a) return
-    setWalkIx(ix)
-    openSource(a.file, a.line)
+    setWalkIx(ix) // selection always advances — a file-less anchor still walks
+    if (a.file) openSource(a.file, a.line)
   }
 
   // Keybindings — driven by ~/.grasp/keybindings.json (loaded from the main process). Chord
@@ -428,15 +428,12 @@ export function App(): React.JSX.Element {
     void runWorkflow(wf)
   }
 
-  // Restore the session list on launch, AND re-open the most recent session so the
-  // transcript + model trajectory load on start (matches ZCode's restore-last-session).
+  // Restore the session LIST on launch — and nothing else. Boot lands quiet: no
+  // auto-opened transcript, no repo work, until the human picks a session, a
+  // workspace, or runs Load repo. (Auto-restore-last was ZCode parity; rejected —
+  // sessions are isolated and nothing continues on its own.)
   useEffect(() => {
-    void window.grasp.sessions().then((ss) => {
-      setSessions(ss)
-      const latest = [...ss].sort((a, b) => b.updatedAt - a.updatedAt)[0]
-      if (latest && latest.transcript?.length) applySession(latest)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void window.grasp.sessions().then(setSessions)
   }, [])
 
   // Autosave: whenever a turn settles, persist the session (transcript + opaque history).
@@ -529,19 +526,10 @@ export function App(): React.JSX.Element {
     void window.grasp.defaultWorkspace().then((w) => setWorkspace((cur) => cur || w))
   }, [])
 
-  // Autoload: opening a repo pays tier 0 automatically — one scoped turn that reads the
-  // recipe/docs and reports observability rungs. Runs nothing, fires once per workspace
-  // per app session, only when a credential is ready, never over an existing transcript.
-  const booted = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    if (!workspace || keyReady !== true || busy || transcript.length > 0) return
-    if (booted.current.has(workspace)) return
-    booted.current.add(workspace)
-    void send(
-      'Introduce this workspace to me as if I have never used grasp. Do tier 0 of the load-repo skill (read the recipe if present, else only the repo docs and manifests — run nothing). If no behavior model exists, bootstrap it per the behavior-model skill init: harvest stated always/nevers from the repo docs, witness-test them, stage them for my signature. Then tell me, in plain words and at most a dozen lines: how this repo runs, the 3-6 features you could show me the flow of (by name, not symbols), the staged rules awaiting my yes/no, and the one thing you suggest I do next. Then SUBMIT the introduction via grasp_intro (how / flows / suggestion — grasp adds the rules from model.yaml itself) and keep chat to a single line. No jargon, no rungs, no protocol talk.'
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace, keyReady, busy, transcript.length])
+  // NO autoload. A model turn never starts itself: the workspace introduction runs
+  // only from the explicit Load repo affordance (empty-state button, palette, /start).
+  // The old auto-intro fired on every boot and workspace switch — a model call with
+  // no user action, and the "session sprawl" bug in real use. Rejected for good.
 
   // Click an input operand -> fuzz the input (schema inferred from the observed inputs)
   // -> surface the edge cases. Fuses flow + fuzz into one interactive object.
@@ -852,6 +840,7 @@ export function App(): React.JSX.Element {
                 onCheck={checkChanges}
                 onForkUser={forkFromUser}
                 onRevertUser={(i) => void revertToStep(i)}
+                onLoadRepo={skills.some((s) => s.name === 'load-repo' && s.enabled) ? () => void send('Use the "load-repo" skill.') : undefined}
                 onBackend={pickBackend}
                 onModel={setModel}
                 thoughtLevel={thoughtLevel}
@@ -913,6 +902,9 @@ export function App(): React.JSX.Element {
             { id: 'view-side', group: 'View', label: 'Toggle side pane', hint: '⌘L', run: toggleRight },
             { id: 'switch-persona', group: 'View', label: 'Switch persona — Agent ⇄ Editor', hint: '⌘G', run: togglePersona },
             { id: 'quick-open', group: 'View', label: 'Go to file…', hint: '⌘P', run: () => setShowQuickOpen(true) },
+            ...(skills.some((s) => s.name === 'load-repo' && s.enabled)
+              ? [{ id: 'load-repo', group: 'Command', label: 'Load repo — introduce this workspace', run: () => void send('Use the "load-repo" skill.') } as Command]
+              : []),
             ...skills.filter((s) => s.enabled).map(
               (s): Command => ({
                 id: 'skill-' + s.name,
@@ -997,7 +989,7 @@ export function App(): React.JSX.Element {
             {/* chat */}
             <Panel defaultSize={54} minSize={20} ref={conversationRef} className="min-w-0">
               {remote && (
-                <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[12px]">
+                <div className="flex shrink-0 items-center gap-2 border-b border-accent-blue/30 bg-accent-blue/10 px-4 py-1.5 text-[0.75rem]">
                   <span className="size-2 shrink-0 animate-pulse rounded-full bg-accent-blue" />
                   <span className="font-medium text-accent-blue">SSH</span>
                   <span className="text-foreground-subtle">
@@ -1006,7 +998,7 @@ export function App(): React.JSX.Element {
                     <span className="font-mono">{remote.cwd}</span>
                   </span>
                   <span className="ml-auto text-foreground-subtlest">agent + editor run on this remote</span>
-                  <button className="rounded-md border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-foreground-subtle transition-colors hover:text-foreground" onClick={() => void disconnectRemote()}>Disconnect</button>
+                  <button className="rounded-md border border-border bg-card px-2 py-0.5 text-[0.6875rem] font-medium text-foreground-subtle transition-colors hover:text-foreground" onClick={() => void disconnectRemote()}>Disconnect</button>
                 </div>
               )}
               {conversationView}
@@ -1027,19 +1019,19 @@ export function App(): React.JSX.Element {
                 <span className="mb-1 mr-2 shrink-0">
                   <PersonaPill persona={persona} onSwitch={setPersona} />
                 </span>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'editor' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('editor')}>Editor</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'flow' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('flow')}>Flow</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'trajectory' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('trajectory')}>Trajectory</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'git' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('git')}>Git</button>
-                <button className={`border-b-2 px-3 pb-1.5 text-[13px] font-medium transition-colors ${rightTab === 'wiki' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('wiki')}>Wiki</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'editor' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('editor')}>Editor</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'flow' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('flow')}>Flow</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'trajectory' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('trajectory')}>Trajectory</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'browser' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setRightTab('browser')}>Browser</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'git' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('git')}>Git</button>
+                <button className={`border-b-2 px-3 pb-1.5 text-[0.8125rem] font-medium transition-colors ${rightTab === 'wiki' ? 'border-foreground text-foreground' : 'border-transparent text-foreground-subtlest hover:text-foreground'}`} onClick={() => setRightTab('wiki')}>Wiki</button>
                 {surface && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-foreground-subtlest">
+                  <span className="ml-2 inline-flex items-center gap-1 text-[0.6875rem] text-foreground-subtlest">
                     <span className="size-1.5 animate-pulse rounded-full bg-foreground" />
                     live
                   </span>
                 )}
-                <button className="ml-auto border-0 bg-transparent px-1.5 py-0.5 text-[14px] text-foreground-subtlest transition-colors hover:text-foreground" onClick={toggleRight} title="Close side pane (⌘\)">✕</button>
+                <button className="ml-auto border-0 bg-transparent px-1.5 py-0.5 text-[0.875rem] text-foreground-subtlest transition-colors hover:text-foreground" onClick={toggleRight} title="Close side pane (⌘\)">✕</button>
               </div>
               <div className="relative min-h-0 flex-1">
                 <div className={`absolute inset-0 ${rightTab === 'editor' ? 'visible' : 'hidden'}`}>
@@ -1059,22 +1051,22 @@ export function App(): React.JSX.Element {
                 </div>
                 <div className={`absolute inset-0 flex flex-col ${rightTab === 'flow' ? 'visible' : 'hidden'}`}>
                   <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
-                    <button className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] transition-colors ${flowAuto ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:bg-surface-hover'}`} onClick={toggleFlowAuto} title={flowAuto ? 'Auto: re-observes after every edit' : 'On demand: click Run flow'}>
+                    <button className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.75rem] transition-colors ${flowAuto ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:bg-surface-hover'}`} onClick={toggleFlowAuto} title={flowAuto ? 'Auto: re-observes after every edit' : 'On demand: click Run flow'}>
                       <span className="size-1.5 rounded-full bg-current opacity-60" />
                       auto
                     </button>
-                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[12px] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
+                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
                     {surface?.kind === 'trace' && (
-                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[11px]">
+                      <span className="ml-auto flex items-center rounded-md bg-tag p-0.5 text-[0.6875rem]">
                         <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'tree' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('tree')}>Tree</button>
                         <button className={`rounded px-2 py-0.5 transition-colors ${flowLens === 'walk' ? 'bg-background font-medium text-foreground shadow-sm' : 'text-foreground-subtle hover:text-foreground'}`} onClick={() => setFlowLens('walk')}>Walk</button>
                       </span>
                     )}
 
                   </div>
-                  {flowNote && <div className="shrink-0 border-b border-border px-3 py-1 text-[12px] text-foreground-subtlest">{flowNote}</div>}
+                  {flowNote && <div className="shrink-0 border-b border-border px-3 py-1 text-[0.75rem] text-foreground-subtlest">{flowNote}</div>}
                   <div className="min-h-0 flex-1 overflow-hidden">
                   {surface?.kind === 'fuzzdiff' ? (
                     <FuzzDiffView
@@ -1094,7 +1086,7 @@ export function App(): React.JSX.Element {
                       {traces.length > 1 && (
                         <div className="flex shrink-0 gap-1 border-b border-border px-3 py-1.5">
                           {traces.map((tr, i) => (
-                            <button key={tr.id} className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors ${i === surface.ix ? 'bg-selected text-foreground' : 'text-foreground-subtlest hover:bg-surface-hover'}`} onClick={() => setSurface({ kind: 'trace', ix: i })} title={tr.entry}>
+                            <button key={tr.id} className={`rounded-full px-2.5 py-0.5 text-[0.6875rem] transition-colors ${i === surface.ix ? 'bg-selected text-foreground' : 'text-foreground-subtlest hover:bg-surface-hover'}`} onClick={() => setSurface({ kind: 'trace', ix: i })} title={tr.entry}>
                               {i === traces.length - 1 ? 'latest' : `run ${i + 1}`}
                             </button>
                           ))}
@@ -1117,8 +1109,8 @@ export function App(): React.JSX.Element {
                       <div className="flex size-14 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M8 7l8 4M8 17l8-4" stroke="currentColor" strokeWidth="1.7" /></svg>
                       </div>
-                      <p className="text-[14px] font-medium text-foreground">Observed dataflow</p>
-                      <p className="max-w-[300px] text-[13px] leading-relaxed text-foreground-subtlest">
+                      <p className="text-[0.875rem] font-medium text-foreground">Observed dataflow</p>
+                      <p className="max-w-[300px] text-[0.8125rem] leading-relaxed text-foreground-subtlest">
                         Ask the agent to run a function. The real values it binds and the paths it takes appear here — ending in a question, never a verdict.
                       </p>
                     </div>
@@ -1146,15 +1138,15 @@ export function App(): React.JSX.Element {
       </PanelGroup>
 
       {/* status bar */}
-      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[11.5px] text-foreground-subtle">
+      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[0.71875rem] text-foreground-subtle">
         <span className="inline-flex items-center gap-1.5 font-mono" title={workspace}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
           {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
         </span>
-        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11.5px] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
+        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.71875rem] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Terminal
-          <span className="font-mono text-[10px] text-foreground-subtlest">⌃`</span>
+          <span className="font-mono text-[0.625rem] text-foreground-subtlest">⌃`</span>
         </button>
       </div>
       </div>
@@ -1206,10 +1198,10 @@ export function App(): React.JSX.Element {
           <span style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <PersonaPill persona={persona} onSwitch={setPersona} />
           </span>
-          <span className="truncate font-mono text-[12px] text-foreground-subtle" title={workspace}>
+          <span className="truncate font-mono text-[0.75rem] text-foreground-subtle" title={workspace}>
             {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
           </span>
-          <span className="ml-auto font-mono text-[11px] text-foreground-subtlest" title="Switch persona">⌘G</span>
+          <span className="ml-auto font-mono text-[0.6875rem] text-foreground-subtlest" title="Switch persona">⌘G</span>
         </div>
         <PanelGroup direction="vertical" className="min-h-0 flex-1" autoSaveId="grasp-editor-vert">
           <Panel defaultSize={74} minSize={30}>

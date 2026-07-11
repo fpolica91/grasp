@@ -61,7 +61,7 @@ export function CommandPalette({ items, onClose }: { items: Command[]; onClose: 
       >
         <input
           autoFocus
-          className="w-full border-0 border-b border-border bg-transparent px-4 py-3 text-[14px] text-foreground outline-none placeholder:text-foreground-subtlest"
+          className="w-full border-0 border-b border-border bg-transparent px-4 py-3 text-[0.875rem] text-foreground outline-none placeholder:text-foreground-subtlest"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
@@ -83,24 +83,24 @@ export function CommandPalette({ items, onClose }: { items: Command[]; onClose: 
         />
         <div className="max-h-[400px] overflow-y-auto p-1" ref={listRef}>
           {filtered.length === 0 && (
-            <div className="px-3 py-6 text-center text-[13px] text-foreground-subtlest">No matches.</div>
+            <div className="px-3 py-6 text-center text-[0.8125rem] text-foreground-subtlest">No matches.</div>
           )}
           {filtered.map((c, i) => (
             <div
               key={c.id}
               data-selected={i === sel}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors ${
+              className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-[0.8125rem] transition-colors ${
                 i === sel ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
               }`}
               onMouseEnter={() => setSel(i)}
               onClick={() => run(c)}
             >
-              <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">
+              <span className="shrink-0 text-[0.625rem] font-medium uppercase tracking-wide text-foreground-subtlest">
                 {c.group}
               </span>
               <span className="flex-1 truncate font-medium">{c.label}</span>
               {c.hint && (
-                <span className="shrink-0 font-mono text-[11px] text-foreground-subtlest">{c.hint}</span>
+                <span className="shrink-0 font-mono text-[0.6875rem] text-foreground-subtlest">{c.hint}</span>
               )}
             </div>
           ))}

@@ -21,7 +21,7 @@ export function walkAnchorsOf(t: TraceDoc): WalkAnchor[] {
   return [...t.frames]
     .sort((a, b) => a.seq - b.seq)
     .filter((f) => f.meaningful !== false)
-    .map((f, i) => ({ n: i + 1, id: f.id, fn: f.fn, file: f.file, line: f.line, frame: f }))
+    .map((f, i) => ({ n: i + 1, id: f.id, fn: f.fn, file: f.file ?? '', line: f.line ?? null, frame: f })) // normalize: absent line/file must behave as null/empty everywhere downstream
 }
 
 const cap = (s: string, n: number): string => (s.length > n ? s.slice(0, n - 1) + '…' : s)
@@ -69,10 +69,10 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
       {/* header — the observed facts of this run */}
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[13px] font-semibold text-foreground">{trace.entry}</span>
-          <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${trace.status === 'threw' ? 'bg-destructive/15 text-destructive' : 'bg-tag text-foreground-subtle'}`}>{trace.status}</span>
+          <span className="font-mono text-[0.8125rem] font-semibold text-foreground">{trace.entry}</span>
+          <span className={`rounded px-1.5 py-0.5 font-mono text-[0.625rem] ${trace.status === 'threw' ? 'bg-destructive/15 text-destructive' : 'bg-tag text-foreground-subtle'}`}>{trace.status}</span>
         </div>
-        <div className="mt-1 font-mono text-[11px] text-foreground-subtlest">
+        <div className="mt-1 font-mono text-[0.6875rem] text-foreground-subtlest">
           {anchors.length} meaningful step{anchors.length === 1 ? '' : 's'}
           {plumbing > 0 && ` · ${plumbing} plumbing collapsed`}
           {typeof trace.durationMs === 'number' && ` · ${trace.durationMs}ms`}
@@ -93,20 +93,20 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
                 onClick={() => onSelect(ix)}
                 title={a.file ? `open ${a.file}${a.line ? `:${a.line}` : ''}` : undefined}
               >
-                <span className={`absolute left-1.5 top-2 z-10 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md px-1 font-mono text-[10px] font-semibold ${current ? 'bg-accent-blue text-white' : 'bg-tag text-foreground-subtle'}`}>{a.n}</span>
+                <span className={`absolute left-1.5 top-2 z-10 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md px-1 font-mono text-[0.625rem] font-semibold ${current ? 'bg-accent-blue text-white' : 'bg-tag text-foreground-subtle'}`}>{a.n}</span>
                 <span className="flex items-baseline gap-2">
-                  <span className="font-mono text-[12.5px] font-medium text-foreground">{a.fn}</span>
+                  <span className="font-mono text-[0.8125rem] font-semibold text-foreground">{a.fn}</span>
                   {a.file && (
-                    <span className="truncate font-mono text-[10.5px] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
+                    <span className="truncate font-mono text-[0.65625rem] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
                   )}
-                  {a.frame.durMs > 0 && <span className="ml-auto shrink-0 font-mono text-[10px] text-foreground-subtlest">{a.frame.durMs}ms</span>}
+                  {a.frame.durMs > 0 && <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-foreground-subtlest">{a.frame.durMs}ms</span>}
                 </span>
                 {ex !== null ? (
-                  <span className="mt-0.5 block truncate font-mono text-[11px] text-foreground-subtle">{ex}</span>
+                  <span className="mt-0.5 block truncate font-mono text-[0.75rem] text-foreground">{ex}</span>
                 ) : (
-                  <span className="mt-0.5 block font-mono text-[11px] italic text-foreground-subtlest">source line unavailable</span>
+                  <span className="mt-0.5 block font-mono text-[0.6875rem] italic text-foreground-subtlest">source line unavailable</span>
                 )}
-                <span className={`mt-0.5 block truncate font-mono text-[11px] ${a.frame.threw ? 'text-destructive' : 'text-foreground-subtlest'}`}>{valueLine(a.frame)}</span>
+                <span className={`mt-0.5 block truncate font-mono text-[0.71875rem] ${a.frame.threw ? 'text-destructive' : 'text-foreground-subtle'}`}>{valueLine(a.frame)}</span>
               </button>
             )
           })}

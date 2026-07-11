@@ -118,7 +118,7 @@ function ActButton({ label, title, onClick, disabled }: { label: string; title: 
       disabled={disabled}
       onClick={onClick}
       title={title}
-      className="rounded-md border border-border bg-card px-2 py-1 text-[11.5px] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+      className="rounded-md border border-border bg-card px-2 py-1 text-[0.71875rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
     >{label}</button>
   )
 }
@@ -148,10 +148,10 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
   }
 
   if (!graph) {
-    return <div className="p-4 text-[13px] text-foreground-subtle">{loading ? 'Loading…' : 'No repo.'}</div>
+    return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{loading ? 'Loading…' : 'No repo.'}</div>
   }
   if (!graph.ok) {
-    return <div className="p-4 text-[13px] text-foreground-subtle">{graph.error ?? 'No git repo at this workspace.'}</div>
+    return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{graph.error ?? 'No git repo at this workspace.'}</div>
   }
   const { placed, laneCount } = computeLanes(graph.commits)
   const placedById = new Map(placed.map((p) => [p.hash, p]))
@@ -160,13 +160,13 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
     <div className="flex h-full flex-col">
       {/* header: branch + actions */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-tag px-2 py-0.5 text-[11.5px] font-medium text-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-tag px-2 py-0.5 text-[0.71875rem] font-medium text-foreground">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="9" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M6 8.4v7.2M6 12c0-3 3-3 6-3h3.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           {graph.branch}
         </span>
         {graph.dirty && <span className="size-2 rounded-full bg-warning" title="working tree has changes" />}
-        {graph.ahead ? <span className="text-[11px] text-foreground-subtlest" title="commits not pushed">↑{graph.ahead}</span> : null}
-        {graph.behind ? <span className="text-[11px] text-foreground-subtlest" title="commits on remote">↓{graph.behind}</span> : null}
+        {graph.ahead ? <span className="text-[0.6875rem] text-foreground-subtlest" title="commits not pushed">↑{graph.ahead}</span> : null}
+        {graph.behind ? <span className="text-[0.6875rem] text-foreground-subtlest" title="commits on remote">↓{graph.behind}</span> : null}
         <span className="ml-auto" />
         <ActButton label="Fetch" title="git fetch --all --prune" onClick={() => act('fetch')} />
         <ActButton label="Pull" title="git pull --ff-only" onClick={() => act('pull')} disabled={graph.dirty} />
@@ -175,7 +175,7 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
         <ActButton label="Commit" title="commit all staged changes" onClick={() => promptAct('commit', 'Commit message:')} disabled={!graph.dirty} />
         <ActButton label="New" title="create + switch to a new branch" onClick={() => promptAct('newBranch', 'New branch name:')} />
       </div>
-      {note && <div className="border-b border-border bg-surface px-3 py-1 text-[11px] text-foreground-subtle">{note}</div>}
+      {note && <div className="border-b border-border bg-surface px-3 py-1 text-[0.6875rem] text-foreground-subtle">{note}</div>}
 
       {/* commit graph: SVG lanes on the left, one fixed-height row per commit on the right */}
       <div className="min-h-0 flex-1 overflow-auto">
@@ -189,13 +189,13 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
               return (
                 <div key={c.hash} className="group flex flex-col justify-center border-l border-transparent pl-2 hover:border-border" style={{ height: ROW_H }}>
                   <div className="flex items-center gap-1.5">
-                    <span className={`truncate text-[13px] ${head ? 'font-medium text-foreground' : 'text-foreground'}`}>{c.subject}</span>
-                    {isMerge && <span className="shrink-0 rounded bg-tag px-1 text-[10px] text-foreground-subtlest">merge</span>}
+                    <span className={`truncate text-[0.8125rem] ${head ? 'font-medium text-foreground' : 'text-foreground'}`}>{c.subject}</span>
+                    {isMerge && <span className="shrink-0 rounded bg-tag px-1 text-[0.625rem] text-foreground-subtlest">merge</span>}
                     {refs.map((r, i) => (
-                      <span key={i} className={`shrink-0 rounded-full px-1.5 text-[10px] ${r.head ? 'bg-accent-blue/20 text-foreground' : r.remote ? 'bg-tag text-foreground-subtle' : r.tag ? 'bg-warning/15 text-warning' : 'border border-border text-foreground-subtle'}`}>{r.name}</span>
+                      <span key={i} className={`shrink-0 rounded-full px-1.5 text-[0.625rem] ${r.head ? 'bg-accent-blue/20 text-foreground' : r.remote ? 'bg-tag text-foreground-subtle' : r.tag ? 'bg-warning/15 text-warning' : 'border border-border text-foreground-subtle'}`}>{r.name}</span>
                     ))}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-foreground-subtlest">
+                  <div className="flex items-center gap-1.5 text-[0.6875rem] text-foreground-subtlest">
                     <span className="font-mono text-foreground-subtle">{c.short}</span>
                     <span className="truncate">{c.author}</span>
                     <span>· {c.date}</span>
@@ -203,7 +203,7 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
                 </div>
               )
             })}
-            {graph.commits.length === 0 && <div className="py-4 text-center text-[12px] text-foreground-subtlest">no commits</div>}
+            {graph.commits.length === 0 && <div className="py-4 text-center text-[0.75rem] text-foreground-subtlest">no commits</div>}
           </div>
         </div>
       </div>
@@ -211,7 +211,7 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
       {/* footer: branch switcher + merge/rebase */}
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2">
         <select
-          className="min-w-0 flex-1 rounded-md border border-border bg-input px-2 py-1 text-[11.5px] text-foreground outline-none"
+          className="min-w-0 flex-1 rounded-md border border-border bg-input px-2 py-1 text-[0.71875rem] text-foreground outline-none"
           value=""
           onChange={(e) => { if (e.target.value) void act('checkout', e.target.value); e.target.value = '' }}
           title="Switch branch"

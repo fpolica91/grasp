@@ -19,9 +19,9 @@ export function WorkflowModal(props: {
         className="flex w-[520px] max-w-[90vw] flex-col gap-4 rounded-2xl border border-border bg-card p-7 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-[11px] font-medium uppercase tracking-wide text-foreground-subtlest">new workflow</div>
-        <h2 className="text-[18px] font-semibold tracking-tight text-foreground">Define the steps</h2>
-        <p className="text-[13px] leading-relaxed text-foreground-subtle">
+        <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-foreground-subtlest">new workflow</div>
+        <h2 className="text-[1.125rem] font-semibold tracking-tight text-foreground">Define the steps</h2>
+        <p className="text-[0.8125rem] leading-relaxed text-foreground-subtle">
           Each line is one step. grasp runs them in order against the same conversation — investigate, edit, observe, verify — and remembers its place if you restart.
         </p>
         <input
@@ -29,7 +29,7 @@ export function WorkflowModal(props: {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Workflow name"
           spellCheck={false}
-          className="w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-[14px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
+          className="w-full rounded-lg border border-border bg-input px-3.5 py-2.5 text-[0.875rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
         />
         <textarea
           value={body}
@@ -37,25 +37,25 @@ export function WorkflowModal(props: {
           placeholder={'Read app.py and find where owner is set\nSet owner to the given name\nObserve app.create and summarize the change'}
           rows={6}
           spellCheck={false}
-          className="w-full resize-none rounded-lg border border-border bg-input px-3.5 py-2.5 font-mono text-[13px] leading-relaxed text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
+          className="w-full resize-none rounded-lg border border-border bg-input px-3.5 py-2.5 font-mono text-[0.8125rem] leading-relaxed text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
         />
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-foreground-subtlest">{steps.length} step{steps.length === 1 ? '' : 's'}</span>
+          <span className="text-[0.75rem] text-foreground-subtlest">{steps.length} step{steps.length === 1 ? '' : 's'}</span>
           <input
             value={budgetStr}
             onChange={(e) => setBudgetStr(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder="token budget / step (optional)"
             spellCheck={false}
-            className="w-[220px] rounded-lg border border-border bg-input px-3 py-2 text-[12px] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
+            className="w-[220px] rounded-lg border border-border bg-input px-3 py-2 text-[0.75rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
           />
           <button
-            className="ml-auto rounded-lg border border-border bg-secondary px-3.5 py-2 text-[13px] font-medium text-foreground transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg border border-border bg-secondary px-3.5 py-2 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110"
             onClick={props.onClose}
           >
             Cancel
           </button>
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
             disabled={steps.length === 0}
             onClick={() => {
               const b = parseInt(budgetStr, 10)
@@ -86,10 +86,10 @@ export function WorkflowPanel(props: {
     <div className="flex flex-col gap-2 border-b border-border px-5 py-3">
       {/* Row 1 — label + title (truncates) + dismiss. min-w-0 lets the title truncate. */}
       <div className="flex items-center gap-2 min-w-0">
-        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-foreground-subtlest">workflow</span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground" title={wf.title}>{wf.title}</span>
+        <span className="shrink-0 text-[0.625rem] font-medium uppercase tracking-wide text-foreground-subtlest">workflow</span>
+        <span className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-foreground" title={wf.title}>{wf.title}</span>
         <button
-          className="shrink-0 border-0 bg-transparent text-[14px] leading-none text-foreground-subtlest transition-colors hover:text-foreground"
+          className="shrink-0 border-0 bg-transparent text-[0.875rem] leading-none text-foreground-subtlest transition-colors hover:text-foreground"
           onClick={props.onDismiss}
           title="dismiss"
         >
@@ -98,18 +98,18 @@ export function WorkflowPanel(props: {
       </div>
       {/* Row 2 — progress + status + action (wraps cleanly in the narrow sidebar) */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground-subtlest">
+        <span className="rounded-full border border-border px-2 py-0.5 text-[0.625rem] text-foreground-subtlest">
           {done}/{wf.steps.length}
         </span>
         {wf.status === 'done' && (
-          <span className="rounded-full border border-border bg-tag px-2 py-0.5 text-[10px] font-medium text-foreground">done</span>
+          <span className="rounded-full border border-border bg-tag px-2 py-0.5 text-[0.625rem] font-medium text-foreground">done</span>
         )}
         {wf.status === 'paused' && (
-          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground-subtlest">paused</span>
+          <span className="rounded-full border border-border px-2 py-0.5 text-[0.625rem] text-foreground-subtlest">paused</span>
         )}
         {live && (
           <button
-            className="ml-auto rounded-lg border border-border bg-secondary px-3 py-1.5 text-[12px] font-medium text-foreground transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg border border-border bg-secondary px-3 py-1.5 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110"
             onClick={props.onCancel}
             title="Stop after the current step"
           >
@@ -118,7 +118,7 @@ export function WorkflowPanel(props: {
         )}
         {interrupted && (
           <button
-            className="ml-auto rounded-lg bg-primary px-3.5 py-1.5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg bg-primary px-3.5 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110"
             onClick={props.onResume}
           >
             Resume
@@ -129,7 +129,7 @@ export function WorkflowPanel(props: {
         {wf.steps.map((s, i) => (
           <li
             key={i}
-            className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] ${
+            className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[0.8125rem] ${
               s.status === 'done'
                 ? 'text-foreground-subtlest'
                 : s.status === 'running'
@@ -153,7 +153,7 @@ export function WorkflowPanel(props: {
             <span className="flex-1 truncate">{s.prompt}</span>
             {s.status !== 'running' && !live && (
               <button
-                className="shrink-0 rounded-full border border-border bg-transparent px-2 py-0.5 text-[10px] text-foreground-subtlest transition-colors hover:border-border-hover hover:text-foreground"
+                className="shrink-0 rounded-full border border-border bg-transparent px-2 py-0.5 text-[0.625rem] text-foreground-subtlest transition-colors hover:border-border-hover hover:text-foreground"
                 onClick={() => props.onRetry(i)}
                 title="Re-run from this step (keeps prior history)"
               >
