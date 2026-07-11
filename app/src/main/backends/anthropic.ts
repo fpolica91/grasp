@@ -295,7 +295,7 @@ export function makeAnthropicBackend(o: AnthropicBackendOpts): AgentBackend {
         }
         const isMcpTool = !TOOLS.find((t) => t.name === tu.name) && !!tools.find((t) => t.name === tu.name)
         if (turn.mode === 'ask' && tu.name && (MUTATING_TOOLS.has(tu.name) || isMcpTool)) {
-          const ok = await requestApproval(emit, tu.name, tu.input ?? {})
+          const ok = await requestApproval(emit, tu.name, tu.input ?? {}, turn.signal)
           if (!ok) {
             output = 'skipped — you denied this action.'
             emit({ type: 'tool_result', id: tu.id, name: tu.name, summary: output })

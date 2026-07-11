@@ -626,8 +626,8 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
 
   return (
     <div className="flex h-full">
-      {/* Left rail: Files / Search / Outline */}
-      <div className="flex w-[220px] shrink-0 flex-col border-r border-border bg-background">
+      {/* Left rail: Files / Search / Outline / Walk — the walk needs room to breathe */}
+      <div className={`flex ${leftTab === 'walk' ? 'w-[300px]' : 'w-[220px]'} shrink-0 flex-col border-r border-border bg-background`}>
         <div className="flex items-center gap-0.5 px-2 py-1.5">
           {(['files', 'search', 'outline', 'walk'] as const).map((t) => (
             <button key={t} className={`rounded-md px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide transition-colors ${leftTab === t ? 'bg-tag text-foreground' : 'text-foreground-subtlest hover:text-foreground-subtle'}`} onClick={() => setLeftTab(t)}>
@@ -652,7 +652,7 @@ export function FilesPane({ workspace, active, walk, trace }: { workspace: strin
         {leftTab === 'search' && <SearchPanel workspace={workspace} />}
         {leftTab === 'walk' &&
           (walk && walk.anchors.length && trace ? (
-            <FlowWalk trace={trace} anchors={walk.anchors} currentIx={walk.currentIx} onSelect={walk.onTour} workspace={workspace} />
+            <FlowWalk trace={trace} anchors={walk.anchors} currentIx={walk.currentIx} onSelect={walk.onTour} workspace={workspace} compact />
           ) : (
             <div className="px-3 py-2 text-[0.6875rem] text-foreground-subtlest">no live walk — ask the agent to show a flow</div>
           ))}

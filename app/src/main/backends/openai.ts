@@ -226,7 +226,7 @@ async function run(turn: BackendTurn, emit: Emit): Promise<{ messages: unknown[]
       // Ask mode also gates untrusted MCP tools (external servers — not built-ins).
       const isMcpTool = !TOOLS.find((t) => t.name === name) && !!tools.find((t) => t.name === name)
       if (!output && turn.mode === 'ask' && (MUTATING_TOOLS.has(name) || isMcpTool)) {
-        const ok = await requestApproval(emit, name, input)
+        const ok = await requestApproval(emit, name, input, turn.signal)
         if (!ok) output = 'skipped — you denied this action.'
       }
       // Lifecycle hook: PreToolUse — final pre-execution authority; may BLOCK the tool.

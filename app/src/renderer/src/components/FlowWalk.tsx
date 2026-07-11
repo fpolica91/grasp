@@ -32,12 +32,13 @@ function valueLine(f: TraceFrame): string {
   return cap(`(${args}) ${out}`, 110)
 }
 
-export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
+export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace, compact }: {
   trace: TraceDoc
   anchors: WalkAnchor[]
   currentIx: number | null
   onSelect: (ix: number) => void
   workspace: string
+  compact?: boolean // rail mode: tighter, no per-row placeholders, basename header
 }): React.JSX.Element {
   // Real source excerpts: read each referenced file once; a missing line is shown as
   // unavailable, never invented.
@@ -69,7 +70,9 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
       {/* header — the observed facts of this run */}
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[0.8125rem] font-semibold text-foreground">{trace.entry}</span>
+          <span className="font-mono text-[0.8125rem] font-semibold text-foreground" title={trace.entry}>
+            {compact ? trace.entry.split('/').slice(-2).join('/') : trace.entry}
+          </span>
           <span className={`rounded px-1.5 py-0.5 font-mono text-[0.625rem] ${trace.status === 'threw' ? 'bg-destructive/15 text-destructive' : 'bg-tag text-foreground-subtle'}`}>{trace.status}</span>
         </div>
         <div className="mt-1 font-mono text-[0.6875rem] text-foreground-subtlest">
@@ -80,8 +83,8 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
         </div>
       </div>
       {/* the walk — numbered anchors on a rail */}
-      <div className="relative flex-1 px-4 py-3">
-        <div className="absolute bottom-3 left-[27px] top-3 w-px bg-border" />
+      <div className={`relative flex-1 ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
+        <div className={`absolute bottom-3 top-3 w-px bg-border ${compact ? 'left-[19px]' : 'left-[27px]'}`} />
         <div className="flex flex-col gap-1">
           {anchors.map((a, ix) => {
             const ex = excerpt(a)
@@ -96,14 +99,14 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace }: {
                 <span className={`absolute left-1.5 top-2 z-10 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md px-1 font-mono text-[0.625rem] font-semibold ${current ? 'bg-accent-blue text-white' : 'bg-tag text-foreground-subtle'}`}>{a.n}</span>
                 <span className="flex items-baseline gap-2">
                   <span className="font-mono text-[0.8125rem] font-semibold text-foreground">{a.fn}</span>
-                  {a.file && (
+                  {a.file && !compact && (
                     <span className="truncate font-mono text-[0.65625rem] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
                   )}
                   {a.frame.durMs > 0 && <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-foreground-subtlest">{a.frame.durMs}ms</span>}
                 </span>
                 {ex !== null ? (
                   <span className="mt-0.5 block truncate font-mono text-[0.75rem] text-foreground">{ex}</span>
-                ) : (
+                ) : compact ? null : (
                   <span className="mt-0.5 block font-mono text-[0.6875rem] italic text-foreground-subtlest">source line unavailable</span>
                 )}
                 <span className={`mt-0.5 block truncate font-mono text-[0.71875rem] ${a.frame.threw ? 'text-destructive' : 'text-foreground-subtle'}`}>{valueLine(a.frame)}</span>

@@ -24,9 +24,19 @@ function Mark(): React.JSX.Element {
   )
 }
 
+// Compact relative time — the difference between two identically-titled sessions.
+function ago(t: number): string {
+  const s = Math.max(0, (Date.now() - t) / 1000)
+  if (s < 90) return 'now'
+  if (s < 3600) return `${Math.round(s / 60)}m`
+  if (s < 86400) return `${Math.round(s / 3600)}h`
+  return `${Math.round(s / 86400)}d`
+}
+
 function SessionRow({
   id,
   title,
+  updatedAt,
   isActive,
   isEditing,
   draft,
@@ -40,6 +50,7 @@ function SessionRow({
 }: {
   id: string
   title: string
+  updatedAt: number
   isActive: boolean
   isEditing: boolean
   draft: string
@@ -71,20 +82,21 @@ function SessionRow({
   }
   return (
     <div
-      className={`group flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] transition-colors ${
-        isActive ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
+      className={`group flex cursor-pointer items-center rounded-md border-l-2 py-1.5 pl-2 pr-1.5 text-[0.8125rem] transition-colors ${
+        isActive ? 'border-accent-blue bg-selected font-medium text-foreground' : 'border-transparent text-foreground-subtle hover:bg-surface-hover'
       }`}
       onClick={onSelect}
       title={title}
     >
       <span className="flex-1 truncate">{title}</span>
-      <button className="ml-auto shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
+      <span className="ml-1.5 shrink-0 font-mono text-[0.625rem] text-foreground-subtlest group-hover:hidden">{ago(updatedAt)}</span>
+      <button className="ml-auto shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100" title="Rename" onClick={(e) => { e.stopPropagation(); onRename() }}>
         ✎
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
+      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-foreground group-focus-within:opacity-100 group-hover:opacity-100" title="Fork" onClick={(e) => { e.stopPropagation(); onFork() }}>
         ⎇
       </button>
-      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete() }}>
+      <button className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-focus-within:opacity-100 group-hover:opacity-100" title="Delete" onClick={(e) => { e.stopPropagation(); onDelete() }}>
         ✕
       </button>
     </div>
@@ -115,6 +127,13 @@ export function Sidebar(props: {
   onTheme: (t: Theme) => void
 }): React.JSX.Element {
   const [editing, setEditing] = useState<string | null>(null)
+  const [skillsOpen, setSkillsOpen] = useState(() => localStorage.getItem('grasp-skills-open') === '1')
+  const toggleSkills = (): void => {
+    setSkillsOpen((o) => {
+      localStorage.setItem('grasp-skills-open', o ? '0' : '1')
+      return !o
+    })
+  }
   const [draft, setDraft] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
@@ -210,14 +229,15 @@ export function Sidebar(props: {
                 })}
               >
                 <span className={`text-[0.5rem] transition-transform ${collapsed ? '' : 'rotate-90'}`}>▸</span>
-                <span className="flex-1 truncate">{wsName}</span>
-                <span className="text-[0.625rem] opacity-60">{sess.length}</span>
+                <span className="flex-1 truncate" title={ws}>{wsName}</span>
+                <span className="text-[0.625rem]">{sess.length}</span>
               </div>
               {!collapsed && sess.map((s) => (
                 <SessionRow
                   key={s.id}
                   id={s.id}
                   title={s.title}
+                  updatedAt={s.updatedAt}
                   isActive={s.id === props.activeSession}
                   isEditing={editing === s.id}
                   draft={draft}
@@ -252,7 +272,7 @@ export function Sidebar(props: {
                   {w.done}/{w.total}
                 </span>
                 <button
-                  className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  className="shrink-0 rounded p-0.5 text-[0.6875rem] text-foreground-subtlest opacity-0 transition-opacity hover:text-destructive group-focus-within:opacity-100 group-hover:opacity-100"
                   title="Delete workflow"
                   onClick={(e) => { e.stopPropagation(); props.onDeleteWorkflow(w.id) }}
                 >
@@ -263,11 +283,19 @@ export function Sidebar(props: {
           </div>
         )}
 
-        {/* Skills */}
+        {/* Skills — collapsed by default so conversations own the rail */}
         {props.skills.length > 0 && (
-          <div className="mt-2 flex flex-col gap-0.5">
-            <div className="px-2.5 pb-1 text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest">Skills</div>
-            {props.skills.map((s) => (
+          <div className="mt-3 flex flex-col gap-0.5">
+            <button
+              className="flex w-full items-center gap-1.5 rounded-md px-2.5 pb-1 pt-1 text-[0.625rem] font-semibold uppercase tracking-wide text-foreground-subtlest transition-colors hover:bg-surface-hover hover:text-foreground-subtle"
+              onClick={toggleSkills}
+              title={skillsOpen ? 'Collapse skills' : 'Expand skills'}
+            >
+              <span className={`text-[0.5rem] transition-transform ${skillsOpen ? 'rotate-90' : ''}`}>▸</span>
+              Skills
+              <span className="ml-auto font-mono normal-case tracking-normal">{props.skills.filter((s) => s.enabled).length}/{props.skills.length}</span>
+            </button>
+            {skillsOpen && props.skills.map((s) => (
               <div
                 key={s.name}
                 className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] text-foreground-subtle transition-colors hover:bg-surface-hover"

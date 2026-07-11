@@ -402,6 +402,7 @@ export function Conversation(props: {
   onForkUser?: (index: number) => void
   onRevertUser?: (index: number) => void
   onLoadRepo?: () => void
+  resume?: { label: string; onResume: () => void }
   flowStatus?: FlowStatus
   onBackend: (id: string) => void
   onModel: (m: string) => void
@@ -711,7 +712,7 @@ export function Conversation(props: {
           const m = map[fs] ?? { label: fs, cls: 'bg-tag text-foreground-subtle' }
           return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ${m.cls}`} title={`Flow: ${fs}`}>{m.label}</span>
         })()}
-        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
+        <span className="ml-auto inline-flex max-w-[190px] shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border border-border bg-card px-2.5 py-1 text-[0.75rem] text-foreground-subtle shadow-sm min-[560px]:ml-0" title={`${activeLabel} · ${props.model}`}>
           <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
           <span className="min-w-0 truncate">{activeLabel} · {props.model}</span>
         </span>
@@ -736,6 +737,15 @@ export function Conversation(props: {
                 title="The agent introduces this workspace: how it runs, the flows you can ask to see, the rules awaiting your signature"
               >
                 Load repo — introduce this workspace
+              </button>
+            )}
+            {props.resume && (
+              <button
+                className="rounded-lg px-3.5 py-1 text-[0.8125rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground"
+                onClick={props.resume.onResume}
+                title="Open your most recent conversation"
+              >
+                Resume last — {props.resume.label}
               </button>
             )}
           </div>

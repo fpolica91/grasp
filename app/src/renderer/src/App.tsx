@@ -276,6 +276,17 @@ export function App(): React.JSX.Element {
   }
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID())
   const [sessions, setSessions] = useState<SessionRecord[]>([])
+  const lastSession = useMemo(
+    () => (sessions.length ? [...sessions].sort((a, b) => b.updatedAt - a.updatedAt)[0] : null),
+    [sessions]
+  )
+  const agoLabel = (t: number): string => {
+    const s = Math.max(0, (Date.now() - t) / 1000)
+    if (s < 90) return 'just now'
+    if (s < 3600) return `${Math.round(s / 60)}m ago`
+    if (s < 86400) return `${Math.round(s / 3600)}h ago`
+    return `${Math.round(s / 86400)}d ago`
+  }
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([])
   const [activeWf, setActiveWf] = useState<WorkflowRecord | null>(null)
   const [showWfModal, setShowWfModal] = useState(false)
@@ -471,6 +482,11 @@ export function App(): React.JSX.Element {
     if (rec.workspace) setWorkspace(rec.workspace)
     setSurface((rec.surface ?? null) as Surface | null)
     setError(null)
+    setFlowStatus('idle')
+    taskRef.current = null
+    setQueue([])
+    setTokens(0)
+    setWalkIx(null)
   }
   function loadSession(id: string): void {
     const rec = sessions.find((s) => s.id === id)
@@ -731,6 +747,7 @@ export function App(): React.JSX.Element {
       return
     }
     if (it.histLen != null) history.current = history.current.slice(0, it.histLen)
+    setQueue([]) // queued follow-ups aimed at the pre-revert state must not fire
     setTranscript((t) => [
       ...t.slice(0, index),
       { role: 'assistant', text: `⟲ **Reverted** the workspace to the state before this step (\`${sha.slice(0, 7)}\`).${r.safeSha ? ` The pre-revert state is committed as \`${r.safeSha.slice(0, 7)}\` — recover with \`git reset --hard ${r.safeSha.slice(0, 7)}\`.` : ''}` }
@@ -785,6 +802,11 @@ export function App(): React.JSX.Element {
   }
 
   function newSession(): void {
+    if (busy) void window.grasp.stopAgent() // never leak a running turn into a fresh session
+    taskRef.current = null
+    setQueue([])
+    setTokens(0)
+    setWalkIx(null)
     setSessionId(crypto.randomUUID())
     history.current = []
     setTranscript([])
@@ -815,7 +837,8 @@ export function App(): React.JSX.Element {
   }
 
   function deleteSessionById(id: string): void {
-    void window.grasp.deleteSession(id)
+    if (id === sessionId && busy) void window.grasp.stopAgent()
+    void window.grasp.deleteSession(id).catch((e) => setError(e instanceof Error ? e.message : String(e)))
     setSessions((ss) => ss.filter((s) => s.id !== id))
     if (id === sessionId) newSession()
   }
@@ -841,6 +864,7 @@ export function App(): React.JSX.Element {
                 onForkUser={forkFromUser}
                 onRevertUser={(i) => void revertToStep(i)}
                 onLoadRepo={skills.some((s) => s.name === 'load-repo' && s.enabled) ? () => void send('Use the "load-repo" skill.') : undefined}
+                resume={transcript.length === 0 && lastSession ? { label: `${lastSession.title.slice(0, 32)} · ${agoLabel(lastSession.updatedAt)}`, onResume: () => loadSession(lastSession.id) } : undefined}
                 onBackend={pickBackend}
                 onModel={setModel}
                 thoughtLevel={thoughtLevel}
