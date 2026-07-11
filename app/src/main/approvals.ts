@@ -7,7 +7,7 @@ import type { ElicitOption } from '../shared/types'
 
 const pending = new Map<string, (ok: boolean) => void>()
 
-export function requestApproval(emit: Emit, tool: string, input: Record<string, unknown>, signal?: AbortSignal): Promise<boolean> {
+export function requestApproval(emit: Emit, tool: string, input: Record<string, unknown>, signal?: AbortSignal, meta?: { capability?: string; target?: string }): Promise<boolean> {
   const id = randomUUID()
   return new Promise<boolean>((resolve) => {
     if (signal?.aborted) return resolve(false)
@@ -19,7 +19,7 @@ export function requestApproval(emit: Emit, tool: string, input: Record<string, 
     const onAbort = (): void => done(false) // Stop/Esc denies the pending ask — the turn can end
     signal?.addEventListener('abort', onAbort, { once: true })
     pending.set(id, done)
-    emit({ type: 'approval_request', id, tool, input })
+    emit({ type: 'approval_request', id, tool, input, capability: meta?.capability, target: meta?.target })
   })
 }
 

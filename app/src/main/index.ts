@@ -23,6 +23,8 @@ import { readWiki, generateWiki } from './wiki'
 import { loadHooks } from './hooks'
 import { fileSymbols } from './codemap'
 import { revertToCheckpoint } from './checkpoint'
+import { grantPermission } from './permissions'
+import type { Capability } from './permissions'
 import { observe, fuzz } from './engine'
 import { runAgent, listBackends, stopAgent, steerAgent } from './agent'
 import { hasKey, setKey } from './vault'
@@ -187,6 +189,7 @@ app.whenReady().then(() => {
   ipcMain.handle('grasp:changedLines', (_e, workspace: string, rel: string) => changedLines(workspace, rel))
   ipcMain.handle('grasp:fileSymbols', (_e, workspace: string, rel: string) => fileSymbols(workspace, rel))
   ipcMain.handle('grasp:revertTo', (_e, workspace: string, sha: string) => revertToCheckpoint(workspace, sha))
+  ipcMain.handle('grasp:grantPermission', (_e, workspace: string, capability: string, target: string, scope: 'once' | 'session' | 'project') => grantPermission(workspace, capability as Capability, target, scope))
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
