@@ -73,7 +73,7 @@ export function KeyGate({ onSaved }: { onSaved: () => void }): React.JSX.Element
         <button
           onClick={() => void save()}
           disabled={busy}
-          className="w-full rounded-lg bg-primary py-3 text-[0.875rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+          className="w-full rounded-lg bg-primary py-3 text-[0.875rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-50"
         >
           {busy ? 'Saving…' : 'Get started'}
         </button>

@@ -148,7 +148,13 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
   }
 
   if (!graph) {
-    return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{loading ? 'Loading…' : 'No repo.'}</div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-8 py-10 text-center">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" className="text-foreground-subtlest"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="9" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M6 8v8M8 6h6a2 2 0 0 1 2 2v0M18 11v0a5 5 0 0 1-5 5h-1" stroke="currentColor" strokeWidth="1.6" /></svg>
+        <p className="text-[0.8125rem] text-foreground-subtle">{loading ? 'Loading commit graph…' : 'No git repository here.'}</p>
+        {!loading && <p className="max-w-[260px] text-[0.75rem] text-foreground-subtlest">The commit graph appears once the workspace is a git repo.</p>}
+      </div>
+    )
   }
   if (!graph.ok) {
     return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{graph.error ?? 'No git repo at this workspace.'}</div>

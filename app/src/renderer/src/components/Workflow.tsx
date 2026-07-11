@@ -49,13 +49,13 @@ export function WorkflowModal(props: {
             className="w-[220px] rounded-lg border border-border bg-input px-3 py-2 text-[0.75rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover"
           />
           <button
-            className="ml-auto rounded-lg border border-border bg-secondary px-3.5 py-2 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg border border-border bg-secondary px-3.5 py-2 text-[0.8125rem] font-medium text-foreground transition-[filter] hover:brightness-110"
             onClick={props.onClose}
           >
             Cancel
           </button>
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-50"
             disabled={steps.length === 0}
             onClick={() => {
               const b = parseInt(budgetStr, 10)
@@ -109,7 +109,7 @@ export function WorkflowPanel(props: {
         )}
         {live && (
           <button
-            className="ml-auto rounded-lg border border-border bg-secondary px-3 py-1.5 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg border border-border bg-secondary px-3 py-1.5 text-[0.75rem] font-medium text-foreground transition-[filter] hover:brightness-110"
             onClick={props.onCancel}
             title="Stop after the current step"
           >
@@ -118,7 +118,7 @@ export function WorkflowPanel(props: {
         )}
         {interrupted && (
           <button
-            className="ml-auto rounded-lg bg-primary px-3.5 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110"
+            className="ml-auto rounded-lg bg-primary px-3.5 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110"
             onClick={props.onResume}
           >
             Resume

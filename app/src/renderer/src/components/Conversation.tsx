@@ -245,7 +245,7 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
       {props.latest && (
         <div className="flex items-center gap-3">
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-50"
             disabled={props.busy}
             onClick={() => props.onApprove(props.text)}
           >
@@ -319,8 +319,8 @@ function ElicitationCard(props: { it: TranscriptItem; onDecide?: (id: string, an
           </div>
           <input value={custom} onChange={(ev) => setCustom(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Enter') submit() }} placeholder="Or type your own answer…" className="rounded-lg border border-border bg-input px-3 py-2 text-[0.8125rem] text-foreground outline-none focus:border-foreground" />
           <div className="flex items-center gap-2">
-            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
-            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
+            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
+            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-[filter] hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
           </div>
         </>
       )}
@@ -873,7 +873,7 @@ export function Conversation(props: {
                 {props.onSteer && (
                   <button
                     type="button"
-                    className="flex size-8 items-center justify-center rounded-lg bg-tag text-foreground-subtle transition-filter hover:brightness-110 disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bg-tag text-foreground-subtle transition-[filter] hover:brightness-110 disabled:opacity-40"
                     onClick={steer}
                     disabled={!input.trim()}
                     title="Steer — inject into the running turn now"
@@ -882,7 +882,7 @@ export function Conversation(props: {
                   </button>
                 )}
                 <button
-                  className="flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-filter hover:brightness-110"
+                  className="flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-[filter] hover:brightness-110"
                   onClick={props.onStop}
                   title="Stop the agent (Esc)"
                 >
@@ -891,7 +891,7 @@ export function Conversation(props: {
               </div>
             ) : (
               <button
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-filter hover:brightness-110"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110"
                 onClick={submit}
                 title="Send (Enter · Shift+Enter for newline)"
               >

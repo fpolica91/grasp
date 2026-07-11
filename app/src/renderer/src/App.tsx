@@ -1102,7 +1102,7 @@ export function App(): React.JSX.Element {
                       <span className="size-1.5 rounded-full bg-current opacity-60" />
                       auto
                     </button>
-                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
+                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-[filter] hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
                     {surface?.kind === 'trace' && (

@@ -46,8 +46,8 @@ const MCP_CATALOG = [
 ]
 
 const inputCls = 'rounded-lg border border-border bg-input px-3 py-2 text-[0.8125rem] text-foreground outline-none transition-colors placeholder:text-foreground-subtlest focus:border-border-hover'
-const btnPrimary = 'rounded-lg bg-primary px-3 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50'
-const btnSm = 'rounded-lg border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110'
+const btnPrimary = 'rounded-lg bg-primary px-3 py-1.5 text-[0.75rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-50'
+const btnSm = 'rounded-lg border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-[filter] hover:brightness-110'
 
 function KeyRow({ provider, label, hint, onSaved }: { provider: string; label: string; hint: string; onSaved: () => void }): React.JSX.Element {
   const [has, setHas] = useState(false)

@@ -428,7 +428,7 @@ function Editor({ workspace, file, reveal, walk, showDock = true }: { workspace:
         </span>
         {mode === 'edit' && (
           <button
-            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-40"
+            className="rounded-md border border-border bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-[filter] hover:brightness-110 disabled:opacity-40"
             disabled={!dirty}
             onClick={() => void save()}
           >
