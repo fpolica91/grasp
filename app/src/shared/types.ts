@@ -375,10 +375,11 @@ export interface GraspApi {
   commands(workspace: string): Promise<SlashCommand[]>
   keybindings(): Promise<Record<string, string>>
   setSkillEnabled(name: string, enabled: boolean): Promise<void>
-  mcpServers(workspace: string): Promise<Record<string, { command: string; args?: string[]; env?: Record<string, string> }>>
+  mcpServers(workspace: string): Promise<Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; transport?: string; disabled?: boolean; disabledTools?: string[] }>>
   saveMcpServer(name: string, command: string, args: string, env: string): Promise<void>
+  saveMcpConfig(name: string, cfg: { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; transport?: string; disabled?: boolean; disabledTools?: string[] }): Promise<void>
   deleteMcpServer(name: string): Promise<boolean>
-  mcpStatus(workspace: string): Promise<{ name: string; ok: boolean; error?: string; toolCount: number }[]>
+  mcpStatus(workspace: string): Promise<{ name: string; ok: boolean; error?: string; toolCount: number; disabled?: boolean; transport?: string; tools?: string[] }[]>
   plugins(workspace: string): Promise<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>
   installPlugin(url: string): Promise<{ ok: boolean; name?: string; error?: string }>
   uninstallPlugin(name: string): Promise<{ ok: boolean; error?: string }>

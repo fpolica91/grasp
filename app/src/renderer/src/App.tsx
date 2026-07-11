@@ -314,7 +314,7 @@ export function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onEsc, true)
   }, [busy, showPalette, showSettings, showWfModal, showRemote, showQuickOpen])
   const [skills, setSkills] = useState<{ name: string; description: string; source: string; enabled: boolean }[]>([])
-  const [mcpServers, setMcpServers] = useState<Record<string, { command: string; args?: string[]; env?: Record<string, string> }>>({})
+  const [mcpServers, setMcpServers] = useState<Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string; headers?: Record<string, string>; transport?: string; disabled?: boolean; disabledTools?: string[] }>>({})
   const [plugins, setPlugins] = useState<{ name: string; description: string; source: 'user' | 'project'; hasSkills: boolean; mcpCount: number }[]>([])
   const [commands, setCommands] = useState<SlashCommand[]>([])
   const history = useRef<unknown[]>([])

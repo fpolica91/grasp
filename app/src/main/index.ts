@@ -33,6 +33,7 @@ import { listWorkflows, saveWorkflow, deleteWorkflow } from './workflows'
 import { resolveApproval, resolveElicitation } from './approvals'
 import { flowNow, clearMcpCache, mcpStatus } from './backends/tools'
 import { loadMcpConfig, saveMcpServer, deleteMcpServer } from './backends/mcp'
+import type { McpServerConfig } from './backends/mcp'
 import { listPlugins, installPlugin, uninstallPlugin } from './plugins'
 import { listProjects, openFolder, newProject, rememberProject } from './projects'
 import { listSkills, ensureDefaultSkills, setSkillEnabled } from './skills'
@@ -123,6 +124,10 @@ app.whenReady().then(() => {
       ...(toks(args).length ? { args: toks(args) } : {}),
       ...(Object.keys(envObj).length ? { env: envObj } : {})
     }
+    saveMcpServer(name, cfg)
+    clearMcpCache()
+  })
+  ipcMain.handle('grasp:saveMcpConfig', (_e, name: string, cfg: McpServerConfig) => {
     saveMcpServer(name, cfg)
     clearMcpCache()
   })
