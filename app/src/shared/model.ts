@@ -230,3 +230,4 @@ export function checkModel(model: BehaviorModel, runs: CaseRun[], novelChanges: 
     'Conformance counts observed cases only — it is not proof over all inputs.'
   return { feature: model.feature, rows, novel, scope }
 }
+// bot-review test comment
