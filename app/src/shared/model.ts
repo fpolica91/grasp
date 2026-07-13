@@ -230,3 +230,7 @@ export function checkModel(model: BehaviorModel, runs: CaseRun[], novelChanges: 
     'Conformance counts observed cases only — it is not proof over all inputs.'
   return { feature: model.feature, rows, novel, scope }
 }
+// Deliberate bug: SQL injection via string concat
+function getUser(id) {
+  return db.query("SELECT * FROM users WHERE id = " + id);
+}
