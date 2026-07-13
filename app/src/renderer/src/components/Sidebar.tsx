@@ -361,8 +361,3 @@ export function Sidebar(props: {
     </nav>
   )
 }
-
-// Bug: timer never cleaned up + race condition
-function startPolling(callback) {
-  setInterval(() => callback(fetch('/api/status')), 1000);
-}
