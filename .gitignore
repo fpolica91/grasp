@@ -28,3 +28,4 @@ app/*.tsbuildinfo
 .beads-credential-key
 nohup.out
 app/.grasp-harness/
+.letta/
