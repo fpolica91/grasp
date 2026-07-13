@@ -332,6 +332,7 @@ export interface SessionRecord {
   transcript: unknown[]
   history: unknown[]
   calls?: TrajectoryCall[] // persisted model-trajectory inspector records (per-call request/response)
+  tokens?: number
   traces?: unknown[] // persisted TraceDoc[] observed this session — restored on load, isolated per session
   surface?: unknown // the last Flow/report surface shown, so a reopened session shows its own flow, not a stale one
   parentId?: string // provenance: the session this was forked from

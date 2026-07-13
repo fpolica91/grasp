@@ -154,7 +154,7 @@ function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o) } }}
       >
-        <span className={`text-[0.5625rem] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
+        <span className={`text-[0.625rem] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
         <span className={`shrink-0 font-medium whitespace-nowrap ${running ? 'text-foreground' : 'text-foreground-subtlest'}`}>{verb}</span>
         <span className="truncate font-mono text-[0.75rem] text-foreground">{arg}</span>
         {running && (
@@ -245,7 +245,7 @@ function PlanCard(props: { text: string; latest: boolean; busy: boolean; onAppro
       {props.latest && (
         <div className="flex items-center gap-3">
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-50"
             disabled={props.busy}
             onClick={() => props.onApprove(props.text)}
           >
@@ -319,8 +319,8 @@ function ElicitationCard(props: { it: TranscriptItem; onDecide?: (id: string, an
           </div>
           <input value={custom} onChange={(ev) => setCustom(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Enter') submit() }} placeholder="Or type your own answer…" className="rounded-lg border border-border bg-input px-3 py-2 text-[0.8125rem] text-foreground outline-none focus:border-foreground" />
           <div className="flex items-center gap-2">
-            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-filter hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
-            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-filter hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
+            <button className="rounded-lg bg-primary px-3.5 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground shadow-sm transition-[filter] hover:brightness-110 disabled:opacity-40" onClick={submit} disabled={sel < 0 && !custom.trim()}>Continue</button>
+            <button className="rounded-lg border border-border bg-secondary px-3.5 py-1.5 text-[0.8125rem] font-medium text-foreground transition-[filter] hover:brightness-110" onClick={() => choose(null)}>Dismiss</button>
           </div>
         </>
       )}
@@ -423,6 +423,10 @@ export function Conversation(props: {
   onDecideApproval: (id: string, ok: boolean, scope?: 'once' | 'session' | 'project') => void
   onDecideElicitation?: (id: string, answer: string | null) => void
   onSend: (prompt: string) => void
+  draft?: string
+  onDraft?: (v: string) => void
+  sessionTitle?: string
+  onDismissError?: () => void
   onStop: () => void
   onQueue?: (prompt: string) => void // while busy: queue a follow-up for after the turn
   onSteer?: (prompt: string) => void // while busy: inject into the in-flight turn now
@@ -437,7 +441,9 @@ export function Conversation(props: {
   skills: { name: string; description: string }[]
   workspace?: string
 }): React.JSX.Element {
-  const [input, setInput] = useState('')
+  const [localInput, setLocalInput] = useState('')
+  const input = props.draft ?? localInput
+  const setInput = props.onDraft ?? setLocalInput
   const [armRevert, setArmRevert] = useState<number | null>(null) // two-click revert confirm
   const [slashIx, setSlashIx] = useState(0)
   const [enhancing, setEnhancing] = useState(false)
@@ -679,7 +685,7 @@ export function Conversation(props: {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
         )}
-        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground">Session<span className="ml-2 hidden text-[0.75rem] font-normal text-foreground-subtlest @[480px]:inline">post-editor</span></span>
+        <span className="min-w-0 truncate whitespace-nowrap text-[0.875rem] font-medium text-foreground" title={props.sessionTitle || undefined}>{props.sessionTitle?.trim() || 'New session'}</span>
         {/* External app launcher */}
         {props.workspace && (
           <span className="hidden shrink-0 @[480px]:block">
@@ -735,7 +741,7 @@ export function Conversation(props: {
       {props.banner}
 
       {/* Transcript */}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5" ref={logRef} onScroll={onLogScroll} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="grasp-transcript flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5" ref={logRef} onScroll={onLogScroll} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {props.transcript.length === 0 && (
           <div className="m-auto flex max-w-[400px] flex-col items-center gap-2.5 px-5 py-10 text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">
@@ -772,8 +778,17 @@ export function Conversation(props: {
             <span className="size-1.5 animate-pulse rounded-full bg-foreground-subtlest" style={{ animationDelay: '0.36s' }} />
           </div>
         )}
-        {props.error && <div className="rounded-lg border border-border bg-surface px-3 py-2 text-[0.8125rem] text-destructive">{props.error}</div>}
+
       </div>
+
+      {props.error && (
+        <div className="mx-5 mb-2 flex shrink-0 items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-[0.8125rem] text-destructive" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <span className="min-w-0 flex-1">{props.error}</span>
+          {props.onDismissError && (
+            <button className="shrink-0 rounded p-0.5 text-destructive/70 transition-colors hover:text-destructive" title="Dismiss" onClick={props.onDismissError}>✕</button>
+          )}
+        </div>
+      )}
 
       {/* Composer */}
       <div className="shrink-0 px-5 pb-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -858,7 +873,7 @@ export function Conversation(props: {
                 {props.onSteer && (
                   <button
                     type="button"
-                    className="flex size-8 items-center justify-center rounded-lg bg-tag text-foreground-subtle transition-filter hover:brightness-110 disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bg-tag text-foreground-subtle transition-[filter] hover:brightness-110 disabled:opacity-40"
                     onClick={steer}
                     disabled={!input.trim()}
                     title="Steer — inject into the running turn now"
@@ -867,7 +882,7 @@ export function Conversation(props: {
                   </button>
                 )}
                 <button
-                  className="flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-filter hover:brightness-110"
+                  className="flex size-8 items-center justify-center rounded-lg bg-secondary text-foreground transition-[filter] hover:brightness-110"
                   onClick={props.onStop}
                   title="Stop the agent (Esc)"
                 >
@@ -876,7 +891,7 @@ export function Conversation(props: {
               </div>
             ) : (
               <button
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-filter hover:brightness-110"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-[filter] hover:brightness-110"
                 onClick={submit}
                 title="Send (Enter · Shift+Enter for newline)"
               >

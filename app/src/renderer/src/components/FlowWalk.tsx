@@ -107,7 +107,7 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace, compa
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className="min-w-0 truncate font-mono text-[0.8125rem] font-semibold text-foreground">{a.fn}</span>
                   {a.file && !compact && (
-                    <span className="truncate font-mono text-[0.65625rem] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
+                    <span className="truncate font-mono text-[0.6875rem] text-foreground-subtlest">{a.file}{a.line ? `:${a.line}` : ''}</span>
                   )}
                   {a.frame.durMs > 0 && <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-foreground-subtlest">{a.frame.durMs}ms</span>}
                 </span>
@@ -116,7 +116,7 @@ export function FlowWalk({ trace, anchors, currentIx, onSelect, workspace, compa
                 ) : compact ? null : (
                   <span className="mt-0.5 block font-mono text-[0.6875rem] italic text-foreground-subtlest">source line unavailable</span>
                 )}
-                <span className={`mt-0.5 block truncate font-mono text-[0.71875rem] ${a.frame.threw ? 'text-destructive' : 'text-foreground-subtle'}`}>{valueLine(a.frame)}</span>
+                <span className={`mt-0.5 block truncate font-mono text-[0.75rem] ${a.frame.threw ? 'text-destructive' : 'text-foreground-subtle'}`}>{valueLine(a.frame)}</span>
               </button>
             )
           })}

@@ -176,7 +176,7 @@ function DeltaBlock({ from, to, vs }: { from: Record<string, unknown>; to: Recor
   return (
     <div className="my-0.5 flex min-w-0 flex-col gap-0.5 rounded-md border border-border bg-panel px-2 py-1">
       {vs && <span className="font-mono text-[0.625rem] text-foreground-subtlest">vs {vs}</span>}
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[0.71875rem]">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[0.75rem]">
         {removed.map((k) => (
           <span key={'r' + k} className="text-foreground-subtlest line-through">− {k}</span>
         ))}
@@ -204,12 +204,12 @@ function ObjView({ j, badge, childAnc, depth = 0 }: { j: Record<string, unknown>
   const entries: [string, unknown][] = Array.isArray(j) ? j.map((v, i) => [String(i), v] as [string, unknown]) : Object.entries(j)
   return (
     <div className="my-0.5 flex min-w-0 flex-col gap-px rounded-md border border-border bg-panel px-2 py-1">
-      {badge && <span className="text-[0.5625rem] uppercase tracking-wide text-foreground-subtlest">{badge}</span>}
+      {badge && <span className="text-[0.625rem] uppercase tracking-wide text-foreground-subtlest">{badge}</span>}
       {entries.slice(0, 24).map(([k, val], i) => {
         const anc = childAnc?.[k]
         if (anc && isPlainObj(val))
           return (
-            <div key={i} className="flex min-w-0 items-start gap-1.5 font-mono text-[0.71875rem]">
+            <div key={i} className="flex min-w-0 items-start gap-1.5 font-mono text-[0.75rem]">
               <span className="shrink-0 pt-1 text-foreground-subtlest">{k}</span>
               <DeltaBlock from={anc.from} to={val} vs={anc.label} />
             </div>
@@ -219,14 +219,14 @@ function ObjView({ j, badge, childAnc, depth = 0 }: { j: Record<string, unknown>
             ? Object.entries(childAnc).filter(([kk]) => kk.startsWith(k + '.')).map(([kk, v2]) => [kk.slice(k.length + 1), v2] as [string, AncestorDelta])
             : []
           return (
-            <div key={i} className="flex min-w-0 items-start gap-1.5 font-mono text-[0.71875rem]">
+            <div key={i} className="flex min-w-0 items-start gap-1.5 font-mono text-[0.75rem]">
               <span className="shrink-0 pt-1 text-foreground-subtlest">{k}</span>
               <ObjView j={val} depth={depth + 1} childAnc={scopedEntries.length ? Object.fromEntries(scopedEntries) : undefined} />
             </div>
           )
         }
         return (
-          <div key={i} className="flex min-w-0 items-baseline gap-1.5 font-mono text-[0.71875rem]">
+          <div key={i} className="flex min-w-0 items-baseline gap-1.5 font-mono text-[0.75rem]">
             <span className="shrink-0 text-foreground-subtlest">{k}</span>
             <span className="min-w-0 break-all text-foreground"><Str s={primRepr(val)} /></span>
           </div>
@@ -296,7 +296,7 @@ function Frame({ frame, children, byParent, onOpenSource, occ }: {
     <div className={threw ? 'border-l-2 border-destructive/40' : ''}>
       <div className="flex items-start gap-2 py-1">
         <button className="mt-0.5 border-0 bg-transparent p-0" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          <span className={`inline-block text-[0.5625rem] text-foreground-subtlest transition-transform ${open ? 'rotate-90' : ''} ${children.length ? '' : 'invisible'}`}>▸</span>
+          <span className={`inline-block text-[0.625rem] text-foreground-subtlest transition-transform ${open ? 'rotate-90' : ''} ${children.length ? '' : 'invisible'}`}>▸</span>
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

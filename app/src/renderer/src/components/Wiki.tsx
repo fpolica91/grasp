@@ -25,7 +25,7 @@ const wikiComponents = {
       <code className="rounded bg-surface px-1.5 py-0.5 font-mono text-[0.75rem] text-foreground" {...rest}>{children}</code>
     ),
   pre: (p: React.ComponentProps<'pre'>) => <pre className="mb-3 overflow-x-auto rounded-lg border border-border bg-surface px-3.5 py-2.5 font-mono text-[0.75rem] leading-relaxed text-foreground" {...p} />,
-  table: (p: React.ComponentProps<'table'>) => <table className="mb-3 w-full border-collapse text-[0.78125rem]" {...p} />,
+  table: (p: React.ComponentProps<'table'>) => <table className="mb-3 w-full border-collapse text-[0.8125rem]" {...p} />,
   th: (p: React.ComponentProps<'th'>) => <th className="border-b border-border px-2 py-1.5 text-left font-semibold text-foreground" {...p} />,
   td: (p: React.ComponentProps<'td'>) => <td className="border-b border-border/50 px-2 py-1.5 text-foreground-subtle" {...p} />
 }
@@ -52,7 +52,7 @@ export function WikiPane(props: { workspace: string; backend: string; model: str
           type="button"
           onClick={gen}
           disabled={busy || !props.workspace}
-          className="rounded-md border border-border bg-card px-2 py-1 text-[0.71875rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+          className="rounded-md border border-border bg-card px-2 py-1 text-[0.75rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
           title="Generate the repo wiki from README + manifests + file tree"
         >{busy ? 'Generating…' : has ? 'Regenerate' : 'Generate'}</button>
       </div>

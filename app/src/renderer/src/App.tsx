@@ -182,9 +182,11 @@ export function App(): React.JSX.Element {
   // user collapsed it — otherwise the whole thesis is silently hidden with zero feedback.
   useEffect(() => {
     if (!surface) return
-    setRightTab('flow')
     const p = rightRef.current
-    if (p?.isCollapsed()) p.expand()
+    // Surface the flow — but don't yank the user off the Editor they're actively reading.
+    // Always reveal a collapsed pane; otherwise only switch when not on Editor.
+    if (p?.isCollapsed()) { p.expand(); setRightTab('flow') }
+    else if (rightTab !== 'editor') setRightTab('flow')
   }, [surface])
 
   // The Flow WALK: the current trace's meaningful frames as numbered anchors, in
@@ -262,6 +264,7 @@ export function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keybinds, persona])
   const [tokens, setTokens] = useState(0)
+  const [composerDraft, setComposerDraft] = useState('') // one draft, shared across the two personas' composers
   const [budget, setBudget] = useState('')
   const [queue, setQueue] = useState<string[]>([]) // follow-ups queued while the agent was busy
 
@@ -473,7 +476,8 @@ export function App(): React.JSX.Element {
       history: history.current,
       calls,
       traces,
-      surface
+      surface,
+      tokens
     }
     void window.grasp.saveSession(rec)
     setSessions((ss) => [rec, ...ss.filter((s) => s.id !== rec.id)])
@@ -491,11 +495,11 @@ export function App(): React.JSX.Element {
     setModel(rec.model)
     if (rec.workspace) setWorkspace(rec.workspace)
     setSurface((rec.surface ?? null) as Surface | null)
+    setTokens(typeof rec.tokens === 'number' ? rec.tokens : 0)
     setError(null)
     setFlowStatus('idle')
     taskRef.current = null
     setQueue([])
-    setTokens(0)
     setWalkIx(null)
     setBudget('')
     setFlowLens('tree')
@@ -652,12 +656,11 @@ export function App(): React.JSX.Element {
         setTraces((ts) => {
           const next = [...ts, e.trace]
           setSurface({ kind: 'trace', ix: next.length - 1 })
-          setRightTab('flow')
           return next
         })
-      else if (e.type === 'trace_diff') { setSurface({ kind: 'tracediff', diff: e.diff }); setRightTab('flow') }
-      else if (e.type === 'fuzz_diff') { setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz }); setRightTab('flow') }
-      else if (e.type === 'intro') { setSurface({ kind: 'intro', intro: e.intro }); setRightTab('flow') }
+      else if (e.type === 'trace_diff') setSurface({ kind: 'tracediff', diff: e.diff })
+      else if (e.type === 'fuzz_diff') setSurface({ kind: 'fuzzdiff', fuzz: e.fuzz })
+      else if (e.type === 'intro') setSurface({ kind: 'intro', intro: e.intro })
       else if (e.type === 'plan') { setTranscript((t) => [...t, { role: 'plan', text: e.text }]); setFlowStatus('awaiting-approval') }
       else if (e.type === 'approval_request')
         setTranscript((t) => [...t, { role: 'approval', id: e.id, name: e.tool, input: e.input, status: 'running', capability: e.capability, target: e.target }])
@@ -894,6 +897,10 @@ export function App(): React.JSX.Element {
                 onDecideApproval={decideApproval}
                 onDecideElicitation={decideElicitation}
                 onSend={send}
+                draft={composerDraft}
+                onDraft={setComposerDraft}
+                sessionTitle={sessions.find((s) => s.id === sessionId)?.title ?? transcript.find((it) => it.role === 'user')?.text?.slice(0, 44)}
+                onDismissError={() => setError(null)}
                 onStop={() => void window.grasp.stopAgent()}
                 onRegenerate={() => {
                   const lastUser = [...transcript].reverse().find((it) => it.role === 'user')
@@ -1095,7 +1102,7 @@ export function App(): React.JSX.Element {
                       <span className="size-1.5 rounded-full bg-current opacity-60" />
                       auto
                     </button>
-                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-filter hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
+                    <button className="rounded-md bg-secondary px-2.5 py-1 text-[0.75rem] font-medium text-foreground transition-[filter] hover:brightness-110 disabled:opacity-50" disabled={flowRunning} onClick={() => void runFlowNow()}>
                       {flowRunning ? 'observing…' : '▶ Run flow'}
                     </button>
                     {surface?.kind === 'trace' && (
@@ -1178,12 +1185,12 @@ export function App(): React.JSX.Element {
       </PanelGroup>
 
       {/* status bar */}
-      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[0.71875rem] text-foreground-subtle">
+      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[0.75rem] text-foreground-subtle">
         <span className="inline-flex items-center gap-1.5 font-mono" title={workspace}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
           {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
         </span>
-        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.71875rem] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
+        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.75rem] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Terminal
           <span className="font-mono text-[0.625rem] text-foreground-subtlest">⌃`</span>

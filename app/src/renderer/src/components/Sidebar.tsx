@@ -90,6 +90,9 @@ function SessionRow({
         isActive ? 'border-accent-blue bg-selected font-medium text-foreground' : 'border-transparent text-foreground-subtle hover:bg-surface-hover'
       }`}
       onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
+      role="button"
+      tabIndex={0}
       title={title}
     >
       <span className="flex-1 truncate">{title}</span>
@@ -241,6 +244,9 @@ export function Sidebar(props: {
                   else next.add(ws)
                   return next
                 })}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { (e.currentTarget as HTMLElement).click(); e.preventDefault() } }}
+                role="button"
+                tabIndex={0}
               >
                 <span className={`text-[0.5rem] transition-transform ${collapsed ? '' : 'rotate-90'}`}>▸</span>
                 <span className="flex-1 truncate" title={ws}>{wsName}</span>
@@ -281,10 +287,13 @@ export function Sidebar(props: {
                   w.id === props.activeWorkflow ? 'bg-selected text-foreground' : 'text-foreground-subtle hover:bg-surface-hover'
                 }`}
                 onClick={() => props.onOpenWorkflow(w.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); props.onOpenWorkflow(w.id) } }}
+                role="button"
+                tabIndex={0}
                 title={w.title}
               >
                 <span className="flex-1 truncate">{w.title}</span>
-                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[0.5625rem] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
+                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[0.625rem] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
                   {w.done}/{w.total}
                 </span>
                 <button
@@ -316,6 +325,9 @@ export function Sidebar(props: {
                 key={s.name}
                 className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-[0.8125rem] text-foreground-subtle transition-colors hover:bg-surface-hover"
                 onClick={() => props.onToggleSkill(s.name, !s.enabled)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); props.onToggleSkill(s.name, !s.enabled) } }}
+                role="button"
+                tabIndex={0}
                 title={s.description}
               >
                 <span className={`flex-1 truncate ${s.enabled ? '' : 'opacity-40'}`}>{s.name}</span>

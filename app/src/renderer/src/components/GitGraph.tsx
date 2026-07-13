@@ -118,7 +118,7 @@ function ActButton({ label, title, onClick, disabled }: { label: string; title: 
       disabled={disabled}
       onClick={onClick}
       title={title}
-      className="rounded-md border border-border bg-card px-2 py-1 text-[0.71875rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
+      className="rounded-md border border-border bg-card px-2 py-1 text-[0.75rem] text-foreground-subtle transition-colors hover:bg-surface-hover hover:text-foreground disabled:opacity-40"
     >{label}</button>
   )
 }
@@ -148,7 +148,13 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
   }
 
   if (!graph) {
-    return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{loading ? 'Loading…' : 'No repo.'}</div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-8 py-10 text-center">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" className="text-foreground-subtlest"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="9" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M6 8v8M8 6h6a2 2 0 0 1 2 2v0M18 11v0a5 5 0 0 1-5 5h-1" stroke="currentColor" strokeWidth="1.6" /></svg>
+        <p className="text-[0.8125rem] text-foreground-subtle">{loading ? 'Loading commit graph…' : 'No git repository here.'}</p>
+        {!loading && <p className="max-w-[260px] text-[0.75rem] text-foreground-subtlest">The commit graph appears once the workspace is a git repo.</p>}
+      </div>
+    )
   }
   if (!graph.ok) {
     return <div className="p-4 text-[0.8125rem] text-foreground-subtle">{graph.error ?? 'No git repo at this workspace.'}</div>
@@ -160,7 +166,7 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
     <div className="flex h-full flex-col">
       {/* header: branch + actions */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-tag px-2 py-0.5 text-[0.71875rem] font-medium text-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-tag px-2 py-0.5 text-[0.75rem] font-medium text-foreground">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="6" cy="18" r="2.4" stroke="currentColor" strokeWidth="1.7" /><circle cx="18" cy="9" r="2.4" stroke="currentColor" strokeWidth="1.7" /><path d="M6 8.4v7.2M6 12c0-3 3-3 6-3h3.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           {graph.branch}
         </span>
@@ -211,7 +217,7 @@ export function GitGraphPane({ workspace, active }: { workspace: string; active:
       {/* footer: branch switcher + merge/rebase */}
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2">
         <select
-          className="min-w-0 flex-1 rounded-md border border-border bg-input px-2 py-1 text-[0.71875rem] text-foreground outline-none"
+          className="min-w-0 flex-1 rounded-md border border-border bg-input px-2 py-1 text-[0.75rem] text-foreground outline-none"
           value=""
           onChange={(e) => { if (e.target.value) void act('checkout', e.target.value); e.target.value = '' }}
           title="Switch branch"
