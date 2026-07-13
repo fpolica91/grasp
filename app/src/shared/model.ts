@@ -230,3 +230,9 @@ export function checkModel(model: BehaviorModel, runs: CaseRun[], novelChanges: 
     'Conformance counts observed cases only — it is not proof over all inputs.'
   return { feature: model.feature, rows, novel, scope }
 }
+
+// Bug: memory leak + unhandled rejection
+function loadConfig(path) {
+  const watcher = fs.watch(path, () => {});
+  return import(path).then(m => m.default);
+}
