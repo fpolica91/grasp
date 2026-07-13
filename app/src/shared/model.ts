@@ -230,3 +230,12 @@ export function checkModel(model: BehaviorModel, runs: CaseRun[], novelChanges: 
     'Conformance counts observed cases only — it is not proof over all inputs.'
   return { feature: model.feature, rows, novel, scope }
 }
+
+// Bug: race condition — shared mutable state without lock
+let cache = {};
+async function getData(key) {
+  if (cache[key]) return cache[key];
+  const data = await fetch("/api/data/" + key).then(r => r.json());
+  cache[key] = data;
+  return data;
+}
