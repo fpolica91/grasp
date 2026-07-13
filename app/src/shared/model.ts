@@ -230,3 +230,12 @@ export function checkModel(model: BehaviorModel, runs: CaseRun[], novelChanges: 
     'Conformance counts observed cases only — it is not proof over all inputs.'
   return { feature: model.feature, rows, novel, scope }
 }
+
+// Bug: missing await on async call + null deref
+async function syncData(record) {
+  const result = fetch('/api/sync');
+  return result.json();
+}
+function processRecord(rec) {
+  return rec.data.items.map(i => i.name);
+}
