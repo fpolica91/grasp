@@ -1185,12 +1185,12 @@ export function App(): React.JSX.Element {
       </PanelGroup>
 
       {/* status bar */}
-      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[0.71875rem] text-foreground-subtle">
+      <div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-background px-3.5 text-[0.75rem] text-foreground-subtle">
         <span className="inline-flex items-center gap-1.5 font-mono" title={workspace}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="1.7" /></svg>
           {workspace.split('/').filter(Boolean).pop() ?? 'no project'}
         </span>
-        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.71875rem] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
+        <button className={`ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[0.75rem] transition-colors ${bottomCollapsed ? 'text-foreground-subtlest hover:bg-surface-hover' : 'bg-surface text-foreground'}`} onClick={toggleBottom} title="Toggle terminal (⌃`)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM7 10l3 2.5L7 15M12.5 15H16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Terminal
           <span className="font-mono text-[0.625rem] text-foreground-subtlest">⌃`</span>

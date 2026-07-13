@@ -293,7 +293,7 @@ export function Sidebar(props: {
                 title={w.title}
               >
                 <span className="flex-1 truncate">{w.title}</span>
-                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[0.5625rem] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
+                <span className={`rounded-full border border-border px-1.5 py-0.5 text-[0.625rem] ${w.status === 'done' ? 'text-foreground' : 'text-foreground-subtlest'}`}>
                   {w.done}/{w.total}
                 </span>
                 <button

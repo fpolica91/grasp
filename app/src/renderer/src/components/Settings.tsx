@@ -125,7 +125,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
     <button className="ml-2 border-0 bg-transparent text-[0.6875rem] text-foreground-subtlest underline underline-offset-2 transition-colors hover:text-foreground" onClick={() => void window.grasp.revealInFiles(key)}>reveal in files</button>
   )
   const note = (children: React.ReactNode): React.JSX.Element => (
-    <p className="mt-1.5 text-[0.78125rem] leading-relaxed text-foreground-subtle">{children}</p>
+    <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-foreground-subtle">{children}</p>
   )
   const codeCls = 'rounded bg-tag px-1 py-0.5 font-mono text-[0.6875rem] text-foreground-subtle'
 
@@ -161,7 +161,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           <span className="text-[0.875rem] font-semibold text-foreground">{item.name}</span>
                           {item.envHint && <span className="rounded-full border border-border px-1.5 py-0 text-[0.625rem] text-foreground-subtlest">needs key</span>}
                         </div>
-                        <div className="text-[0.78125rem] text-foreground-subtle">{item.desc}</div>
+                        <div className="text-[0.8125rem] text-foreground-subtle">{item.desc}</div>
                         <code className="break-all font-mono text-[0.6875rem] text-foreground-subtlest">{item.pkg}</code>
                         <button className={`${installed ? btnSm : btnPrimary} mt-1.5 self-start`} disabled={installed} onClick={() => void window.grasp.saveMcpServer(item.name, 'npx', `-y ${item.pkg}${item.args ? ' ' + item.args : ''}`, item.envHint ? `${item.envHint}=` : '').then(props.onMcpChanged)}>
                           {installed ? '✓ Installed' : 'Install'}
@@ -208,7 +208,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           <span className="rounded-full border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{s.source}</span>
                           <button className={`ml-auto rounded-full border px-2 py-0.5 text-[0.625rem] transition-colors ${s.enabled ? 'border-foreground text-foreground' : 'border-border text-foreground-subtlest'}`} title={s.enabled ? 'Disable' : 'Enable'} onClick={() => void window.grasp.setSkillEnabled(s.name, !s.enabled).then(props.onSkillsChanged)}>{s.enabled ? 'on' : 'off'}</button>
                         </div>
-                        <div className="text-[0.78125rem] text-foreground-subtle">{(s.description || '(no description)').slice(0, 180)}</div>
+                        <div className="text-[0.8125rem] text-foreground-subtle">{(s.description || '(no description)').slice(0, 180)}</div>
                       </Card>
                     ))}
                   </div>
@@ -232,7 +232,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           <div className="flex items-center gap-2">
                             <span className={`size-2 shrink-0 rounded-full ${dot}`} title={s.disabled ? 'disabled' : st?.ok ? 'connected' : st?.ok === false ? 'failed' : 'unknown'} />
                             <span className={`text-[0.8125rem] font-semibold ${s.disabled ? 'text-foreground-subtle' : 'text-foreground'}`}>{name}</span>
-                            <span className="rounded border border-border px-1.5 text-[0.5625rem] uppercase text-foreground-subtlest">{kind}</span>
+                            <span className="rounded border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{kind}</span>
                             {st && !s.disabled && <span className={`rounded-full border px-1.5 text-[0.625rem] ${st.ok === false ? 'border-destructive text-destructive' : 'border-border text-foreground-subtlest'}`}>{st.ok ? `${st.toolCount} tool${st.toolCount === 1 ? '' : 's'}` : 'failed'}</span>}
                             {st?.ok && (st.tools?.length ?? 0) > 0 && <button className="text-[0.625rem] text-foreground-subtlest transition-colors hover:text-foreground" onClick={() => setMcpExpanded(open ? null : name)}>{open ? 'hide' : 'tools'}</button>}
                             <label className="ml-auto flex cursor-pointer items-center gap-1 text-[0.625rem] text-foreground-subtlest" title={s.disabled ? 'Enable this server' : 'Disable without removing'}>
@@ -241,11 +241,11 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                             </label>
                             <button className="border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Remove" onClick={() => void window.grasp.deleteMcpServer(name).then(props.onMcpChanged)}>✕</button>
                           </div>
-                          <div className="text-[0.78125rem] text-foreground-subtle">
+                          <div className="text-[0.8125rem] text-foreground-subtle">
                             <code className={codeCls}>{s.url ? s.url : `${s.command}${s.args?.length ? ' ' + s.args.join(' ') : ''}`}</code>
                             {s.env && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{Object.keys(s.env).length} env</span>}
                             {s.headers && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{Object.keys(s.headers).length} header{Object.keys(s.headers).length === 1 ? '' : 's'}</span>}
-                            {st?.error && <div className="mt-1 font-mono text-[0.71875rem] text-destructive">{st.error}</div>}
+                            {st?.error && <div className="mt-1 font-mono text-[0.75rem] text-destructive">{st.error}</div>}
                             {open && st?.tools && (
                               <div className="mt-1.5 flex flex-wrap gap-1">
                                 {st.tools.map((t) => <span key={t} className="rounded border border-border px-1.5 py-0.5 font-mono text-[0.625rem] text-foreground-subtle">{t}</span>)}
@@ -297,7 +297,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           <span className="rounded-full border border-border px-1.5 text-[0.625rem] uppercase text-foreground-subtlest">{p.source}</span>
                           {p.source === 'user' && <button className="ml-auto border-0 bg-transparent text-[0.75rem] text-foreground-subtlest transition-colors hover:text-destructive" title="Uninstall" onClick={() => void window.grasp.uninstallPlugin(p.name).then(props.onPluginsChanged)}>✕</button>}
                         </div>
-                        <div className="text-[0.78125rem] text-foreground-subtle">
+                        <div className="text-[0.8125rem] text-foreground-subtle">
                           {p.description || '(no description)'}
                           {p.hasSkills && <span className="ml-1.5 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">skills</span>}
                           {p.mcpCount > 0 && <span className="ml-1 rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{p.mcpCount} mcp</span>}
@@ -326,7 +326,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           <span className="text-[0.8125rem] font-semibold text-foreground">/{c.name}</span>
                           {c.skills && <span className="rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">skill: {c.skills}</span>}
                         </div>
-                        <div className="text-[0.78125rem] text-foreground-subtle">{(c.description || '(no description)').slice(0, 180)}</div>
+                        <div className="text-[0.8125rem] text-foreground-subtle">{(c.description || '(no description)').slice(0, 180)}</div>
                       </Card>
                     ))}
                   </div>
@@ -364,7 +364,7 @@ export function Settings(props: { theme: Theme; onTheme: (t: Theme) => void; onK
                           {h.match && <span className="rounded-full border border-border px-1.5 text-[0.625rem] text-foreground-subtlest">{h.match}</span>}
                           {h.timeout != null && <span className="ml-auto rounded-full bg-tag px-1.5 text-[0.625rem] text-foreground-subtlest">{h.timeout}s</span>}
                         </div>
-                        <div className="truncate text-[0.78125rem] text-foreground-subtlest font-mono">{h.command}</div>
+                        <div className="truncate text-[0.8125rem] text-foreground-subtlest font-mono">{h.command}</div>
                       </Card>
                     ))}
                   </div>

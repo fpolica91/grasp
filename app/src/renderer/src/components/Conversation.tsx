@@ -154,7 +154,7 @@ function ToolBlock({ it }: { it: TranscriptItem }): React.JSX.Element {
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((o) => !o) } }}
       >
-        <span className={`text-[0.5625rem] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
+        <span className={`text-[0.625rem] transition-transform ${open ? 'rotate-90' : ''} text-foreground-subtlest opacity-0 group-hover/tool:opacity-100 ${open ? 'opacity-100' : ''}`}>▸</span>
         <span className={`shrink-0 font-medium whitespace-nowrap ${running ? 'text-foreground' : 'text-foreground-subtlest'}`}>{verb}</span>
         <span className="truncate font-mono text-[0.75rem] text-foreground">{arg}</span>
         {running && (
@@ -741,7 +741,7 @@ export function Conversation(props: {
       {props.banner}
 
       {/* Transcript */}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5" ref={logRef} onScroll={onLogScroll} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className="grasp-transcript flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5" ref={logRef} onScroll={onLogScroll} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         {props.transcript.length === 0 && (
           <div className="m-auto flex max-w-[400px] flex-col items-center gap-2.5 px-5 py-10 text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-surface text-foreground-subtlest">

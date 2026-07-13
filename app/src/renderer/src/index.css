@@ -121,6 +121,10 @@
   --font-mono: "Geist Mono", ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
   --text-xs: .75rem;   --text-sm: .875rem;  --text-base: 1rem;    --text-lg: 1.125rem;
   --text-xl: 1.25rem;  --text-2xl: 1.5rem;  --text-3xl: 1.875rem; --text-4xl: 2.25rem;
+  /* UI type ladder (the app's working scale — keep new UI text on these rungs):
+     0.5rem decorative glyphs · 0.625rem micro badges/counts · 0.6875rem meta/hints ·
+     0.75rem secondary UI · 0.8125rem primary UI · 0.875rem body/conversation ·
+     1rem+ section headers. mono for code/paths/values/counts, sans for prose/labels. */
   --tracking-tight: -.025em; --tracking-normal: 0em; --tracking-wide: .025em; --tracking-widest: .1em;
   --leading-tight: 1.25; --leading-snug: 1.375; --leading-normal: 1.5; --leading-relaxed: 1.625;
   --font-weight-normal: 400; --font-weight-medium: 500; --font-weight-semibold: 600; --font-weight-bold: 700;
@@ -393,3 +397,23 @@ body { font-family: var(--font-sans); background: var(--color-background); color
 .cm-git-mark-added { background: var(--color-git-added); }
 .cm-git-mark-changed { background: var(--color-git-modified); }
 .cm-git-mark-removed { height: 0; min-height: 0; margin-left: 0; border-left: 5px solid var(--color-git-deleted); border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; margin-top: 10px; }
+
+/* ——— Motion: a subtle entrance for messages/cards. Each new transcript child fades up
+   once on mount (stable React keys → no replay on re-render). Off under reduced-motion. ——— */
+@keyframes grasp-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.grasp-transcript > * { animation: grasp-enter 0.22s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .grasp-transcript > * { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* Keyboard focus ring — visible only for keyboard users, on the accent. Inputs keep their
+   own focus-within styling. */
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
